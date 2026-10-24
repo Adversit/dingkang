@@ -1,0 +1,15 @@
+flowchart TD
+    U["用户提出任务"] --> M["Agent 调用 LLM"]
+    M --> Q{"需要工具吗？"}
+    Q -->|否| A["返回最终回答"]
+    Q -->|是| D["按工具名称分发"]
+    D --> R["Read：读取文本"]
+    D --> W["Write：新建或整体覆盖"]
+    D --> E["Edit：局部文本替换"]
+    D --> B["Bash：运行命令"]
+    B --> S["sandbox-runtime：约束执行环境"]
+    R --> T["tool_result：结果正文与失败状态"]
+    W --> T
+    E --> T
+    S --> T
+    T --> M

@@ -1,0 +1,28 @@
+CLEARED = "[Old tool result content cleared]"
+
+
+def microcompact(
+    messages: list[Message],
+    keep_recent_tool_results: int = 3,
+) -> list[Message]:
+    tool_results = [
+        i
+        for i, m in enumerate(messages)
+        if m.kind == "tool_result"
+    ]
+
+    old_indexes = tool_results[:-keep_recent_tool_results]
+
+    compacted = list(messages)
+
+    for index in old_indexes:
+        old = compacted[index]
+
+        compacted[index] = Message(
+            role=old.role,
+            content=CLEARED,
+            kind=old.kind,
+            tool_use_id=old.tool_use_id,
+        )
+
+    return compacted

@@ -1,0 +1,7 @@
+<div class="code-scroll"><pre class="highlight"><code class="language-bash"><span class="nb">export</span><span class="w"> </span><span class="nv">ANTHROPIC_API_KEY</span><span class="o">=</span><span class="s1">'你的 API 密钥'</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">ANTHROPIC_MODEL</span><span class="o">=</span><span class="s1">'你账户可用且支持工具调用的模型 ID'</span>
+
+python<span class="w"> </span>run_agent.py<span class="w"> </span>--workspace<span class="w"> </span>./workspace<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--task<span class="w"> </span><span class="s1">'创建 hello.py，打印 Hello world；读取它；用 Edit 将 world 改成 Agent；最后通过 Bash 运行并报告结果。'</span>
+</code></pre></div>
+    

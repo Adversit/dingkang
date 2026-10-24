@@ -1,0 +1,491 @@
+{
+  "format": "dingkang-asset-pack",
+  "version": 1,
+  "codec": "zlib-base64",
+  "chunkBytes": 220000,
+  "assets": [
+    {
+      "path": "public/apps/pocket-arcade-ten/assets/audio/battle.mp3",
+      "bytes": 1343128,
+      "sha256": "270dc2e782ddaa427cd1ff1f968229d7425a4a48a17f35b8476fe2427f6d3c15",
+      "gitBlobSha1": "0bb4276153b06536b7eff5d9ea07105ff367afea",
+      "compressedBytes": 1337189,
+      "parts": [
+        {
+          "path": "asset-pack/parts/0bb4276153b06536b7eff5d9ea07105ff367afea-0.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "51f50d77651aea792a9383ad6a83f80cb1e4369373c5cbe4c600f72e150eded5"
+        },
+        {
+          "path": "asset-pack/parts/0bb4276153b06536b7eff5d9ea07105ff367afea-1.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "36a5afc9c4b6ee77946a220054f1469889ffec8d0652c74d6693df3a0b3526f1"
+        },
+        {
+          "path": "asset-pack/parts/0bb4276153b06536b7eff5d9ea07105ff367afea-2.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "fb62af2265454cec7c198de203678a0f8f31074c0cdf1f78f37337c09db4abaf"
+        },
+        {
+          "path": "asset-pack/parts/0bb4276153b06536b7eff5d9ea07105ff367afea-3.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "b9de62023116fd0cacfa87939b9834d1b3259d6ce067f338f1924de6e988f287"
+        },
+        {
+          "path": "asset-pack/parts/0bb4276153b06536b7eff5d9ea07105ff367afea-4.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "b98e630a3f477d1efc22c455bafac5be35a18ae5adffd9671a559f605e86fd01"
+        },
+        {
+          "path": "asset-pack/parts/0bb4276153b06536b7eff5d9ea07105ff367afea-5.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "181178101428207523b5d17c0fdad888a10627134d8f00f9ad411a21641fdf82"
+        },
+        {
+          "path": "asset-pack/parts/0bb4276153b06536b7eff5d9ea07105ff367afea-6.b64",
+          "base64Bytes": 22920,
+          "compressedBytes": 17189,
+          "sha256": "725252175f34efc6b47d636e7262574b1933363ebd3961fb1d03c8ec35ffe253"
+        }
+      ]
+    },
+    {
+      "path": "public/apps/starfall-creature-isles/assets/audio/battle.mp3",
+      "bytes": 1343128,
+      "sha256": "270dc2e782ddaa427cd1ff1f968229d7425a4a48a17f35b8476fe2427f6d3c15",
+      "gitBlobSha1": "0bb4276153b06536b7eff5d9ea07105ff367afea",
+      "compressedBytes": 1337189,
+      "parts": [
+        {
+          "path": "asset-pack/parts/0bb4276153b06536b7eff5d9ea07105ff367afea-0.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "51f50d77651aea792a9383ad6a83f80cb1e4369373c5cbe4c600f72e150eded5"
+        },
+        {
+          "path": "asset-pack/parts/0bb4276153b06536b7eff5d9ea07105ff367afea-1.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "36a5afc9c4b6ee77946a220054f1469889ffec8d0652c74d6693df3a0b3526f1"
+        },
+        {
+          "path": "asset-pack/parts/0bb4276153b06536b7eff5d9ea07105ff367afea-2.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "fb62af2265454cec7c198de203678a0f8f31074c0cdf1f78f37337c09db4abaf"
+        },
+        {
+          "path": "asset-pack/parts/0bb4276153b06536b7eff5d9ea07105ff367afea-3.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "b9de62023116fd0cacfa87939b9834d1b3259d6ce067f338f1924de6e988f287"
+        },
+        {
+          "path": "asset-pack/parts/0bb4276153b06536b7eff5d9ea07105ff367afea-4.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "b98e630a3f477d1efc22c455bafac5be35a18ae5adffd9671a559f605e86fd01"
+        },
+        {
+          "path": "asset-pack/parts/0bb4276153b06536b7eff5d9ea07105ff367afea-5.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "181178101428207523b5d17c0fdad888a10627134d8f00f9ad411a21641fdf82"
+        },
+        {
+          "path": "asset-pack/parts/0bb4276153b06536b7eff5d9ea07105ff367afea-6.b64",
+          "base64Bytes": 22920,
+          "compressedBytes": 17189,
+          "sha256": "725252175f34efc6b47d636e7262574b1933363ebd3961fb1d03c8ec35ffe253"
+        }
+      ]
+    },
+    {
+      "path": "public/apps/starfall-creature-isles/assets/creature-atlas.webp",
+      "bytes": 767876,
+      "sha256": "2872f7fc6b839b4388627b9882cd0c3c17a1e648442cf08228a925811c1131be",
+      "gitBlobSha1": "b6c973555de66e2f09de258a36ec31347486d95b",
+      "compressedBytes": 768103,
+      "parts": [
+        {
+          "path": "asset-pack/parts/b6c973555de66e2f09de258a36ec31347486d95b-0.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "e7a5970a5d79e3bd1c7ba3b4167b36757b130c1de88e66fb5bedb7b1245a8d2c"
+        },
+        {
+          "path": "asset-pack/parts/b6c973555de66e2f09de258a36ec31347486d95b-1.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "800f57586c339661421474eb54b10fda2fcad29634b70f91696f4a719a47b888"
+        },
+        {
+          "path": "asset-pack/parts/b6c973555de66e2f09de258a36ec31347486d95b-2.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "1ba9c05c020f173c820288c2cb7dd1a916d7338ee42ebc583cc734788c67b788"
+        },
+        {
+          "path": "asset-pack/parts/b6c973555de66e2f09de258a36ec31347486d95b-3.b64",
+          "base64Bytes": 144140,
+          "compressedBytes": 108103,
+          "sha256": "0202de9a7ec37cfaa494ac8ead9f90cf463cd3ea586d61a14ff294d35571a34e"
+        }
+      ]
+    },
+    {
+      "path": "public/apps/starfall-creature-isles/assets/creature-expansion.webp",
+      "bytes": 567342,
+      "sha256": "b67f9e4dbad859686c7fda937852c2c7e20e69204f086ac6c874bbd5e01c6935",
+      "gitBlobSha1": "dddd54201d891c54eb831d487466f9f18525bc91",
+      "compressedBytes": 567367,
+      "parts": [
+        {
+          "path": "asset-pack/parts/dddd54201d891c54eb831d487466f9f18525bc91-0.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "de3df82da4c55583909fc925ff81aa64263b1cecca3a411fd918a0bb2191bb49"
+        },
+        {
+          "path": "asset-pack/parts/dddd54201d891c54eb831d487466f9f18525bc91-1.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "a2183d7c13ab0246447446221f55b9ec74c9a1224d1ddaf001bbebb98c882b06"
+        },
+        {
+          "path": "asset-pack/parts/dddd54201d891c54eb831d487466f9f18525bc91-2.b64",
+          "base64Bytes": 169824,
+          "compressedBytes": 127367,
+          "sha256": "78fa43a8929ba3b9dd7ac04de70465476920d00ad80eede7f518326cf5e5e1cc"
+        }
+      ]
+    },
+    {
+      "path": "public/apps/starfall-creature-isles/assets/world-map.webp",
+      "bytes": 609580,
+      "sha256": "42d192dd0af52fcce8d14fe422199e0ef23faf94ea85cb36c9ce2cc5b1d71d97",
+      "gitBlobSha1": "be84128c70d5c3bd8bda212c4f4103f6f1650fbd",
+      "compressedBytes": 609776,
+      "parts": [
+        {
+          "path": "asset-pack/parts/be84128c70d5c3bd8bda212c4f4103f6f1650fbd-0.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "4d42035111c1879dc3c2843cb0b5bee2ca5667b44e8393f548209be8259e0414"
+        },
+        {
+          "path": "asset-pack/parts/be84128c70d5c3bd8bda212c4f4103f6f1650fbd-1.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "a55d11a20873a8bd1c0220c6232cd2fcf0da031dd4702857ad74b4fea2c485db"
+        },
+        {
+          "path": "asset-pack/parts/be84128c70d5c3bd8bda212c4f4103f6f1650fbd-2.b64",
+          "base64Bytes": 226368,
+          "compressedBytes": 169776,
+          "sha256": "4fe3cb84b36ee4ed657e89333c12b154b352223739417f96cb5ee784805b322b"
+        }
+      ]
+    },
+    {
+      "path": "public/apps/yourwar-battle-forge/assets/audio/battle.mp3",
+      "bytes": 959626,
+      "sha256": "6d1b63ccfcf4ec2aeaf32c4dbef069355b430145291e458775a15e38ac2073a9",
+      "gitBlobSha1": "752c0bdc498f7668d938c32441f806474ca57c29",
+      "compressedBytes": 954283,
+      "parts": [
+        {
+          "path": "asset-pack/parts/752c0bdc498f7668d938c32441f806474ca57c29-0.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "2282628cf155debe4d9e183eee0dc2a578a8051292dd1fd20aef357c00eab980"
+        },
+        {
+          "path": "asset-pack/parts/752c0bdc498f7668d938c32441f806474ca57c29-1.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "26946aa4165e448e4f76670c6d91710c56ccefa77741e123c3f00e904edc9f8d"
+        },
+        {
+          "path": "asset-pack/parts/752c0bdc498f7668d938c32441f806474ca57c29-2.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "ad67c9818099d63571fe0be2377387837157b6aa3d39fdd8ebce2b7d4a8f40ce"
+        },
+        {
+          "path": "asset-pack/parts/752c0bdc498f7668d938c32441f806474ca57c29-3.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "a3a65a14a50bb97a6dfce8a5981e2889f32d71f1fc7b754701867cf7de245d16"
+        },
+        {
+          "path": "asset-pack/parts/752c0bdc498f7668d938c32441f806474ca57c29-4.b64",
+          "base64Bytes": 99044,
+          "compressedBytes": 74283,
+          "sha256": "9e9b83caf55d5cbd7e89d8c73e7eb04f473be69b36124239acb3d7040f3c7da2"
+        }
+      ]
+    },
+    {
+      "path": "public/apps/yourwar-battle-forge/assets/models/Barbarian.glb",
+      "bytes": 919928,
+      "sha256": "39eba151844cc3bbb5de6fe2cc3c3052fed8deadadbc47de2b8cf27d2cbf291b",
+      "gitBlobSha1": "607b96ce2bfb0e575f642d5f6cdef6351ae1eda2",
+      "compressedBytes": 317697,
+      "parts": [
+        {
+          "path": "asset-pack/parts/607b96ce2bfb0e575f642d5f6cdef6351ae1eda2-0.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "024aeecf02610934660f00dfd865c1cc57eec14512df2e3ecae2a34ab82bac3c"
+        },
+        {
+          "path": "asset-pack/parts/607b96ce2bfb0e575f642d5f6cdef6351ae1eda2-1.b64",
+          "base64Bytes": 130264,
+          "compressedBytes": 97697,
+          "sha256": "88e155eb42cba15beeda24a3d4aa697e311c78c4a6ddb64b5433d1f0defced54"
+        }
+      ]
+    },
+    {
+      "path": "public/apps/yourwar-battle-forge/assets/models/Knight.glb",
+      "bytes": 965860,
+      "sha256": "8ea81c36d4a2f33e37e44cd01e4d7d9e5912f20e5dbb9b5c1dc579f9b38c58f1",
+      "gitBlobSha1": "7411ba4f74f3225e4bddb3eddb70213acbda7b54",
+      "compressedBytes": 334505,
+      "parts": [
+        {
+          "path": "asset-pack/parts/7411ba4f74f3225e4bddb3eddb70213acbda7b54-0.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "69d24883c7481823ffd98f0bee7dee7716e0c7c439dcc3094eb4a1d75ec21168"
+        },
+        {
+          "path": "asset-pack/parts/7411ba4f74f3225e4bddb3eddb70213acbda7b54-1.b64",
+          "base64Bytes": 152676,
+          "compressedBytes": 114505,
+          "sha256": "4a96e9406e8e834627d00fc214a0a13d7686c2516b73e92e99ad1e7cf2680553"
+        }
+      ]
+    },
+    {
+      "path": "public/apps/yourwar-battle-forge/assets/models/Mage.glb",
+      "bytes": 896320,
+      "sha256": "fb5d7ac73358505bebbbb1b29a31fd37267fdf29f89cf048b35b13eac8d379a0",
+      "gitBlobSha1": "fa606e7fd32034cb55d719501a5ea7ade4f64108",
+      "compressedBytes": 307269,
+      "parts": [
+        {
+          "path": "asset-pack/parts/fa606e7fd32034cb55d719501a5ea7ade4f64108-0.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "697180ee7673d42746b5dcca613e00d891997f5ff1304e48cb67b88d167f959e"
+        },
+        {
+          "path": "asset-pack/parts/fa606e7fd32034cb55d719501a5ea7ade4f64108-1.b64",
+          "base64Bytes": 116360,
+          "compressedBytes": 87269,
+          "sha256": "b5c3da3a7a61d20c8f7b7d9e926b59467e6aa6ca61d19906636d21180c4546b8"
+        }
+      ]
+    },
+    {
+      "path": "public/apps/yourwar-battle-forge/assets/models/Rogue_Hooded.glb",
+      "bytes": 904488,
+      "sha256": "e67122ea15866900f51c245b8853e6742417a16b40ca69117eb883debf0621e5",
+      "gitBlobSha1": "805221caca481f4047726503108044fd76c05c39",
+      "compressedBytes": 308794,
+      "parts": [
+        {
+          "path": "asset-pack/parts/805221caca481f4047726503108044fd76c05c39-0.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "c4210eff668fe3e9d8ee712d7a0ed69f7ed40af1f13dc7efebf64a623b9989aa"
+        },
+        {
+          "path": "asset-pack/parts/805221caca481f4047726503108044fd76c05c39-1.b64",
+          "base64Bytes": 118392,
+          "compressedBytes": 88794,
+          "sha256": "e207aaf0abf96d745590d24f093c596acbfa260695ec4dfea95d6a7af34bb044"
+        }
+      ]
+    },
+    {
+      "path": "public/apps/yourwar-battle-forge/assets/vendor/three.core.js",
+      "bytes": 1458113,
+      "sha256": "9edde002b066a9a05676a6127f67735b62baf399bdea529f2f7e31657da769e6",
+      "gitBlobSha1": "0a1d6cb9ef3cabc97a50bd02394c85e8d1c513c2",
+      "compressedBytes": 286491,
+      "parts": [
+        {
+          "path": "asset-pack/parts/0a1d6cb9ef3cabc97a50bd02394c85e8d1c513c2-0.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "9d597a9000ab0a6ccc396f7de73d4fbeb74010e8283b3784088af285102223a0"
+        },
+        {
+          "path": "asset-pack/parts/0a1d6cb9ef3cabc97a50bd02394c85e8d1c513c2-1.b64",
+          "base64Bytes": 88656,
+          "compressedBytes": 66491,
+          "sha256": "e7f92e2a774f07d239f501353621a0c125fbc4daeb5a3faf18481615c493e1fe"
+        }
+      ]
+    },
+    {
+      "path": "public/apps/yourwar-battle-forge/assets/vendor/three.module.js",
+      "bytes": 662772,
+      "sha256": "9052042d676cb0fdc1ddfefe193053f34b7ac0513a616fdac4535d49987812ea",
+      "gitBlobSha1": "c52087acfabae80efabb8cc05e3a1d96e35a1426",
+      "compressedBytes": 130773,
+      "parts": [
+        {
+          "path": "asset-pack/parts/c52087acfabae80efabb8cc05e3a1d96e35a1426-0.b64",
+          "base64Bytes": 174364,
+          "compressedBytes": 130773,
+          "sha256": "f280d42867e2af82cb35de57b11586ea3b99ca554c2b91e554d9058f2313b457"
+        }
+      ]
+    },
+    {
+      "path": "public/assets/yunque-sanguo/audio/music/battle.mp3",
+      "bytes": 1870829,
+      "sha256": "a419dae0bb3bc20037e3d768055dd8dfbe6ee0ec3f9badeb7bc583a23594dcd2",
+      "gitBlobSha1": "093db0929a845002fb84a6b9fbd034c2b8525906",
+      "compressedBytes": 1856322,
+      "parts": [
+        {
+          "path": "asset-pack/parts/093db0929a845002fb84a6b9fbd034c2b8525906-0.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "002278c9226899fe0c821b65639726fb2c3ecca81588e6f0db9f4eb6a2a94ef5"
+        },
+        {
+          "path": "asset-pack/parts/093db0929a845002fb84a6b9fbd034c2b8525906-1.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "225129408162617199e0d6cc73cc5c423d64898ee380b58ca0883fb2734f1ae5"
+        },
+        {
+          "path": "asset-pack/parts/093db0929a845002fb84a6b9fbd034c2b8525906-2.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "65512787d5ab7afd88cfdc33b3777d69c0a26a7da79a32aa5007fadc9da3a387"
+        },
+        {
+          "path": "asset-pack/parts/093db0929a845002fb84a6b9fbd034c2b8525906-3.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "473f0b1ba24753542ed352ffbb4d2e84b96bee03a8d07c8152004efd20532ea9"
+        },
+        {
+          "path": "asset-pack/parts/093db0929a845002fb84a6b9fbd034c2b8525906-4.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "e552671636c94f91076135264b1f75f8c4b415f3092d42297ac288c910bd68a2"
+        },
+        {
+          "path": "asset-pack/parts/093db0929a845002fb84a6b9fbd034c2b8525906-5.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "a6c73e63adf4553547412cd49075ac25ac2297ffd43b842a2643f1d0eb14f727"
+        },
+        {
+          "path": "asset-pack/parts/093db0929a845002fb84a6b9fbd034c2b8525906-6.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "d159260f06c5f59400c5a68ed2e916f88919f09fed0e99ba5bda5ac1af7e04b7"
+        },
+        {
+          "path": "asset-pack/parts/093db0929a845002fb84a6b9fbd034c2b8525906-7.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "fd2d3eb9d2b464a24567dec10fe49c0ef15ae3d761566e15eb9e1ed417d7ea16"
+        },
+        {
+          "path": "asset-pack/parts/093db0929a845002fb84a6b9fbd034c2b8525906-8.b64",
+          "base64Bytes": 128432,
+          "compressedBytes": 96322,
+          "sha256": "5c6e74e20e6e9a6a4c2d4415235ae257f71bbf798de6b4442f82ea39ef8be7bf"
+        }
+      ]
+    },
+    {
+      "path": "public/assets/yunque-sanguo/audio/music/city.mp3",
+      "bytes": 1369591,
+      "sha256": "256a446476af7b3b500cf37eb9be5353751bcdae0ae2b1d5157c2528306e9404",
+      "gitBlobSha1": "2096ccf80bebb4e09ba05695ef4fbec40175ef87",
+      "compressedBytes": 1338217,
+      "parts": [
+        {
+          "path": "asset-pack/parts/2096ccf80bebb4e09ba05695ef4fbec40175ef87-0.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "6caca202137ec53dc75d938e175dc78c725f92bd05813311e9f363ce19d21b3a"
+        },
+        {
+          "path": "asset-pack/parts/2096ccf80bebb4e09ba05695ef4fbec40175ef87-1.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "a3d7632fb14e2be47e72412492eba0bf9a3765062a438502170611791aba5bc7"
+        },
+        {
+          "path": "asset-pack/parts/2096ccf80bebb4e09ba05695ef4fbec40175ef87-2.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "3f174e454cef4b2f121462ebf70a66f885034dd531baa94323ef9235e3019446"
+        },
+        {
+          "path": "asset-pack/parts/2096ccf80bebb4e09ba05695ef4fbec40175ef87-3.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "fa76b3fcb7fc38e257992ea5b53a402fde9479748b030df20b18270ab4af7bbd"
+        },
+        {
+          "path": "asset-pack/parts/2096ccf80bebb4e09ba05695ef4fbec40175ef87-4.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "e274bcbfcb25d291e49a4462f00e36180f6fd0d275a5d39e2664f7ee26587916"
+        },
+        {
+          "path": "asset-pack/parts/2096ccf80bebb4e09ba05695ef4fbec40175ef87-5.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "e725d47120cb94d3f1e036753b7348f13e3f73b5a51ef7d4c6de0881c6ca73cb"
+        },
+        {
+          "path": "asset-pack/parts/2096ccf80bebb4e09ba05695ef4fbec40175ef87-6.b64",
+          "base64Bytes": 24292,
+          "compressedBytes": 18217,
+          "sha256": "4dcc2b668da9ff9048920c7dec58121c93e8f026ae2ce817a407fae4c9bf3528"
+        }
+      ]
+    },
+    {
+      "path": "public/assets/zhizheng-research/pdf.worker.min.mjs",
+      "bytes": 1264342,
+      "sha256": "9536359f1b8367850d485731ca1d5e45c159a7b7a0912325e539937aa21ceb18",
+      "gitBlobSha1": "cfd094ab353c0abf300283d8ad3044503e98d1f2",
+      "compressedBytes": 374020,
+      "parts": [
+        {
+          "path": "asset-pack/parts/cfd094ab353c0abf300283d8ad3044503e98d1f2-0.b64",
+          "base64Bytes": 293336,
+          "compressedBytes": 220000,
+          "sha256": "7213a954980a91dd87fa6bedb0276101a5a5a4f48eb3d323bc7ebf1a257771f8"
+        },
+        {
+          "path": "asset-pack/parts/cfd094ab353c0abf300283d8ad3044503e98d1f2-1.b64",
+          "base64Bytes": 205360,
+          "compressedBytes": 154020,
+          "sha256": "8672c032d7e0deab0f128d4b41f7efd19119dfd78104114b654449266675f092"
+        }
+      ]
+    }
+  ]
+}

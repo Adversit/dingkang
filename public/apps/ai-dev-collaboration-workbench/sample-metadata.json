@@ -1,0 +1,237 @@
+{
+  "schema_version": 1,
+  "sample_id": "bookmark-tag-filter",
+  "title": "书签列表增加标签筛选",
+  "base_commit": "75bc7dbb1beb8ac1c191aab9f28f6c1125e47ba1",
+  "commit_sha": "2064779a858ee218768adfeb249f9ec965a57282",
+  "base_committed_at_utc": "2026-10-19T13:47:19+06:00",
+  "committed_at_utc": "2026-10-19T13:48:50+06:00",
+  "generated_at_utc": "2026-10-19T07:49:36.808559+00:00",
+  "executed_at_utc": "2026-10-19T07:48:51.156769+00:00",
+  "test_command": "node --test --test-reporter=tap test/bookmarks.test.js",
+  "runtime": {
+    "node": "v24.19.0",
+    "git": "git version 2.51.1"
+  },
+  "tests": {
+    "total": 10,
+    "passed": 10,
+    "failed": 0,
+    "exit_code": 0,
+    "output_file": "evidence/after-tests.tap"
+  },
+  "test_runs": {
+    "baseline": {
+      "tests": 2,
+      "pass": 2,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0,
+      "duration_ms": 153.315628,
+      "command": "node --test --test-reporter=tap test/bookmarks.test.js",
+      "exit_code": 0,
+      "output_file": "evidence/before-tests.tap",
+      "completed_at_utc": "2026-10-19T07:47:18.850126+00:00",
+      "implementation_commit": "75bc7dbb1beb8ac1c191aab9f28f6c1125e47ba1",
+      "cases": [
+        {
+          "status": "passed",
+          "name": "listBookmarks returns all bookmarks in order"
+        },
+        {
+          "status": "passed",
+          "name": "listBookmarks returns a separate array"
+        }
+      ]
+    },
+    "new_tests_on_old_implementation": {
+      "tests": 10,
+      "pass": 4,
+      "fail": 6,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0,
+      "duration_ms": 148.975388,
+      "command": "node --test --test-reporter=tap test/bookmarks.test.js",
+      "exit_code": 1,
+      "output_file": "evidence/feature-before-implementation.tap",
+      "completed_at_utc": "2026-10-19T07:48:00.385515+00:00",
+      "implementation_commit": "75bc7dbb1beb8ac1c191aab9f28f6c1125e47ba1",
+      "cases": [
+        {
+          "status": "passed",
+          "name": "REQ-001: default lists every bookmark in its original order"
+        },
+        {
+          "status": "passed",
+          "name": "REQ-001: all explicitly clears the tag filter"
+        },
+        {
+          "status": "failed",
+          "name": "REQ-001: one tag includes matching bookmarks, including multi-tag items"
+        },
+        {
+          "status": "failed",
+          "name": "REQ-002: an unknown tag returns an empty list"
+        },
+        {
+          "status": "failed",
+          "name": "REQ-002: a known tag with no matches in the current list returns empty"
+        },
+        {
+          "status": "passed",
+          "name": "REQ-002: an empty collection stays empty for all and single-tag views"
+        },
+        {
+          "status": "failed",
+          "name": "REQ-002: bookmarks without tags are listed in all and skipped in a tag view"
+        },
+        {
+          "status": "failed",
+          "name": "REQ-001: matching uses the whole tag, not a substring"
+        },
+        {
+          "status": "passed",
+          "name": "REQ-003: modifying the returned array leaves the source list intact"
+        },
+        {
+          "status": "failed",
+          "name": "REQ-003: filtering deeply frozen input preserves data and item identity"
+        }
+      ],
+      "test_source_commit": "2064779a858ee218768adfeb249f9ec965a57282",
+      "note": "新增验收用例先在工作区写入，再在旧实现上运行；此时新增测试尚未提交。测试文件最终包含在 commit_sha 中。"
+    },
+    "final": {
+      "tests": 10,
+      "pass": 10,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0,
+      "duration_ms": 148.314074,
+      "command": "node --test --test-reporter=tap test/bookmarks.test.js",
+      "exit_code": 0,
+      "output_file": "evidence/after-tests.tap",
+      "completed_at_utc": "2026-10-19T07:48:51.156769+00:00",
+      "implementation_commit": "2064779a858ee218768adfeb249f9ec965a57282",
+      "cases": [
+        {
+          "status": "passed",
+          "name": "REQ-001: default lists every bookmark in its original order"
+        },
+        {
+          "status": "passed",
+          "name": "REQ-001: all explicitly clears the tag filter"
+        },
+        {
+          "status": "passed",
+          "name": "REQ-001: one tag includes matching bookmarks, including multi-tag items"
+        },
+        {
+          "status": "passed",
+          "name": "REQ-002: an unknown tag returns an empty list"
+        },
+        {
+          "status": "passed",
+          "name": "REQ-002: a known tag with no matches in the current list returns empty"
+        },
+        {
+          "status": "passed",
+          "name": "REQ-002: an empty collection stays empty for all and single-tag views"
+        },
+        {
+          "status": "passed",
+          "name": "REQ-002: bookmarks without tags are listed in all and skipped in a tag view"
+        },
+        {
+          "status": "passed",
+          "name": "REQ-001: matching uses the whole tag, not a substring"
+        },
+        {
+          "status": "passed",
+          "name": "REQ-003: modifying the returned array leaves the source list intact"
+        },
+        {
+          "status": "passed",
+          "name": "REQ-003: filtering deeply frozen input preserves data and item identity"
+        }
+      ]
+    }
+  },
+  "requirement_ids": [
+    "REQ-001",
+    "REQ-002",
+    "REQ-003"
+  ],
+  "requirements": [
+    {
+      "id": "REQ-001",
+      "description": "全部与单标签筛选，完整标签匹配，保留原顺序",
+      "status": "verified",
+      "case_count": 4
+    },
+    {
+      "id": "REQ-002",
+      "description": "未知标签、无匹配、空列表和无标签旧数据的边界行为",
+      "status": "verified",
+      "case_count": 4
+    },
+    {
+      "id": "REQ-003",
+      "description": "不修改输入列表、书签对象和标签；输出数组独立",
+      "status": "verified",
+      "case_count": 2
+    }
+  ],
+  "provenance": {
+    "kind": "external_execution_evidence",
+    "statement": "由本次造物流程平台开发期间的外部执行环境实际产生；并非网站发起或执行。",
+    "executed_by_website": false,
+    "git_commits_real": true,
+    "tests_actually_executed": true,
+    "source_user_data": false,
+    "note": "网站展示或下载这些预生成的证据，不代表网站已经接通实时执行器。"
+  },
+  "deployment": {
+    "status": "not_performed",
+    "receipt": null,
+    "statement": "未执行部署或发布，没有发布回执。"
+  },
+  "working_tree_clean": true,
+  "files": [
+    ".gitignore",
+    "README.md",
+    "evidence/after-bookmarks.js",
+    "evidence/after-tests.tap",
+    "evidence/before-bookmarks.js",
+    "evidence/before-tests.tap",
+    "evidence/bundle-verification.txt",
+    "evidence/changes.diff",
+    "evidence/commits.txt",
+    "evidence/feature-before-implementation.tap",
+    "evidence/history.bundle",
+    "package.json",
+    "src/bookmarks.js",
+    "test/bookmarks.test.js",
+    "metadata.json"
+  ],
+  "sha256": {
+    ".gitignore": "b0fd14301a06f7241f823573a18d4a375f1697d85e51ac22058a6e4a52c59ccb",
+    "README.md": "b6c71a89f9063d76088f70fb00735d8fe330834c07d680209a6308572762901c",
+    "evidence/after-bookmarks.js": "44e828f4c0902b9fff3f59f3feeda92cefc1cb88329c4eb34e98082ab44e724e",
+    "evidence/after-tests.tap": "e92d140ffc3489b378d5798b526be12ba424dc01a06c7a74243e95eecd44719e",
+    "evidence/before-bookmarks.js": "c9275b15d70305b6017f05dc82f7a505356e63dbe84874422a8db553341cfc8a",
+    "evidence/before-tests.tap": "ce08d7dabc484c382edf86af9660f2a21c872a6af8572292d3af04f9b8a87bd8",
+    "evidence/bundle-verification.txt": "5a348994083e237970fdf26646ccb48cd194a97fef2f3a00357e7735743617af",
+    "evidence/changes.diff": "340cc4ca4299466332c687ccaeffffeebe9656e4565d8a058d489d6fa6bd0bbe",
+    "evidence/commits.txt": "467bf3c6e2922b5ed768bddc0591217d9e1e84365bfdc4bc896be7ecb2553837",
+    "evidence/feature-before-implementation.tap": "93cdc637e9733f9e59fd337e44ca27b94e2932696b15615c67cf3cbedf24bc67",
+    "evidence/history.bundle": "49036de1f386c44e2c3f9ed3814927ba7687009e57451cd6cdfa328edc5e4864",
+    "package.json": "015cd1be678e2275a235c3568b8db02330edfcdd252ea28b8b64bf6b95764265",
+    "src/bookmarks.js": "44e828f4c0902b9fff3f59f3feeda92cefc1cb88329c4eb34e98082ab44e724e",
+    "test/bookmarks.test.js": "520ddbab54441c9dd23b81762358bec0dc1e146cdf6110205be9b73d49588400"
+  },
+  "checksum_note": "metadata.json 不包含自身校验值，避免自引用。"
+}

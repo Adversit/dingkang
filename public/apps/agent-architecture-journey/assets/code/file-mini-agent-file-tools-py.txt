@@ -1,0 +1,168 @@
+"""Bounded UTF-8 file tools. Local checks are NOT an OS sandbox.
+
+This is a sequential, single-agent learning implementation, not a transactional
+multi-writer filesystem. mtime+hash checks still leave a small external-writer race.
+"""
+from __future__ import annotations
+
+import hashlib
+import os
+import stat
+import tempfile
+from dataclasses import dataclass
+from pathlib import Path
+
+from .tools import ToolError, ToolResult
+
+MAX_FILE_BYTES = 1024 * 1024
+MAX_RESULT_BYTES = 32000
+PROTECTED_PARTS = {'.git', '.ssh', '.aws', '.gnupg', '.claude', '.npmrc', '.pypirc'}
+
+
+@dataclass(frozen=True)
+class Snapshot:
+    mtime_ns: int
+    digest: str
+    full_read: bool
+
+
+class FileTools:
+    def __init__(self, workspace: Path):
+        self.root = workspace.expanduser().resolve(strict=True)
+        if not self.root.is_dir():
+            raise ValueError('workspace must be a directory')
+        self.snapshots: dict[Path, Snapshot] = {}
+
+    def _path(self, file_path: str) -> Path:
+        raw = Path(file_path)
+        if not raw.is_absolute():
+            raise ToolError('file_path must be absolute.')
+        p = Path(os.path.abspath(raw))
+        try:
+            parts = p.relative_to(self.root).parts
+        except ValueError:
+            raise ToolError('Path is outside the workspace.') from None
+        if not parts:
+            raise ToolError('Expected a file path, not the workspace directory.')
+        current = self.root
+        for part in parts:
+            if part in PROTECTED_PARTS or part == '.env' or part.startswith('.env.'):
+                raise ToolError('This learning workspace blocks credential/config paths.')
+            current = current / part
+            if current.is_symlink():
+                raise ToolError('Symbolic links are not supported in this learning version.')
+        if p.exists():
+            s = p.stat()
+            if not stat.S_ISREG(s.st_mode):
+                raise ToolError('Only regular text files are supported.')
+            if s.st_nlink > 1:
+                raise ToolError('Hard-linked files are not supported in this learning version.')
+        return p
+
+    def _load(self, p: Path) -> tuple[str, Snapshot]:
+        # Deliberately bounded full read, then line slicing; not the source's streaming path.
+        with p.open('rb') as stream:
+            before = os.fstat(stream.fileno())
+            raw = stream.read(MAX_FILE_BYTES + 1)
+            after = os.fstat(stream.fileno())
+        if len(raw) > MAX_FILE_BYTES:
+            raise ToolError('File exceeds the 1 MiB learning limit; use a smaller test file.')
+        if (before.st_mtime_ns, before.st_size) != (after.st_mtime_ns, after.st_size):
+            raise ToolError('File changed during reading; read it again.')
+        if b'\x00' in raw:
+            raise ToolError('Binary/NUL content is not supported.')
+        text = raw.decode('utf-8')
+        return text, Snapshot(after.st_mtime_ns, hashlib.sha256(raw).hexdigest(), False)
+
+    def read(self, file_path: str, offset: int = 1, limit: int | None = None) -> ToolResult:
+        p = self._path(file_path)
+        text, snapshot = self._load(p)
+        lines = text.splitlines()
+        start = offset - 1
+        stop = len(lines) if limit is None else min(start + limit, len(lines))
+        selected = lines[start:stop]
+        numbered = '\n'.join(f'{i}\t{line}' for i, line in enumerate(selected, offset))
+        if not lines:
+            body = f'File: {p}\nFile exists and is empty.'
+        elif not selected:
+            body = f'File: {p}\nNo lines returned: offset {offset} exceeds {len(lines)} lines.'
+        else:
+            end = offset + len(selected) - 1
+            body = f'File: {p}\nLines {offset}-{end} of {len(lines)}\n{numbered}'
+            if stop < len(lines):
+                body += f'\n[More content available; next offset: {stop + 1}]'
+        if len(body.encode('utf-8')) > MAX_RESULT_BYTES:
+            raise ToolError('Requested result is too large. Read a smaller line range; no partial result was returned.')
+        full = offset == 1 and stop >= len(lines)
+        self.snapshots[p] = Snapshot(snapshot.mtime_ns, snapshot.digest, full)
+        return ToolResult(body)
+
+    def _check_fresh(self, p: Path) -> tuple[str, Snapshot]:
+        previous = self.snapshots.get(p)
+        if previous is None:
+            raise ToolError('Read the file before modifying it.')
+        text, current = self._load(p)
+        if (current.mtime_ns, current.digest) != (previous.mtime_ns, previous.digest):
+            raise ToolError('File has changed since Read. Read it again before modifying it.')
+        return text, previous
+
+    def _commit(self, p: Path, text: str, expected: Snapshot | None, full_read: bool) -> None:
+        raw = text.encode('utf-8')
+        if b'\x00' in raw or len(raw) > MAX_FILE_BYTES:
+            raise ToolError('Output must be NUL-free UTF-8 text no larger than 1 MiB.')
+        p.parent.mkdir(parents=True, exist_ok=True)
+        self._path(str(p))
+        mode = stat.S_IMODE(p.stat().st_mode) if expected else 0o600
+        fd, tmp_name = tempfile.mkstemp(prefix='.agent-write-', dir=p.parent)
+        tmp = Path(tmp_name)
+        try:
+            with os.fdopen(fd, 'wb') as stream:
+                stream.write(raw)
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.chmod(tmp, mode)
+            self._path(str(p))
+            if expected is not None:
+                _, current = self._load(p)
+                if (current.mtime_ns, current.digest) != (expected.mtime_ns, expected.digest):
+                    raise ToolError('File changed before commit. Read it again; no replacement was made.')
+                os.replace(tmp, p)  # Atomic replacement, NOT a cross-process compare-and-swap.
+            else:
+                # Atomic create-if-absent on the same filesystem; never overwrite a racing create.
+                os.link(tmp, p)
+            _, updated = self._load(p)
+            if updated.digest != hashlib.sha256(raw).hexdigest():
+                raise ToolError('Write occurred, but file changed again afterward. Read it before continuing.')
+            self.snapshots[p] = Snapshot(updated.mtime_ns, updated.digest, full_read)
+        finally:
+            tmp.unlink(missing_ok=True)
+
+    def write(self, file_path: str, content: str) -> ToolResult:
+        p = self._path(file_path)
+        exists = p.exists()
+        previous = None
+        if exists:
+            _, previous = self._check_fresh(p)
+            if not previous.full_read:
+                raise ToolError('Read the entire file before full replacement; use Edit for local changes.')
+        elif p in self.snapshots:
+            raise ToolError('Previously read file was deleted. Confirm the situation before creating it again.')
+        self._commit(p, content, previous, full_read=True)
+        action = 'replaced completely' if exists else 'created'
+        return ToolResult(f'File {action}: {p}. This confirms writing, not program correctness.')
+
+    def edit(self, file_path: str, old_string: str, new_string: str,
+             replace_all: bool = False) -> ToolResult:
+        p = self._path(file_path)
+        text, previous = self._check_fresh(p)
+        if not old_string or old_string == new_string:
+            raise ToolError('old_string must be nonempty and differ from new_string. Use Write to create files.')
+        matches = text.count(old_string)
+        if matches == 0:
+            raise ToolError('old_string was not found. Copy exact content from Read, without line numbers.')
+        if matches > 1 and not replace_all:
+            raise ToolError(f'Found {matches} matches. Add surrounding context, or set replace_all=true intentionally.')
+        updated = text.replace(old_string, new_string, -1 if replace_all else 1)
+        self._commit(p, updated, previous, full_read=previous.full_read)
+        count = matches if replace_all else 1
+        return ToolResult(f'Updated {p}: replaced {count} occurrence(s). This confirms editing, not program correctness.')

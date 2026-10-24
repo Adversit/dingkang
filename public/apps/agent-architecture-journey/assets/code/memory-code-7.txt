@@ -1,0 +1,86 @@
+class ContextManager:
+    def __init__(
+        self,
+        workspace: Path,
+        max_context_tokens: int = 40_000,
+    ):
+        self.messages: list[Message] = []
+        self.memory = SessionMemory()
+
+        self.result_store = ToolResultStore(
+            workspace / ".agent" / "tool-results"
+        )
+
+        self.memory_controller = MemoryController()
+
+        self.max_context_tokens = max_context_tokens
+
+    def add_user(self, text: str) -> None:
+        self.messages.append(
+            Message(role="user", content=text)
+        )
+
+    def add_assistant(self, text: str) -> None:
+        self.messages.append(
+            Message(role="assistant", content=text)
+        )
+
+    def add_tool_result(
+        self,
+        tool_use_id: str,
+        content: str,
+    ) -> None:
+        stored = self.result_store.maybe_persist(
+            tool_use_id,
+            content,
+        )
+
+        self.messages.append(
+            Message(
+                role="user",
+                kind="tool_result",
+                tool_use_id=tool_use_id,
+                content=stored,
+            )
+        )
+
+        self.memory_controller.tool_calls_since_update += 1
+
+    def current_tokens(self) -> int:
+        return estimate_context_tokens(self.messages)
+
+    def build_context(
+        self,
+        summarize_fn: Callable[[str], str],
+        update_memory_fn: Callable[
+            [list[Message], SessionMemory], SessionMemory
+        ],
+    ) -> list[Message]:
+        # 1. 先清旧 Tool Result
+        self.messages = microcompact(self.messages)
+
+        current = self.current_tokens()
+
+        # 2. 达到 Memory 阈值时，更新 Session Memory
+        if self.memory_controller.should_update(current):
+            self.memory = update_memory_fn(
+                self.messages,
+                self.memory,
+            )
+            self.memory_controller.mark_updated(current)
+
+        # 3. Context 继续过大，再做 Compact
+        if current >= self.max_context_tokens:
+            self.messages = compact_history(
+                self.messages,
+                summarize_fn,
+            )
+
+        # 4. Memory 作为单独 Context 注入
+        memory_message = Message(
+            role="user",
+            kind="memory",
+            content=self.memory.render(),
+        )
+
+        return [memory_message, *self.messages]

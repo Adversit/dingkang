@@ -1,0 +1,14 @@
+import { z } from 'zod';
+const id=z.string().min(1).max(100), text=z.string().max(30000), short=z.string().max(1000);
+export const ReadingCardSchema=z.object({id,paperId:id,status:z.enum(['queued','reading','done']),summary:text,problem:text,method:text,data:text,findings:text,limitations:text,questions:text,topics:z.array(short).max(30),methods:z.array(short).max(30),datasets:z.array(short).max(30),lastPage:z.number().int().min(1).max(5000),updatedAt:short});
+export const SynthesisSchema=z.object({id,title:short,paperIds:z.array(id).min(1).max(30),body:text,origin:z.enum(['manual','rule','ai']),sourceSignature:text,updatedAt:short});
+export const ReproductionMetricSchema=z.object({id,name:short,reported:short,observed:short,unit:short,evidenceId:short,setting:text});
+export const ReplicationSchema=z.object({id,sourceDirectionId:short.default(''),sourceSignature:text.default(''),title:short,paperIds:z.array(id).min(1).max(30),status:z.enum(['planned','preparing','running','comparing','done']),target:text,repository:short,commit:short,environment:text,hardware:short,dataset:text,preprocessing:text,parameters:text,steps:z.array(z.object({id,text:short,done:z.boolean()})).max(50),command:text,metrics:z.array(ReproductionMetricSchema).max(100),log:text,resultSource:short,settingDifferences:text,blockers:text,conclusion:text,updatedAt:short});
+export const RelationSchema=z.object({id,sourceSignature:text.default(''),fromPaperId:id,toPaperId:id,type:z.enum(['related','uses','extends','compares','contrasts']),note:text,evidenceIds:z.array(id).max(100),updatedAt:short});
+export const DirectionSchema=z.object({id,title:short,question:text,rationale:text,experiment:text,risks:text,paperIds:z.array(id).min(1).max(30),evidenceIds:z.array(id).max(100),origin:z.enum(['manual','rule','ai']),rule:short,status:z.enum(['saved','trying','archived']),sourceSignature:text,updatedAt:short});
+export const StudyShape={readingCards:z.array(ReadingCardSchema).max(1000).default([]),syntheses:z.array(SynthesisSchema).max(100).default([]),replications:z.array(ReplicationSchema).max(100).default([]),relations:z.array(RelationSchema).max(1000).default([]),directions:z.array(DirectionSchema).max(200).default([])};
+export type ReadingCard=z.infer<typeof ReadingCardSchema>;
+export type Synthesis=z.infer<typeof SynthesisSchema>;
+export type Replication=z.infer<typeof ReplicationSchema>;
+export type Relation=z.infer<typeof RelationSchema>;
+export type Direction=z.infer<typeof DirectionSchema>;

@@ -1,0 +1,85 @@
+{
+  "type": "tool_use",
+  "id": "toolu_demo_1",
+  "name": "Write",
+  "input": {
+    "file_path": "/tmp/agent-learning-5d_xoqit/hello.py",
+    "content": "name = \"world\"\nprint(f\"Hello, {name}\")\n"
+  }
+}
+{
+  "type": "tool_result",
+  "tool_use_id": "toolu_demo_1",
+  "content": "File created: /tmp/agent-learning-5d_xoqit/hello.py. This confirms writing, not program correctness.",
+  "is_error": false
+}
+{
+  "type": "tool_use",
+  "id": "toolu_demo_2",
+  "name": "Read",
+  "input": {
+    "file_path": "/tmp/agent-learning-5d_xoqit/hello.py",
+    "offset": 1,
+    "limit": 10
+  }
+}
+{
+  "type": "tool_result",
+  "tool_use_id": "toolu_demo_2",
+  "content": "File: /tmp/agent-learning-5d_xoqit/hello.py\nLines 1-2 of 2\n1\tname = \"world\"\n2\tprint(f\"Hello, {name}\")",
+  "is_error": false
+}
+{
+  "type": "tool_use",
+  "id": "toolu_demo_3",
+  "name": "Edit",
+  "input": {
+    "file_path": "/tmp/agent-learning-5d_xoqit/hello.py",
+    "old_string": "name = \"world\"",
+    "new_string": "name = \"Agent\""
+  }
+}
+{
+  "type": "tool_result",
+  "tool_use_id": "toolu_demo_3",
+  "content": "Updated /tmp/agent-learning-5d_xoqit/hello.py: replaced 1 occurrence(s). This confirms editing, not program correctness.",
+  "is_error": false
+}
+{
+  "type": "tool_use",
+  "id": "toolu_demo_4",
+  "name": "Edit",
+  "input": {
+    "file_path": "/tmp/agent-learning-5d_xoqit/hello.py",
+    "old_string": "Hello,",
+    "new_string": "Hi,"
+  }
+}
+{
+  "type": "tool_result",
+  "tool_use_id": "toolu_demo_4",
+  "content": "Updated /tmp/agent-learning-5d_xoqit/hello.py: replaced 1 occurrence(s). This confirms editing, not program correctness.",
+  "is_error": false
+}
+{
+  "type": "tool_use",
+  "id": "toolu_demo_5",
+  "name": "Read",
+  "input": {
+    "file_path": "/tmp/agent-learning-5d_xoqit/hello.py"
+  }
+}
+{
+  "type": "tool_result",
+  "tool_use_id": "toolu_demo_5",
+  "content": "File: /tmp/agent-learning-5d_xoqit/hello.py\nLines 1-2 of 2\n1\tname = \"Agent\"\n2\tprint(f\"Hi, {name}\")",
+  "is_error": false
+}
+
+Stale-read example:
+{
+  "type": "tool_result",
+  "tool_use_id": "toolu_stale",
+  "content": "File has changed since Read. Read it again before modifying it.",
+  "is_error": true
+}

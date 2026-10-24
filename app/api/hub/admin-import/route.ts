@@ -1,0 +1,11 @@
+import { env } from 'cloudflare:workers';
+import { handleMigrationRequest, type MigrationEnvironment } from '@/lib/hub/migration';
+export const dynamic = 'force-dynamic';
+const handler = (request: Request) => handleMigrationRequest(request, env as MigrationEnvironment);
+export const GET = handler;
+export const POST = handler;
+export const HEAD = handler;
+export const PUT = handler;
+export const PATCH = handler;
+export const DELETE = handler;
+export const OPTIONS = handler;

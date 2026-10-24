@@ -1,0 +1,22 @@
+    def read(self, file_path: str, offset: int = 1, limit: int | None = None) -> ToolResult:
+        p = self._path(file_path)
+        text, snapshot = self._load(p)
+        lines = text.splitlines()
+        start = offset - 1
+        stop = len(lines) if limit is None else min(start + limit, len(lines))
+        selected = lines[start:stop]
+        numbered = '\n'.join(f'{i}\t{line}' for i, line in enumerate(selected, offset))
+        if not lines:
+            body = f'File: {p}\nFile exists and is empty.'
+        elif not selected:
+            body = f'File: {p}\nNo lines returned: offset {offset} exceeds {len(lines)} lines.'
+        else:
+            end = offset + len(selected) - 1
+            body = f'File: {p}\nLines {offset}-{end} of {len(lines)}\n{numbered}'
+            if stop < len(lines):
+                body += f'\n[More content available; next offset: {stop + 1}]'
+        if len(body.encode('utf-8')) > MAX_RESULT_BYTES:
+            raise ToolError('Requested result is too large. Read a smaller line range; no partial result was returned.')
+        full = offset == 1 and stop >= len(lines)
+        self.snapshots[p] = Snapshot(snapshot.mtime_ns, snapshot.digest, full)
+        return ToolResult(body)

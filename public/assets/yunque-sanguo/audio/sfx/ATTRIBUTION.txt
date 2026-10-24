@@ -1,0 +1,45 @@
+All SFX in this folder are CC0 1.0. Attribution is not required.
+License: https://creativecommons.org/publicdomain/zero/1.0/
+
+sword-swing
+Recorded quick blade movement
+Kenney — https://kenney.nl/assets/rpg-audio
+
+sword-clash
+Recorded sword/knife metal collision
+Vehicle / Jan Schupke — https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library
+
+spear-whoosh
+Slower heavier weapon whoosh; pitched to 82%
+Kenney — https://kenney.nl/assets/rpg-audio
+
+bow-release
+Second real bow shot selected; no laser
+Joseph SARDIN — https://bigsoundbank.com/archery-s0549.html
+
+arrow-hit
+Third real arrow impact into straw selected
+Joseph SARDIN — https://bigsoundbank.com/an-arrow-on-a-target-s0548.html
+
+heavy-hit
+Layered heavy body punch and lowered wood impact
+Kenney — https://kenney.nl/assets/impact-sounds
+
+magic-cast
+Reversed fireball swell as spell charge, pitch +12%
+Julien Matthey — https://freesound.org/people/Julien_Matthey/sounds/105016/
+
+magic-impact
+Fireball impact with original texture; trimmed silence
+Julien Matthey — https://freesound.org/people/Julien_Matthey/sounds/105016/
+
+heal
+Fantasy restorative spell phrase; reserved for healing, never UI click
+JaggedStone — https://opengameart.org/content/magic-spell-sfx
+
+ultimate
+Lowered fireball plus delayed heavy body hit and short echo; cinematic ultimate
+Julien Matthey — https://freesound.org/people/Julien_Matthey/sounds/105016/
+Kenney — https://kenney.nl/assets/impact-sounds
+
+Edits: Selected excerpts, pitch shifts, layering and normalization described in manifest.json.

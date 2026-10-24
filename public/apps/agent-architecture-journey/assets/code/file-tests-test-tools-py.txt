@@ -1,0 +1,224 @@
+import json
+import os
+import stat
+import tempfile
+import unittest
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
+
+from mini_agent import Agent, ToolError, ToolResult, build_tools
+from mini_agent.file_tools import FileTools, MAX_FILE_BYTES
+from mini_agent.sandbox import SandboxRuntime
+
+
+class ToolsTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        self.file = self.root / 'demo.txt'
+        self.file.write_text('alpha\nbeta\ngamma\n', encoding='utf8')
+        self.tools = build_tools(self.root)
+
+    def call(self, name, **args):
+        return self.tools.execute(name, {'file_path': str(self.file), **args})
+
+    def test_read_range(self):
+        r = self.call('Read', offset=2, limit=1)
+        self.assertFalse(r.is_error)
+        self.assertIn('2\tbeta', r.content)
+        self.assertNotIn('alpha', r.content)
+        self.assertIn('next offset: 3', r.content)
+
+    def test_empty_success_and_missing_error(self):
+        self.file.write_text('')
+        self.assertFalse(self.call('Read').is_error)
+        self.file.unlink()
+        self.assertTrue(self.call('Read').is_error)
+
+    def test_out_of_range_is_observation(self):
+        self.assertFalse(self.call('Read', offset=50).is_error)
+
+    def test_write_requires_read(self):
+        self.assertTrue(self.call('Write', content='replacement').is_error)
+        self.assertEqual(self.file.read_text(), 'alpha\nbeta\ngamma\n')
+
+    def test_write_create_and_overwrite(self):
+        self.file.unlink()
+        self.assertFalse(self.call('Write', content='created\n').is_error)
+        self.call('Read')
+        self.assertFalse(self.call('Write', content='new complete file').is_error)
+        self.assertEqual(self.file.read_text(), 'new complete file')
+
+    def test_partial_read_cannot_full_overwrite(self):
+        self.call('Read', offset=2, limit=1)
+        self.assertTrue(self.call('Write', content='new').is_error)
+
+    def test_sequential_different_edits(self):
+        self.call('Read')
+        self.assertFalse(self.call('Edit', old_string='alpha', new_string='A').is_error)
+        self.assertFalse(self.call('Edit', old_string='gamma', new_string='G').is_error)
+        self.assertEqual(self.file.read_text(), 'A\nbeta\nG\n')
+
+    def test_multiline_edit(self):
+        self.call('Read')
+        r = self.call('Edit', old_string='alpha\nbeta', new_string='first\nsecond\nthird')
+        self.assertFalse(r.is_error)
+        self.assertEqual(self.file.read_text(), 'first\nsecond\nthird\ngamma\n')
+
+    def test_ambiguous_then_replace_all(self):
+        self.file.write_text('x x x')
+        self.call('Read')
+        self.assertTrue(self.call('Edit', old_string='x', new_string='y').is_error)
+        self.assertEqual(self.file.read_text(), 'x x x')
+        self.assertFalse(self.call('Edit', old_string='x', new_string='y', replace_all=True).is_error)
+        self.assertEqual(self.file.read_text(), 'y y y')
+
+    def test_not_found_and_noop(self):
+        self.call('Read')
+        self.assertTrue(self.call('Edit', old_string='missing', new_string='x').is_error)
+        self.assertTrue(self.call('Edit', old_string='alpha', new_string='alpha').is_error)
+
+    def test_delete_with_empty_new_string(self):
+        self.call('Read')
+        self.assertFalse(self.call('Edit', old_string='beta\n', new_string='').is_error)
+        self.assertEqual(self.file.read_text(), 'alpha\ngamma\n')
+
+    def test_stale_edit_even_with_same_mtime(self):
+        self.call('Read')
+        old_stat = self.file.stat()
+        self.file.write_text('changed\n')
+        os.utime(self.file, ns=(old_stat.st_atime_ns, old_stat.st_mtime_ns))
+        r = self.call('Edit', old_string='changed', new_string='overwrite')
+        self.assertTrue(r.is_error)
+        self.assertIn('changed since Read', r.content)
+        self.assertEqual(self.file.read_text(), 'changed\n')
+
+    def test_stale_write(self):
+        self.call('Read')
+        self.file.write_text('external')
+        self.assertTrue(self.call('Write', content='overwrite').is_error)
+        self.assertEqual(self.file.read_text(), 'external')
+
+    def test_mode_preserved(self):
+        self.file.chmod(0o640)
+        self.call('Read')
+        self.call('Edit', old_string='beta', new_string='B')
+        self.assertEqual(stat.S_IMODE(self.file.stat().st_mode), 0o640)
+
+    def test_bounded_input_and_output(self):
+        self.file.write_bytes(b'a' * (MAX_FILE_BYTES + 1))
+        self.assertTrue(self.call('Read').is_error)
+        self.file.write_text('z' * 40000)
+        self.assertTrue(self.call('Read').is_error)
+
+    def test_invalid_text(self):
+        for raw in (b'\xff', b'x\x00y'):
+            self.file.write_bytes(raw)
+            self.assertTrue(self.call('Read').is_error)
+
+    def test_path_and_credential_guard(self):
+        self.assertTrue(self.tools.execute('Read', {'file_path': '/etc/passwd'}).is_error)
+        self.assertTrue(self.tools.execute('Write', {'file_path': str(self.root / '.env'), 'content': 'secret'}).is_error)
+        self.assertTrue(self.tools.execute('Read', {'file_path': 'relative.txt'}).is_error)
+
+    def test_symlink_and_hardlink(self):
+        link = self.root / 'link.txt'
+        link.symlink_to(self.file)
+        self.assertTrue(self.tools.execute('Read', {'file_path': str(link)}).is_error)
+        link.unlink()
+        os.link(self.file, link)
+        self.assertTrue(self.call('Read').is_error)
+
+    def test_schema_and_unknown_tool(self):
+        self.assertTrue(self.call('Read', offset=0).is_error)
+        self.assertTrue(self.call('Read', offset=True).is_error)
+        self.assertTrue(self.call('Read', extra=1).is_error)
+        self.assertTrue(self.tools.execute('Unknown', {}).is_error)
+        self.assertTrue(self.tools.execute('Bash', {'command': 'pwd', 'dangerouslyDisableSandbox': True}).is_error)
+
+    def test_local_fields_not_in_definition(self):
+        for definition in self.tools.definitions():
+            self.assertEqual(set(definition), {'name', 'description', 'input_schema'})
+            self.assertNotIn('is_error', definition['input_schema']['properties'])
+
+    def test_tool_result_protocol(self):
+        block = ToolResult('not found', True).to_block('toolu_1')
+        self.assertEqual(block, {'type': 'tool_result', 'tool_use_id': 'toolu_1',
+                                 'content': 'not found', 'is_error': True})
+
+    def test_sandbox_missing_dependency_no_execution(self):
+        marker = self.root / 'must-not-exist'
+        with patch('mini_agent.sandbox.shutil.which', return_value=None):
+            result = self.tools.execute('Bash', {'command': f'touch {marker}'})
+        self.assertTrue(result.is_error)
+        self.assertFalse(marker.exists())
+
+    def test_bash_invalidates_old_read(self):
+        self.call('Read')
+        with patch.object(SandboxRuntime, 'run', return_value=ToolResult('simulated failure', True)):
+            self.tools.execute('Bash', {'command': 'does-not-run-in-this-unit-test'})
+        self.assertTrue(self.call('Edit', old_string='alpha', new_string='A').is_error)
+
+    def test_node_env_and_return_contract_mocked(self):
+        # Adapter unit test only. This mock DOES NOT establish real OS isolation.
+        data = {'ok': True, 'exit_code': 0, 'timed_out': False,
+                'stdout': 'hello', 'stderr': 'warning only', 'output_truncated': False}
+        fake = SimpleNamespace(returncode=0, communicate=lambda *a, **kw: (json.dumps(data), ''))
+        with patch.object(SandboxRuntime, '_dependencies', return_value='/usr/bin/node'), \
+             patch('mini_agent.sandbox.shutil.which', return_value='/usr/bin/node'), \
+             patch('mini_agent.sandbox.subprocess.Popen', return_value=fake) as start, \
+             patch.dict(os.environ, {'ANTHROPIC_API_KEY': 'unit-test-secret'}):
+            result = SandboxRuntime(self.root).run('printf hello')
+        self.assertFalse(result.is_error)  # stderr alone is not failure.
+        self.assertNotIn('ANTHROPIC_API_KEY', start.call_args.kwargs['env'])
+
+    def test_create_race_does_not_overwrite(self):
+        self.file.unlink()
+        original_link = os.link
+        def racing_create(source, dest):
+            Path(dest).write_text('other writer')
+            return original_link(source, dest)
+        with patch('mini_agent.file_tools.os.link', side_effect=racing_create):
+            result = self.call('Write', content='my new file')
+        self.assertTrue(result.is_error)
+        self.assertEqual(self.file.read_text(), 'other writer')
+
+
+class AgentLoopTest(unittest.TestCase):
+    def test_tool_call_round_trip(self):
+        # Fake MODEL for deterministic protocol testing; tool handler is real.
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / 'input.txt'
+            p.write_text('hello')
+            def block(data):
+                return SimpleNamespace(model_dump=lambda **kw: data)
+            responses = iter([
+                SimpleNamespace(stop_reason='tool_use', content=[block({
+                    'type': 'tool_use', 'id': 'toolu_test', 'name': 'Read',
+                    'input': {'file_path': str(p)}})]),
+                SimpleNamespace(stop_reason='end_turn', content=[block({'type': 'text', 'text': 'done'})]),
+            ])
+            requests = []
+            def create(**kw):
+                requests.append(json.loads(json.dumps(kw)))
+                return next(responses)
+            client = SimpleNamespace(messages=SimpleNamespace(create=create))
+            self.assertEqual(Agent(client, 'test-model', build_tools(Path(tmp))).run('read'), 'done')
+            result = requests[1]['messages'][-1]['content'][0]
+            self.assertEqual(result['tool_use_id'], 'toolu_test')
+            self.assertFalse(result['is_error'])
+            self.assertIn('hello', result['content'])
+
+    def test_api_failure_not_tool_failure(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            def create(**kw):
+                raise RuntimeError('API transport unavailable')
+            client = SimpleNamespace(messages=SimpleNamespace(create=create))
+            with self.assertRaisesRegex(RuntimeError, 'API transport'):
+                Agent(client, 'test-model', build_tools(Path(tmp))).run('read')
+
+
+if __name__ == '__main__':
+    unittest.main()

@@ -1,0 +1,106 @@
+"""Python adapter to a REAL @anthropic-ai/sandbox-runtime Node backend.
+No direct-host Bash fallback exists. One runtime lifecycle per command.
+"""
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import signal
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+from .tools import ToolError, ToolResult
+
+
+class SandboxRuntime:
+    def __init__(self, workspace: Path):
+        self.workspace = workspace.resolve(strict=True)
+        self.bridge = Path(__file__).resolve().parent.parent / 'sandbox_bridge.mjs'
+        if self.bridge.is_relative_to(self.workspace):
+            raise ValueError('Use a separate data workspace; the agent must not edit its sandbox bridge.')
+
+    def _dependencies(self) -> str:
+        if sys.platform not in {'linux', 'darwin'}:
+            raise ToolError('This bridge supports Linux/macOS only. Use WSL2 on Windows.')
+        required = ['node', 'bash', 'rg'] + (['bwrap', 'socat'] if sys.platform == 'linux' else ['sandbox-exec'])
+        missing = [name for name in required if shutil.which(name) is None]
+        if missing:
+            raise ToolError('Sandbox unavailable; command NOT executed. Missing: ' + ', '.join(missing))
+        node = shutil.which('node')
+        assert node is not None
+        return node
+
+    def run(self, command: str, timeout: int = 10000) -> ToolResult:
+        if not isinstance(command, str) or not command.strip() or '\x00' in command:
+            raise ToolError('command must be a nonempty NUL-free string.')
+        if type(timeout) is not int or not 100 <= timeout <= 60000:
+            raise ToolError('timeout must be 100–60000 milliseconds.')
+        node = self._dependencies()
+        if not self.bridge.is_file():
+            raise ToolError('Sandbox bridge is missing; command NOT executed.')
+        # Runtime files are temporary; workspace files survive command completion.
+        with tempfile.TemporaryDirectory(prefix='agent-srt-') as temp:
+            home = Path(temp) / 'home'
+            home.mkdir()
+            real_home = Path.home()
+            protected = ['.ssh', '.aws', '.gnupg', '.claude', '.config', '.env', '.npmrc', '.pypirc']
+            deny = [str(real_home / name) for name in protected]
+            deny += [str(self.workspace / name) for name in protected + ['.git']]
+            deny += [str(self.workspace / '**' / '.env'), str(self.workspace / '**' / '.env.*')]
+            config = {
+                'network': {'allowedDomains': [], 'deniedDomains': []},
+                'filesystem': {
+                    'denyRead': deny,
+                    'allowWrite': [str(self.workspace), temp],
+                    'denyWrite': deny,
+                },
+            }
+            request = {'workspace': str(self.workspace), 'command': command,
+                       'timeout': timeout, 'config': config}
+            # Do not forward model API keys, shell startup hooks or arbitrary host variables.
+            paths = [str(Path(shutil.which(x)).parent) for x in ('node', 'bash', 'rg')]
+            safe_path = os.pathsep.join(dict.fromkeys(paths + ['/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin']))
+            env = {'PATH': safe_path, 'HOME': str(home), 'TMPDIR': temp,
+                   'LANG': 'en_US.UTF-8' if sys.platform == 'darwin' else 'C.UTF-8'}
+            process = subprocess.Popen(
+                [node, str(self.bridge)], cwd=self.workspace, env=env,
+                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                text=True, encoding='utf-8', errors='replace', start_new_session=True,
+            )
+            try:
+                # Extra time is for initialization and cleanup; JS bounds the command itself.
+                stdout, stderr = process.communicate(json.dumps(request), timeout=timeout / 1000 + 25)
+            except (subprocess.TimeoutExpired, KeyboardInterrupt) as exc:
+                os.killpg(process.pid, signal.SIGTERM)
+                try:
+                    process.communicate(timeout=3)
+                except subprocess.TimeoutExpired:
+                    os.killpg(process.pid, signal.SIGKILL)
+                    process.communicate()
+                if isinstance(exc, KeyboardInterrupt):
+                    raise
+                return ToolResult('Sandbox bridge timed out; execution was stopped. Side effects may already exist.', True)
+            try:
+                data = json.loads(stdout)
+            except json.JSONDecodeError:
+                detail = stderr.strip()[:1000] or 'No valid bridge result.'
+                return ToolResult(f'Sandbox backend failed; no unsandboxed retry. {detail}', True)
+            if not isinstance(data, dict) or type(data.get('ok')) is not bool:
+                return ToolResult('Invalid sandbox bridge response.', True)
+            if not data['ok']:
+                return ToolResult(f"Sandbox error: {data.get('error', 'Unknown backend error')}", True)
+            timed_out = bool(data.get('timed_out'))
+            code = data.get('exit_code')
+            body = (f'Exit code: {code}\nTimed out: {str(timed_out).lower()}\n'
+                    f"stdout:\n{data.get('stdout', '')}\nstderr:\n{data.get('stderr', '')}")
+            if data.get('signal'):
+                body += f"\nSignal: {data['signal']}"
+            if data.get('output_truncated'):
+                body += '\n[Output truncated: only the captured prefixes are shown.]'
+            if timed_out:
+                body += '\n[Process stopped; prior filesystem changes were NOT rolled back.]'
+            # Deliberate MVP policy: any nonzero exit is an error.
+            # Claude Code has command-specific semantics (e.g. grep no matches).
+            return ToolResult(body, timed_out or code != 0 or process.returncode != 0)

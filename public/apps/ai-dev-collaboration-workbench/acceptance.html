@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><script src="/hub-storage.js" data-module="ai-dev-collaboration-workbench"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>验收记录 · AI Development Collaboration</title>
+  <link rel="stylesheet" href="/apps/ai-dev-collaboration-workbench/styles.css">
+  <style>
+    body{max-width:980px;margin:auto;padding:44px 32px 80px}.back{font-size:12px;color:var(--muted)}header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid var(--border);padding-bottom:30px;margin-bottom:34px}h1{margin:22px 0 8px}.lede{max-width:650px}.record{border-top:1px solid var(--border);padding:24px 0}.record h2{margin:0 0 9px;font-size:17px}.record p{font-size:12px}.record .evidence{color:var(--success);font-size:11px}.pending{color:var(--risk)!important}.grid{display:grid;grid-template-columns:1fr 1fr;gap:25px}.grid .record{min-height:145px}@media(max-width:650px){body{padding:28px 20px 60px}.grid{grid-template-columns:1fr}header{display:block}}
+  </style>
+</head>
+<body>
+  <a class="back" href="/m/ai-dev-collaboration-workbench/">← 返回工作台 / Back to workspace</a>
+  <header><div><p class="eyebrow">DESIGN_AI_Development_Collaboration_v1.md · Site v1.1</p><h1>逐项验收记录</h1><p class="lede">实现证据与人工判断分开记录。这里不把“有代码”误写成“视觉已通过”。</p></div><span class="status-tag">Site 1.1</span></header>
+  <section class="record"><h2>已实现 · Implementation coverage</h2><p>中文默认与中英切换、首页层级、九阶段方法地图、项目持久化、两层模块画布、折叠与展开、真实关系投影、节点拖动与网格吸附、数据/执行/依赖三种关系、节点状态标签、三级语义缩放、聚焦、可调整详情面板、全页阅读、结构化验收项、复验与人工接受记录、Development Pack 预览与 ZIP 下载、样例验证、设置、JSON/Markdown 备份均已接入。</p><p class="evidence">证据：工作台首页、方法、画布、产物、验证、版本与设置页面；`npm test` 10/10 通过。</p></section>
+  <div class="grid">
+    <section class="record"><h2>样例证据 · Worked example</h2><p>新闻事件去重：4 条固定报道 → 2 个独立事件；首个事件保留 2 个来源并记录 3 条原始报道。错误的“按文章计数”实现会不满足事件数断言。</p><p class="evidence">结果：3/3 断言通过，可在验证页重新运行。</p></section>
+    <section class="record"><h2>WebMCP · Feature detection</h2><p>页面会在支持 `document.modelContext.registerTool` 的浏览器中注册五个方法论/项目工具及一个只读状态工具，并使用 AbortSignal 清理。</p><p class="evidence">当前预览浏览器未提供 WebMCP，因此状态显示为 unavailable；未伪造工具调用结果。</p></section>
+    <section class="record"><h2>人工确认 · Human review</h2><p class="pending">待你最终确认：三秒测试、灰度测试、模糊测试、代表性画布状态、节点聚焦是否一眼可读，以及中英文措辞。</p></section>
+    <section class="record"><h2>范围边界 · Explicit limits</h2><p>Site 是 visual companion，不运行模型、不调用 OpenAI API 或其他 LLM API。样例只覆盖显式 eventId 的确定性聚合，不等同于实时抓取、语义事件识别或生产性能验证。</p></section>
+  </div>
+</body>
+</html>

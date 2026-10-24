@@ -1,0 +1,233 @@
+{
+  "upstream": "https://github.com/product-on-purpose/pm-skills",
+  "release": "v2.33.0",
+  "commit": "1cef1a9eae10017389863d51e289e0ae41e17fcb",
+  "license": "Apache-2.0",
+  "generator": "sites/aipm-studio/scripts/build-method-pack.mjs",
+  "scope": "Six skills with their templates, examples, and directly referenced method files. Original contents unchanged.",
+  "modifications": "Added Chinese introduction, contextual guidance, summaries, and single-file reference index.",
+  "files": [
+    {
+      "path": "skills/define-problem-statement/SKILL.md",
+      "sha256": "494fbd95caeac81bf3681f0c4598a01cda671757db98c85e5c3f6ba15e65479d",
+      "bytes": 3728
+    },
+    {
+      "path": "skills/define-problem-statement/references/TEMPLATE.md",
+      "sha256": "8fc4cd3376be6ef2199bab27b861f3fea99038ba3afe77b6dd8c6b109065422b",
+      "bytes": 1727
+    },
+    {
+      "path": "skills/define-problem-statement/references/EXAMPLE.md",
+      "sha256": "2a7240305a44a78646e30a61691feb39e01efc12bdfd14984397c4b008292ba4",
+      "bytes": 3675
+    },
+    {
+      "path": "skills/foundation-build-risk-review/SKILL.md",
+      "sha256": "c8ac85095fdc23b1c3f7341e14a785d33db4cf02922b3afda3fb71149eb4baa0",
+      "bytes": 8547
+    },
+    {
+      "path": "skills/foundation-build-risk-review/references/TEMPLATE.md",
+      "sha256": "69fc397a88735eb0baab61613ef5005e75304f6f9ee7f83bb4af9810a07028c0",
+      "bytes": 2042
+    },
+    {
+      "path": "skills/foundation-build-risk-review/references/EXAMPLE.md",
+      "sha256": "f87abf7d2318229419504396e2cbf9652042448b350664c9a0c10354143cebe7",
+      "bytes": 5015
+    },
+    {
+      "path": "skills/foundation-build-risk-review/references/risk-taxonomy.md",
+      "sha256": "b9ba9f6728a0b7ecefa7e6850549711aca448f6c31f99ae91fa9966cb4ff9553",
+      "bytes": 2787
+    },
+    {
+      "path": "skills/foundation-build-risk-review/references/routing-map.md",
+      "sha256": "69d82b6bd6f5d57b1a3d6899b8dded1bf3a13323bb8d61692da706a01092f573",
+      "bytes": 1761
+    },
+    {
+      "path": "skills/define-hypothesis/SKILL.md",
+      "sha256": "532e6df9892ed3d5925c95b538ff4107d971893c0a7c2edace6f665870cec0af",
+      "bytes": 3863
+    },
+    {
+      "path": "skills/define-hypothesis/references/TEMPLATE.md",
+      "sha256": "312cfa2a03067f3e5c64930189041bd15273a95ed1216037e2bb4d5a0a68da8c",
+      "bytes": 2837
+    },
+    {
+      "path": "skills/define-hypothesis/references/EXAMPLE.md",
+      "sha256": "35107b788c8ba8d83bf089a503ada318210a208724f37c8e03eb6982a594de9c",
+      "bytes": 5451
+    },
+    {
+      "path": "skills/measure-experiment-design/SKILL.md",
+      "sha256": "f6f2f4d84cda845773443e44b30af3c63ac146f1216329b6d78e303782c78122",
+      "bytes": 4329
+    },
+    {
+      "path": "skills/measure-experiment-design/references/TEMPLATE.md",
+      "sha256": "8daaf3735f3a9485f25e2d377d4354257aaae5f80558eaba9d9088707afc88f4",
+      "bytes": 4437
+    },
+    {
+      "path": "skills/measure-experiment-design/references/EXAMPLE.md",
+      "sha256": "3fa260e770553211a51aa74dc0c0489781467cfe85fca9a255552f9623659433",
+      "bytes": 7319
+    },
+    {
+      "path": "skills/develop-design-rationale/SKILL.md",
+      "sha256": "853395279e4da6fc4fbbb305544be7b28f65cfb7c24f1b6d558ec07610e99f88",
+      "bytes": 4108
+    },
+    {
+      "path": "skills/develop-design-rationale/references/TEMPLATE.md",
+      "sha256": "1ead2bd6ea1604f0cd80e8d1a63faa6e5738246d2264c2dcfd5e20bffdcfb6c6",
+      "bytes": 4311
+    },
+    {
+      "path": "skills/develop-design-rationale/references/EXAMPLE.md",
+      "sha256": "0af5960f24f6b3d65dcb3cf48f412ac9771e756c64a72652484030d4a4f2fd8a",
+      "bytes": 9216
+    },
+    {
+      "path": "skills/iterate-retrospective/SKILL.md",
+      "sha256": "66f5c087ad20d71e2942884313276e97ec5203b89825bb0de14a46211333d634",
+      "bytes": 5194
+    },
+    {
+      "path": "skills/iterate-retrospective/references/TEMPLATE.md",
+      "sha256": "c771e69162b86472db140f4c01ae237d65557fed072fbb8e4663eda57dd0da86",
+      "bytes": 3754
+    },
+    {
+      "path": "skills/iterate-retrospective/references/EXAMPLE.md",
+      "sha256": "0ff37744b501b7714ea4c92cc5593cc15d3eb9e0ec73a7dd2d4e800c16617f23",
+      "bytes": 8152
+    }
+  ],
+  "references": {
+    "skills/define-problem-statement/SKILL.md": [
+      {
+        "reference": "references/TEMPLATE.md",
+        "target": "skills/define-problem-statement/references/TEMPLATE.md",
+        "anchor": "source-skills-define-problem-statement-references-template-md"
+      },
+      {
+        "reference": "references/EXAMPLE.md",
+        "target": "skills/define-problem-statement/references/EXAMPLE.md",
+        "anchor": "source-skills-define-problem-statement-references-example-md"
+      }
+    ],
+    "skills/define-problem-statement/references/TEMPLATE.md": [],
+    "skills/define-problem-statement/references/EXAMPLE.md": [],
+    "skills/foundation-build-risk-review/SKILL.md": [
+      {
+        "reference": "references/risk-taxonomy.md",
+        "target": "skills/foundation-build-risk-review/references/risk-taxonomy.md",
+        "anchor": "source-skills-foundation-build-risk-review-references-risk-taxonomy-md"
+      },
+      {
+        "reference": "references/routing-map.md",
+        "target": "skills/foundation-build-risk-review/references/routing-map.md",
+        "anchor": "source-skills-foundation-build-risk-review-references-routing-map-md"
+      },
+      {
+        "reference": "references/TEMPLATE.md",
+        "target": "skills/foundation-build-risk-review/references/TEMPLATE.md",
+        "anchor": "source-skills-foundation-build-risk-review-references-template-md"
+      },
+      {
+        "reference": "references/EXAMPLE.md",
+        "target": "skills/foundation-build-risk-review/references/EXAMPLE.md",
+        "anchor": "source-skills-foundation-build-risk-review-references-example-md"
+      }
+    ],
+    "skills/foundation-build-risk-review/references/TEMPLATE.md": [
+      {
+        "reference": "references/risk-taxonomy.md",
+        "target": "skills/foundation-build-risk-review/references/risk-taxonomy.md",
+        "anchor": "source-skills-foundation-build-risk-review-references-risk-taxonomy-md"
+      },
+      {
+        "reference": "references/routing-map.md",
+        "target": "skills/foundation-build-risk-review/references/routing-map.md",
+        "anchor": "source-skills-foundation-build-risk-review-references-routing-map-md"
+      }
+    ],
+    "skills/foundation-build-risk-review/references/EXAMPLE.md": [
+      {
+        "reference": "references/risk-taxonomy.md",
+        "target": "skills/foundation-build-risk-review/references/risk-taxonomy.md",
+        "anchor": "source-skills-foundation-build-risk-review-references-risk-taxonomy-md"
+      }
+    ],
+    "skills/foundation-build-risk-review/references/risk-taxonomy.md": [],
+    "skills/foundation-build-risk-review/references/routing-map.md": [
+      {
+        "reference": "references/risk-taxonomy.md",
+        "target": "skills/foundation-build-risk-review/references/risk-taxonomy.md",
+        "anchor": "source-skills-foundation-build-risk-review-references-risk-taxonomy-md"
+      }
+    ],
+    "skills/define-hypothesis/SKILL.md": [
+      {
+        "reference": "references/TEMPLATE.md",
+        "target": "skills/define-hypothesis/references/TEMPLATE.md",
+        "anchor": "source-skills-define-hypothesis-references-template-md"
+      },
+      {
+        "reference": "references/EXAMPLE.md",
+        "target": "skills/define-hypothesis/references/EXAMPLE.md",
+        "anchor": "source-skills-define-hypothesis-references-example-md"
+      }
+    ],
+    "skills/define-hypothesis/references/TEMPLATE.md": [],
+    "skills/define-hypothesis/references/EXAMPLE.md": [],
+    "skills/measure-experiment-design/SKILL.md": [
+      {
+        "reference": "references/TEMPLATE.md",
+        "target": "skills/measure-experiment-design/references/TEMPLATE.md",
+        "anchor": "source-skills-measure-experiment-design-references-template-md"
+      },
+      {
+        "reference": "references/EXAMPLE.md",
+        "target": "skills/measure-experiment-design/references/EXAMPLE.md",
+        "anchor": "source-skills-measure-experiment-design-references-example-md"
+      }
+    ],
+    "skills/measure-experiment-design/references/TEMPLATE.md": [],
+    "skills/measure-experiment-design/references/EXAMPLE.md": [],
+    "skills/develop-design-rationale/SKILL.md": [
+      {
+        "reference": "references/TEMPLATE.md",
+        "target": "skills/develop-design-rationale/references/TEMPLATE.md",
+        "anchor": "source-skills-develop-design-rationale-references-template-md"
+      },
+      {
+        "reference": "references/EXAMPLE.md",
+        "target": "skills/develop-design-rationale/references/EXAMPLE.md",
+        "anchor": "source-skills-develop-design-rationale-references-example-md"
+      }
+    ],
+    "skills/develop-design-rationale/references/TEMPLATE.md": [],
+    "skills/develop-design-rationale/references/EXAMPLE.md": [],
+    "skills/iterate-retrospective/SKILL.md": [
+      {
+        "reference": "references/TEMPLATE.md",
+        "target": "skills/iterate-retrospective/references/TEMPLATE.md",
+        "anchor": "source-skills-iterate-retrospective-references-template-md"
+      },
+      {
+        "reference": "references/EXAMPLE.md",
+        "target": "skills/iterate-retrospective/references/EXAMPLE.md",
+        "anchor": "source-skills-iterate-retrospective-references-example-md"
+      }
+    ],
+    "skills/iterate-retrospective/references/TEMPLATE.md": [],
+    "skills/iterate-retrospective/references/EXAMPLE.md": []
+  },
+  "licenseSha256": "e5fe46f4634972731b752114e9992023e95e89e37c11713fdbee92dbc5141e85"
+}

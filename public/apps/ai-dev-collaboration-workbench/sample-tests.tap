@@ -1,0 +1,70 @@
+TAP version 13
+# Subtest: REQ-001: default lists every bookmark in its original order
+ok 1 - REQ-001: default lists every bookmark in its original order
+  ---
+  duration_ms: 3.346557
+  type: 'test'
+  ...
+# Subtest: REQ-001: all explicitly clears the tag filter
+ok 2 - REQ-001: all explicitly clears the tag filter
+  ---
+  duration_ms: 0.177721
+  type: 'test'
+  ...
+# Subtest: REQ-001: one tag includes matching bookmarks, including multi-tag items
+ok 3 - REQ-001: one tag includes matching bookmarks, including multi-tag items
+  ---
+  duration_ms: 0.188018
+  type: 'test'
+  ...
+# Subtest: REQ-002: an unknown tag returns an empty list
+ok 4 - REQ-002: an unknown tag returns an empty list
+  ---
+  duration_ms: 0.111195
+  type: 'test'
+  ...
+# Subtest: REQ-002: a known tag with no matches in the current list returns empty
+ok 5 - REQ-002: a known tag with no matches in the current list returns empty
+  ---
+  duration_ms: 0.134783
+  type: 'test'
+  ...
+# Subtest: REQ-002: an empty collection stays empty for all and single-tag views
+ok 6 - REQ-002: an empty collection stays empty for all and single-tag views
+  ---
+  duration_ms: 0.689815
+  type: 'test'
+  ...
+# Subtest: REQ-002: bookmarks without tags are listed in all and skipped in a tag view
+ok 7 - REQ-002: bookmarks without tags are listed in all and skipped in a tag view
+  ---
+  duration_ms: 0.286349
+  type: 'test'
+  ...
+# Subtest: REQ-001: matching uses the whole tag, not a substring
+ok 8 - REQ-001: matching uses the whole tag, not a substring
+  ---
+  duration_ms: 0.144698
+  type: 'test'
+  ...
+# Subtest: REQ-003: modifying the returned array leaves the source list intact
+ok 9 - REQ-003: modifying the returned array leaves the source list intact
+  ---
+  duration_ms: 1.048165
+  type: 'test'
+  ...
+# Subtest: REQ-003: filtering deeply frozen input preserves data and item identity
+ok 10 - REQ-003: filtering deeply frozen input preserves data and item identity
+  ---
+  duration_ms: 0.72119
+  type: 'test'
+  ...
+1..10
+# tests 10
+# suites 0
+# pass 10
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 148.314074

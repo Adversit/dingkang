@@ -1,0 +1,175 @@
+diff --git a/.gitignore b/.gitignore
+index 48a58e6..e1c0104 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -1 +1,2 @@
+ evidence/
++metadata.json
+diff --git a/README.md b/README.md
+index c3cd2b9..e0e0395 100644
+--- a/README.md
++++ b/README.md
+@@ -1,9 +1,56 @@
+-# 书签列表：修改前基线
++# 真实执行样例：为书签列表增加标签筛选
+ 
+-这是一个零依赖、可直接运行的 JavaScript 书签列表函数。
++本产物由本次「造物流程 · AI 项目交付平台」开发期间的外部执行环境生成。
++源文件确实修改、测试确实运行、Git 提交确实创建；**执行发生在开发环境，不是网站执行。**
++网站可以展示或下载这些预先生成的证据，但这些证据不能证明网站具有实时执行代码的能力。
++本样例没有执行部署或发布，也没有发布回执。
++
++## 需求与验收
++
++| 需求 | 行为 | 测试覆盖 |
++| --- | --- | --- |
++| REQ-001 | 默认或 `all` 显示全部；选择一个标签只显示匹配条目，保留原顺序 | 默认列表、显式全部、多标签条目、完整标签匹配 |
++| REQ-002 | 未知标签、无匹配、空列表返回空数组；缺少标签的旧数据不会使筛选崩溃 | 未知标签、子列表无匹配、空集合、旧数据 |
++| REQ-003 | 不修改原列表、条目或标签；输出使用独立数组 | 返回数组修改、深度冻结输入、对象身份与 JSON 内容保持 |
++
++## 使用方式
++
++零依赖，无须安装第三方包。
++
++```js
++import { listBookmarks } from './src/bookmarks.js';
++
++const bookmarks = [
++  { id: '1', title: 'Node.js', tags: ['JavaScript', '后端'] },
++  { id: '2', title: 'CSS', tags: ['前端'] },
++];
++
++listBookmarks(bookmarks);                      // 全部
++listBookmarks(bookmarks, { tag: 'all' });      // 全部
++listBookmarks(bookmarks, { tag: '前端' });      // id 为 2 的条目
++listBookmarks(bookmarks, { tag: '未知标签' });  // []
++```
++
++`all` 是保留值。标签精确匹配，不自动去除空格或合并大小写。
++返回值是新数组，条目对象仍与输入共享引用；本函数不深拷贝，也不支持修改返回条目后自动隔离原对象。
++
++## 复现测试
+ 
+ ```bash
+ node --test --test-reporter=tap test/bookmarks.test.js
+ ```
+ 
+-当前功能：按原顺序返回全部书签，并返回一个独立数组，避免修改列表结构时影响输入。
++也可以使用 `npm test`。准确的运行环境、提交 SHA、执行时间与通过数量记录在 `metadata.json`。
++
++## 证据说明
++
++- `evidence/before-tests.tap`：原始基线的两项测试。
++- `evidence/feature-before-implementation.tap`：新增十项验收用例在旧实现上的原始输出，用于证明它们能检出功能缺失。
++- `evidence/after-tests.tap`：修改后提交上的十项验收用例原始输出。
++- `evidence/changes.diff`：通过真实 `git diff base_commit commit_sha` 产生的差异。
++- `evidence/before-bookmarks.js`、`evidence/after-bookmarks.js`：对应提交的实现快照。
++- `evidence/history.bundle`：包含前后提交的 Git 历史，可用 `git clone evidence/history.bundle audit-copy` 独立检查。
++- `metadata.json`：来自真实运行和 Git 查询的元数据。
++
++证据文件在执行完成后生成，不写入所描述的提交，避免元数据递归引用自身。
++这是函数级集成样例，不包含真实用户数据、第三方服务凭据、外部仓库推送或发布操作。
+diff --git a/src/bookmarks.js b/src/bookmarks.js
+index d608c93..81dede8 100644
+--- a/src/bookmarks.js
++++ b/src/bookmarks.js
+@@ -1,7 +1,12 @@
+-/** Return bookmarks in their original order without mutating the input. */
+-export function listBookmarks(bookmarks) {
++/**
++ * Return all bookmarks or bookmarks carrying one exact tag.
++ * A new array is returned; bookmark objects and their tags are not modified.
++ * The reserved tag "all" clears filtering. Missing tags do not match a filter.
++ */
++export function listBookmarks(bookmarks, { tag = 'all' } = {}) {
+   if (!Array.isArray(bookmarks)) {
+     throw new TypeError('bookmarks must be an array');
+   }
+-  return [...bookmarks];
++  if (tag === 'all') return [...bookmarks];
++  return bookmarks.filter(item => Array.isArray(item?.tags) && item.tags.includes(tag));
+ }
+diff --git a/test/bookmarks.test.js b/test/bookmarks.test.js
+index a57dd71..ddead4a 100644
+--- a/test/bookmarks.test.js
++++ b/test/bookmarks.test.js
+@@ -2,14 +2,74 @@ import test from 'node:test';
+ import assert from 'node:assert/strict';
+ import { listBookmarks } from '../src/bookmarks.js';
+ 
+-test('listBookmarks returns all bookmarks in order', () => {
+-  const bookmarks = [{ id: '1', title: 'Node.js' }, { id: '2', title: 'MDN' }];
++const makeBookmarks = () => [
++  { id: 'node', title: 'Node.js', url: 'https://nodejs.org/', tags: ['JavaScript', '后端'] },
++  { id: 'mdn', title: 'MDN', url: 'https://developer.mozilla.org/', tags: ['JavaScript', '前端'] },
++  { id: 'css', title: 'CSS', url: 'https://www.w3.org/Style/CSS/', tags: ['前端'] },
++  { id: 'inbox', title: '稍后整理', url: 'https://example.org/', tags: [] },
++];
++
++test('REQ-001: default lists every bookmark in its original order', () => {
++  const bookmarks = makeBookmarks();
+   assert.deepEqual(listBookmarks(bookmarks), bookmarks);
+ });
+ 
+-test('listBookmarks returns a separate array', () => {
+-  const bookmarks = [{ id: '1', title: 'Node.js' }];
++test('REQ-001: all explicitly clears the tag filter', () => {
++  const bookmarks = makeBookmarks();
++  assert.deepEqual(listBookmarks(bookmarks, { tag: 'all' }), bookmarks);
++});
++
++test('REQ-001: one tag includes matching bookmarks, including multi-tag items', () => {
++  const bookmarks = makeBookmarks();
++  assert.deepEqual(listBookmarks(bookmarks, { tag: 'JavaScript' }).map(item => item.id), ['node', 'mdn']);
++  assert.deepEqual(listBookmarks(bookmarks, { tag: '前端' }).map(item => item.id), ['mdn', 'css']);
++});
++
++test('REQ-002: an unknown tag returns an empty list', () => {
++  assert.deepEqual(listBookmarks(makeBookmarks(), { tag: '不存在的标签' }), []);
++});
++
++test('REQ-002: a known tag with no matches in the current list returns empty', () => {
++  const bookmarks = makeBookmarks().filter(item => item.id === 'node');
++  assert.deepEqual(listBookmarks(bookmarks, { tag: '前端' }), []);
++});
++
++test('REQ-002: an empty collection stays empty for all and single-tag views', () => {
++  assert.deepEqual(listBookmarks([]), []);
++  assert.deepEqual(listBookmarks([], { tag: '前端' }), []);
++});
++
++test('REQ-002: bookmarks without tags are listed in all and skipped in a tag view', () => {
++  const bookmarks = [{ id: 'legacy', title: 'Legacy bookmark' }, ...makeBookmarks()];
++  assert.equal(listBookmarks(bookmarks).length, 5);
++  assert.deepEqual(listBookmarks(bookmarks, { tag: '后端' }).map(item => item.id), ['node']);
++});
++
++test('REQ-001: matching uses the whole tag, not a substring', () => {
++  assert.deepEqual(listBookmarks(makeBookmarks(), { tag: 'Java' }), []);
++});
++
++test('REQ-003: modifying the returned array leaves the source list intact', () => {
++  const bookmarks = makeBookmarks();
+   const result = listBookmarks(bookmarks);
+   result.pop();
+-  assert.equal(bookmarks.length, 1);
++  assert.equal(bookmarks.length, 4);
++  const filtered = listBookmarks(bookmarks, { tag: '前端' });
++  filtered.reverse();
++  assert.deepEqual(bookmarks.map(item => item.id), ['node', 'mdn', 'css', 'inbox']);
++});
++
++test('REQ-003: filtering deeply frozen input preserves data and item identity', () => {
++  const bookmarks = makeBookmarks();
++  for (const item of bookmarks) {
++    Object.freeze(item.tags);
++    Object.freeze(item);
++  }
++  Object.freeze(bookmarks);
++  const before = JSON.stringify(bookmarks);
++  const result = listBookmarks(bookmarks, { tag: '前端' });
++  assert.deepEqual(result.map(item => item.id), ['mdn', 'css']);
++  assert.equal(result[0], bookmarks[1]);
++  assert.equal(result[1], bookmarks[2]);
++  assert.equal(JSON.stringify(bookmarks), before);
+ });

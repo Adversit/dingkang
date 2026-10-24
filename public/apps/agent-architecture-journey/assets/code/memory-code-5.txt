@@ -1,0 +1,18 @@
+def summarize_with_llm(history: str) -> str:
+    prompt = f"""
+请总结下面已经发生过的 Agent 工作历史。
+
+重点保留：
+1. 用户目标
+2. 已完成工作
+3. 修改过的文件
+4. 关键决定
+5. 错误与修复
+6. 用户纠正
+7. 当前状态
+8. 下一步
+
+历史：
+{history}
+"""
+    return call_llm(prompt)

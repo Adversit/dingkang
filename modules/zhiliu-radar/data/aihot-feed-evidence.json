@@ -1,0 +1,481 @@
+[
+  {
+    "name": "Recode China AI",
+    "url": "https://www.recodechinaai.com/feed",
+    "discoveredFrom": "https://www.recodechinaai.com/p/china-proposes-ai-export-controls",
+    "discoveryLink": {
+      "tag": "link",
+      "rel": "alternate",
+      "type": "application/rss+xml",
+      "href": "/feed",
+      "title": "Recode China AI",
+      "absoluteUrl": "https://www.recodechinaai.com/feed"
+    },
+    "checkedAt": "2026-10-19T08:49:21.766236+00:00",
+    "status": 200,
+    "bytes": 677118,
+    "itemCount": 20,
+    "notes": [
+      "Independently verified public publisher feed; AIHOT live configuration is not exposed."
+    ]
+  },
+  {
+    "name": "MarkTechPost",
+    "url": "https://www.marktechpost.com/feed/",
+    "discoveredFrom": "https://www.marktechpost.com/2026/10/18/nvidia-runai-open-source-gpu-orchestration-kubernetes/",
+    "discoveryLink": {
+      "tag": "link",
+      "rel": "alternate",
+      "type": "application/rss+xml",
+      "title": "MarkTechPost » Feed",
+      "href": "https://www.marktechpost.com/feed/",
+      "absoluteUrl": "https://www.marktechpost.com/feed/"
+    },
+    "checkedAt": "2026-10-19T08:49:21.767053+00:00",
+    "status": 200,
+    "bytes": 363307,
+    "itemCount": 10,
+    "notes": [
+      "Independently verified public publisher feed; AIHOT live configuration is not exposed."
+    ]
+  },
+  {
+    "name": "SemiAnalysis 长文 RSS",
+    "url": "https://newsletter.semianalysis.com/feed",
+    "discoveredFrom": "https://newsletter.semianalysis.com/p/datacenters-2027-the-year-of-acceleration",
+    "discoveryLink": {
+      "tag": "link",
+      "rel": "alternate",
+      "type": "application/rss+xml",
+      "href": "/feed",
+      "title": "SemiAnalysis",
+      "absoluteUrl": "https://newsletter.semianalysis.com/feed"
+    },
+    "checkedAt": "2026-10-19T08:49:21.767743+00:00",
+    "status": 200,
+    "bytes": 3150403,
+    "itemCount": 20,
+    "notes": [
+      "Independently verified public publisher feed; AIHOT live configuration is not exposed.",
+      "Response is 3.15 MB; full article access can vary by publisher subscription. Do not assume all content is freely republishable."
+    ]
+  },
+  {
+    "name": "Air Street Press",
+    "url": "https://press.airstreet.com/feed",
+    "discoveredFrom": "https://press.airstreet.com/",
+    "discoveryLink": {
+      "tag": "link",
+      "rel": "alternate",
+      "type": "application/rss+xml",
+      "href": "/feed",
+      "title": "Air Street Press",
+      "absoluteUrl": "https://press.airstreet.com/feed"
+    },
+    "checkedAt": "2026-10-19T08:50:37.156329+00:00",
+    "status": 200,
+    "bytes": 600099,
+    "itemCount": 20,
+    "notes": [
+      "Independently verified public publisher feed; AIHOT live configuration is not exposed."
+    ]
+  },
+  {
+    "name": "ChinaTalk",
+    "url": "https://www.chinatalk.media/feed",
+    "discoveredFrom": "https://www.chinatalk.media/",
+    "discoveryLink": {
+      "tag": "link",
+      "rel": "alternate",
+      "type": "application/rss+xml",
+      "href": "/feed",
+      "title": "ChinaTalk",
+      "absoluteUrl": "https://www.chinatalk.media/feed"
+    },
+    "checkedAt": "2026-10-19T08:55:09.283318+00:00",
+    "status": 200,
+    "bytes": 1044129,
+    "itemCount": 20,
+    "notes": [
+      "Independently verified publisher endpoint; not an exported AIHOT live source configuration."
+    ]
+  },
+  {
+    "name": "O'Reilly Radar",
+    "url": "https://www.oreilly.com/radar/feed/index.xml",
+    "discoveredFrom": "https://www.oreilly.com/radar/",
+    "discoveryLink": {
+      "tag": "link",
+      "rel": "alternate",
+      "type": "application/rss+xml",
+      "title": "Radar All Posts Feed",
+      "href": "https://www.oreilly.com/radar/feed/index.xml",
+      "absoluteUrl": "https://www.oreilly.com/radar/feed/index.xml"
+    },
+    "checkedAt": "2026-10-19T08:55:09.284697+00:00",
+    "status": 200,
+    "bytes": 231413,
+    "itemCount": 15,
+    "notes": [
+      "Independently verified publisher endpoint; not an exported AIHOT live source configuration."
+    ]
+  },
+  {
+    "name": "Tech.eu",
+    "url": "https://tech.eu/feed/",
+    "discoveredFrom": "https://tech.eu/",
+    "discoveryLink": {
+      "tag": "a",
+      "href": "https://tech.eu/feed/",
+      "aria-label": "RSS Feed",
+      "absoluteUrl": "https://tech.eu/feed/"
+    },
+    "checkedAt": "2026-10-19T08:55:09.285325+00:00",
+    "status": 200,
+    "bytes": 161854,
+    "itemCount": 20,
+    "notes": [
+      "Independently verified publisher endpoint; not an exported AIHOT live source configuration."
+    ]
+  },
+  {
+    "name": "Techmeme",
+    "url": "https://www.techmeme.com/feed.xml",
+    "discoveredFrom": "https://www.techmeme.com/",
+    "discoveryLink": {
+      "tag": "link",
+      "type": "application/rss+xml",
+      "rel": "alternate",
+      "title": "Techmeme",
+      "href": "https://www.techmeme.com/feed.xml",
+      "absoluteUrl": "https://www.techmeme.com/feed.xml"
+    },
+    "checkedAt": "2026-10-19T08:55:09.286125+00:00",
+    "status": 200,
+    "bytes": 22086,
+    "itemCount": 15,
+    "notes": [
+      "Independently verified publisher endpoint; not an exported AIHOT live source configuration.",
+      "Aggregation/community signal; original item links may point to external publishers."
+    ]
+  },
+  {
+    "name": "Pydantic AI 官方文章",
+    "url": "https://pydantic.dev/feed.xml",
+    "discoveredFrom": "https://pydantic.dev/articles",
+    "discoveryLink": {
+      "tag": "link",
+      "rel": "alternate",
+      "type": "application/rss+xml",
+      "href": "/feed.xml",
+      "title": "Pydantic Blog",
+      "absoluteUrl": "https://pydantic.dev/feed.xml"
+    },
+    "checkedAt": "2026-10-19T08:55:09.287540+00:00",
+    "status": 200,
+    "bytes": 419913,
+    "itemCount": 20,
+    "notes": [
+      "Independently verified publisher endpoint; not an exported AIHOT live source configuration.",
+      "Publisher-wide Pydantic blog feed, not an AI-only filter."
+    ]
+  },
+  {
+    "name": "小众软件",
+    "url": "https://www.appinn.com/feed/",
+    "discoveredFrom": "https://www.appinn.com/",
+    "discoveryLink": {
+      "tag": "link",
+      "rel": "alternate",
+      "type": "application/rss+xml",
+      "title": "小众软件 » Feed",
+      "href": "https://www.appinn.com/feed/",
+      "absoluteUrl": "https://www.appinn.com/feed/"
+    },
+    "checkedAt": "2026-10-19T08:55:09.289677+00:00",
+    "status": 200,
+    "bytes": 114104,
+    "itemCount": 10,
+    "notes": [
+      "Independently verified publisher endpoint; not an exported AIHOT live source configuration."
+    ]
+  },
+  {
+    "name": "ServeTheHome",
+    "url": "https://www.servethehome.com/feed/",
+    "discoveredFrom": "https://www.servethehome.com/",
+    "discoveryLink": {
+      "tag": "link",
+      "rel": "alternate",
+      "type": "application/rss+xml",
+      "title": "ServeTheHome » Feed",
+      "href": "https://www.servethehome.com/feed/",
+      "absoluteUrl": "https://www.servethehome.com/feed/"
+    },
+    "checkedAt": "2026-10-19T08:55:14.277193+00:00",
+    "status": 200,
+    "bytes": 9272,
+    "itemCount": 6,
+    "notes": [
+      "Independently verified publisher endpoint; not an exported AIHOT live source configuration."
+    ]
+  },
+  {
+    "name": "n8n Blog",
+    "url": "https://blog.n8n.io/rss/",
+    "discoveredFrom": "https://blog.n8n.io/",
+    "discoveryLink": {
+      "tag": "link",
+      "rel": "alternate",
+      "type": "application/rss+xml",
+      "title": "n8n Blog",
+      "href": "https://blog.n8n.io/rss/",
+      "absoluteUrl": "https://blog.n8n.io/rss/"
+    },
+    "checkedAt": "2026-10-19T08:55:14.365506+00:00",
+    "status": 200,
+    "bytes": 231526,
+    "itemCount": 15,
+    "notes": [
+      "Independently verified publisher endpoint; not an exported AIHOT live source configuration."
+    ]
+  },
+  {
+    "name": "Meta Engineering Blog",
+    "url": "https://engineering.fb.com/feed/",
+    "discoveredFrom": "https://engineering.fb.com/",
+    "discoveryLink": {
+      "tag": "link",
+      "rel": "alternate",
+      "type": "application/rss+xml",
+      "title": "Engineering at Meta » Feed",
+      "href": "https://engineering.fb.com/feed/",
+      "absoluteUrl": "https://engineering.fb.com/feed/"
+    },
+    "checkedAt": "2026-10-19T08:55:14.595736+00:00",
+    "status": 200,
+    "bytes": 206218,
+    "itemCount": 9,
+    "notes": [
+      "Independently verified publisher endpoint; not an exported AIHOT live source configuration."
+    ]
+  },
+  {
+    "name": "InfoWorld",
+    "url": "https://www.infoworld.com/feed/",
+    "discoveredFrom": "https://www.infoworld.com/",
+    "discoveryLink": {
+      "tag": "link",
+      "rel": "alternate",
+      "type": "application/rss+xml",
+      "title": "InfoWorld » Feed",
+      "href": "https://www.infoworld.com/feed/",
+      "absoluteUrl": "https://www.infoworld.com/feed/"
+    },
+    "checkedAt": "2026-10-19T08:55:15.209811+00:00",
+    "status": 200,
+    "bytes": 193584,
+    "itemCount": 20,
+    "notes": [
+      "Independently verified publisher endpoint; not an exported AIHOT live source configuration."
+    ]
+  },
+  {
+    "name": "Thurrott",
+    "url": "https://www.thurrott.com/blog/rss",
+    "discoveredFrom": "https://www.thurrott.com/",
+    "discoveryLink": {
+      "tag": "a",
+      "href": "https://www.thurrott.com/blog/rss",
+      "absoluteUrl": "https://www.thurrott.com/blog/rss"
+    },
+    "checkedAt": "2026-10-19T08:55:16.788451+00:00",
+    "status": 200,
+    "bytes": 16711,
+    "itemCount": 10,
+    "notes": [
+      "Independently verified publisher endpoint; not an exported AIHOT live source configuration."
+    ]
+  },
+  {
+    "name": "Anthropic：Claude.dev 开发者博客",
+    "url": "https://claude.dev/rss.xml",
+    "discoveredFrom": "https://claude.dev/",
+    "discoveryLink": {
+      "tag": "link",
+      "rel": "alternate",
+      "type": "application/rss+xml",
+      "href": "https://claude.dev/rss.xml",
+      "title": "claude.dev Blog",
+      "absoluteUrl": "https://claude.dev/rss.xml"
+    },
+    "checkedAt": "2026-10-19T08:55:18.513790+00:00",
+    "status": 200,
+    "bytes": 9326,
+    "itemCount": 16,
+    "notes": [
+      "Independently verified publisher endpoint; not an exported AIHOT live source configuration."
+    ]
+  },
+  {
+    "name": "t3n",
+    "url": "https://t3n.de/rss.xml",
+    "discoveredFrom": "https://t3n.de/",
+    "discoveryLink": {
+      "tag": "a",
+      "href": "/rss.xml",
+      "target": "_self",
+      "class": "DesktopFooter__FooterLink-sc-4678534e-2 jScUbM",
+      "absoluteUrl": "https://t3n.de/rss.xml"
+    },
+    "checkedAt": "2026-10-19T08:55:18.766586+00:00",
+    "status": 200,
+    "bytes": 26384,
+    "itemCount": 20,
+    "notes": [
+      "Independently verified publisher endpoint; not an exported AIHOT live source configuration."
+    ]
+  },
+  {
+    "name": "Hacker News 热门",
+    "url": "https://news.ycombinator.com/rss",
+    "discoveredFrom": "https://news.ycombinator.com/",
+    "discoveryLink": {
+      "tag": "link",
+      "rel": "alternate",
+      "type": "application/rss+xml",
+      "title": "RSS",
+      "href": "rss",
+      "absoluteUrl": "https://news.ycombinator.com/rss"
+    },
+    "checkedAt": "2026-10-19T08:55:18.909167+00:00",
+    "status": 200,
+    "bytes": 11268,
+    "itemCount": 30,
+    "notes": [
+      "Independently verified publisher endpoint; not an exported AIHOT live source configuration.",
+      "Aggregation/community signal; original item links may point to external publishers."
+    ]
+  },
+  {
+    "name": "CMU：Machine Learning Blog",
+    "url": "https://blog.ml.cmu.edu/feed/",
+    "discoveredFrom": "https://blog.ml.cmu.edu/",
+    "discoveryLink": {
+      "tag": "link",
+      "rel": "alternate",
+      "type": "application/rss+xml",
+      "title": "Machine Learning Blog | ML@CMU | Carnegie Mellon University » Feed",
+      "href": "https://blog.ml.cmu.edu/feed/",
+      "absoluteUrl": "https://blog.ml.cmu.edu/feed/"
+    },
+    "checkedAt": "2026-10-19T08:55:19.730520+00:00",
+    "status": 200,
+    "bytes": 46499,
+    "itemCount": 1,
+    "notes": [
+      "Independently verified publisher endpoint; not an exported AIHOT live source configuration."
+    ]
+  },
+  {
+    "name": "TechPowerUp",
+    "url": "https://www.techpowerup.com/rss/news",
+    "discoveredFrom": "https://www.techpowerup.com/",
+    "discoveryLink": {
+      "tag": "link",
+      "rel": "alternate",
+      "type": "application/rss+xml",
+      "title": "TechPowerUp Frontpage News",
+      "href": "/rss/news",
+      "absoluteUrl": "https://www.techpowerup.com/rss/news"
+    },
+    "checkedAt": "2026-10-19T08:55:22.017465+00:00",
+    "status": 200,
+    "bytes": 385614,
+    "itemCount": 135,
+    "notes": [
+      "Independently verified publisher endpoint; not an exported AIHOT live source configuration."
+    ]
+  },
+  {
+    "name": "Apple Machine Learning Research",
+    "url": "https://machinelearning.apple.com/rss.xml",
+    "discoveredFrom": "https://machinelearning.apple.com/",
+    "discoveryLink": {
+      "tag": "link",
+      "rel": "alternate",
+      "type": "application/rss+xml",
+      "title": "RSS feed for Apple Machine Learning Research",
+      "href": "/rss.xml",
+      "data-next-head": "",
+      "absoluteUrl": "https://machinelearning.apple.com/rss.xml"
+    },
+    "checkedAt": "2026-10-19T08:55:22.537683+00:00",
+    "status": 200,
+    "bytes": 9985,
+    "itemCount": 10,
+    "notes": [
+      "Independently verified publisher endpoint; not an exported AIHOT live source configuration."
+    ]
+  },
+  {
+    "name": "The Register",
+    "url": "https://www.theregister.com/?lab_viewport=rss",
+    "discoveredFrom": "https://www.theregister.com/design/page/feeds",
+    "discoveryLink": {
+      "tag": "a",
+      "href": "https://www.theregister.com/?lab_viewport=rss",
+      "absoluteUrl": "https://www.theregister.com/?lab_viewport=rss"
+    },
+    "checkedAt": "2026-10-19T08:57:34.614854+00:00",
+    "status": 200,
+    "bytes": 226490,
+    "itemCount": 250,
+    "notes": [
+      "Public publisher-declared endpoint, independently verified; not an exported AIHOT live configuration.",
+      "Official RSS/Atom directory explicitly links this publication-wide RSS; broad technology coverage."
+    ]
+  },
+  {
+    "name": "Factory 研究 / 产品",
+    "url": "https://factory.com/news/rss",
+    "discoveredFrom": "https://factory.ai/news",
+    "discoveryLink": {
+      "tag": "link",
+      "rel": "alternate",
+      "type": "application/rss+xml",
+      "title": "Factory News RSS Feed",
+      "href": "https://factory.com/news/rss",
+      "absoluteUrl": "https://factory.com/news/rss"
+    },
+    "checkedAt": "2026-10-19T08:57:34.615975+00:00",
+    "status": 200,
+    "bytes": 31518,
+    "itemCount": 71,
+    "notes": [
+      "Public publisher-declared endpoint, independently verified; not an exported AIHOT live configuration.",
+      "Observed official factory.ai/news redirect to factory.com/news; target page explicitly declares this RSS URL."
+    ]
+  },
+  {
+    "name": "Claude Code：GitHub Releases",
+    "url": "https://github.com/anthropics/claude-code/releases.atom",
+    "discoveredFrom": "https://github.com/anthropics/claude-code/releases",
+    "discoveryLink": {
+      "tag": "link",
+      "rel": "alternate",
+      "type": "application/atom+xml",
+      "title": "claude-code Release Notes",
+      "href": "https://github.com/anthropics/claude-code/releases.atom",
+      "absoluteUrl": "https://github.com/anthropics/claude-code/releases.atom"
+    },
+    "checkedAt": "2026-10-19T08:57:34.617091+00:00",
+    "status": 200,
+    "bytes": 154110,
+    "itemCount": 10,
+    "notes": [
+      "Public publisher-declared endpoint, independently verified; not an exported AIHOT live configuration.",
+      "Atom uses updated; no published field in release entries. Preserve timestamp semantics."
+    ]
+  }
+]

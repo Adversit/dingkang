@@ -1,0 +1,13 @@
+"""Real Claude API example. Mutations happen only in the workspace you select."""
+import argparse
+from pathlib import Path
+from mini_agent import Agent, build_tools
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--workspace', type=Path, required=True)
+parser.add_argument('--task', required=True)
+args = parser.parse_args()
+args.workspace.mkdir(parents=True, exist_ok=True)
+root = args.workspace.resolve()
+agent = Agent.from_env(build_tools(root), str(root))
+print(agent.run(args.task))

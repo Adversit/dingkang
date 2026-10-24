@@ -1,0 +1,28 @@
+<div class="code-scroll"><pre class="highlight"><code class="language-python">CLEARED = &quot;[Old tool result content cleared]&quot;
+
+
+def microcompact(
+    messages: list[Message],
+    keep_recent_tool_results: int = 3,
+) -&gt; list[Message]:
+    tool_results = [
+        i
+        for i, m in enumerate(messages)
+        if m.kind == &quot;tool_result&quot;
+    ]
+
+    old_indexes = tool_results[:-keep_recent_tool_results]
+
+    compacted = list(messages)
+
+    for index in old_indexes:
+        old = compacted[index]
+
+        compacted[index] = Message(
+            role=old.role,
+            content=CLEARED,
+            kind=old.kind,
+            tool_use_id=old.tool_use_id,
+        )
+
+    return compacted</code></pre></div>

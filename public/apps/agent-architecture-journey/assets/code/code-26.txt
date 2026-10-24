@@ -1,0 +1,592 @@
+# 源码对照：只提取本轮讨论的机制
+
+依据：用户提供的 `src(1).zip`，直接解压读取；不是根据公开文档补写该压缩包的实现。文件检索服务无法解析 zip，因此这里附上从实际字节提取的代码片段、原文件行号和哈希，便于核对。没有根据这份代码确认官方发布版本或来源真伪。
+
+Python 是教学改写，不是将 TypeScript 文件直接剪切后就能运行。沙箱仍使用独立 Node 包的真实 OS 隔离能力。模型 API 示例按 Anthropic Messages 协议编写。
+
+压缩包 SHA-256：`8cd0e0b61ddc5755e2120876ece34f3b24613f1f5f0d97a659962a7282bc8921`
+
+## Read：输入与正常输出
+
+`src/tools/FileReadTool/FileReadTool.ts:227–269`
+
+Python: mini_agent/tools.py 的 Read 定义；file_tools.py 的 read。
+
+```ts
+227: const inputSchema = lazySchema(() =>
+228:   z.strictObject({
+229:     file_path: z.string().describe('The absolute path to the file to read'),
+230:     offset: semanticNumber(z.number().int().nonnegative().optional()).describe(
+231:       'The line number to start reading from. Only provide if the file is too large to read at once',
+232:     ),
+233:     limit: semanticNumber(z.number().int().positive().optional()).describe(
+234:       'The number of lines to read. Only provide if the file is too large to read at once.',
+235:     ),
+236:     pages: z
+237:       .string()
+238:       .optional()
+239:       .describe(
+240:         `Page range for PDF files (e.g., "1-5", "3", "10-20"). Only applicable to PDF files. Maximum ${PDF_MAX_PAGES_PER_READ} pages per request.`,
+241:       ),
+242:   }),
+243: )
+244: type InputSchema = ReturnType<typeof inputSchema>
+245: 
+246: export type Input = z.infer<InputSchema>
+247: 
+248: const outputSchema = lazySchema(() => {
+249:   // Define the media types supported for images
+250:   const imageMediaTypes = z.enum([
+251:     'image/jpeg',
+252:     'image/png',
+253:     'image/gif',
+254:     'image/webp',
+255:   ])
+256: 
+257:   return z.discriminatedUnion('type', [
+258:     z.object({
+259:       type: z.literal('text'),
+260:       file: z.object({
+261:         filePath: z.string().describe('The path to the file that was read'),
+262:         content: z.string().describe('The content of the file'),
+263:         numLines: z
+264:           .number()
+265:           .describe('Number of lines in the returned content'),
+266:         startLine: z.number().describe('The starting line number'),
+267:         totalLines: z.number().describe('Total number of lines in the file'),
+268:       }),
+269:     }),
+```
+
+## Edit：输入是文本匹配，不是行号
+
+`src/tools/FileEditTool/types.ts:5–19`
+
+Python: Edit.input_schema；file_tools.py 的 edit。
+
+```ts
+5: // The input schema with optional replace_all
+6: const inputSchema = lazySchema(() =>
+7:   z.strictObject({
+8:     file_path: z.string().describe('The absolute path to the file to modify'),
+9:     old_string: z.string().describe('The text to replace'),
+10:     new_string: z
+11:       .string()
+12:       .describe(
+13:         'The text to replace it with (must be different from old_string)',
+14:       ),
+15:     replace_all: semanticBoolean(
+16:       z.boolean().default(false).optional(),
+17:     ).describe('Replace all occurrences of old_string (default false)'),
+18:   }),
+19: )
+```
+
+## Edit：先读、修改时间与歧义检查
+
+`src/tools/FileEditTool/FileEditTool.ts:275–340`
+
+Python: snapshots / _check_fresh / matches；Python 增加 SHA-256，不复刻原代码完整比较回退。
+
+```ts
+275:     const readTimestamp = toolUseContext.readFileState.get(fullFilePath)
+276:     if (!readTimestamp || readTimestamp.isPartialView) {
+277:       return {
+278:         result: false,
+279:         behavior: 'ask',
+280:         message:
+281:           'File has not been read yet. Read it first before writing to it.',
+282:         meta: {
+283:           isFilePathAbsolute: String(isAbsolute(file_path)),
+284:         },
+285:         errorCode: 6,
+286:       }
+287:     }
+288: 
+289:     // Check if file exists and get its last modified time
+290:     if (readTimestamp) {
+291:       const lastWriteTime = getFileModificationTime(fullFilePath)
+292:       if (lastWriteTime > readTimestamp.timestamp) {
+293:         // Timestamp indicates modification, but on Windows timestamps can change
+294:         // without content changes (cloud sync, antivirus, etc.). For full reads,
+295:         // compare content as a fallback to avoid false positives.
+296:         const isFullRead =
+297:           readTimestamp.offset === undefined &&
+298:           readTimestamp.limit === undefined
+299:         if (isFullRead && fileContent === readTimestamp.content) {
+300:           // Content unchanged, safe to proceed
+301:         } else {
+302:           return {
+303:             result: false,
+304:             behavior: 'ask',
+305:             message:
+306:               'File has been modified since read, either by the user or by a linter. Read it again before attempting to write it.',
+307:             errorCode: 7,
+308:           }
+309:         }
+310:       }
+311:     }
+312: 
+313:     const file = fileContent
+314: 
+315:     // Use findActualString to handle quote normalization
+316:     const actualOldString = findActualString(file, old_string)
+317:     if (!actualOldString) {
+318:       return {
+319:         result: false,
+320:         behavior: 'ask',
+321:         message: `String to replace not found in file.\nString: ${old_string}`,
+322:         meta: {
+323:           isFilePathAbsolute: String(isAbsolute(file_path)),
+324:         },
+325:         errorCode: 8,
+326:       }
+327:     }
+328: 
+329:     const matches = file.split(actualOldString).length - 1
+330: 
+331:     // Check if we have multiple matches but replace_all is false
+332:     if (matches > 1 && !replace_all) {
+333:       return {
+334:         result: false,
+335:         behavior: 'ask',
+336:         message: `Found ${matches} matches of the string to replace, but replace_all is false. To replace all occurrences, set replace_all to true. To replace only one occurrence, please provide more context to uniquely identify the instance.\nString: ${old_string}`,
+337:         meta: {
+338:           isFilePathAbsolute: String(isAbsolute(file_path)),
+339:           actualOldString,
+340:         },
+```
+
+## Edit：成功后刷新读取状态
+
+`src/tools/FileEditTool/FileEditTool.ts:519–526`
+
+Python: _commit 更新 snapshots。多次不同 Edit 按顺序调用，无批量事务。
+
+```ts
+519:     // 6. Update read timestamp, to invalidate stale writes
+520:     readFileState.set(absoluteFilePath, {
+521:       content: updatedFile,
+522:       timestamp: getFileModificationTime(absoluteFilePath),
+523:       offset: undefined,
+524:       limit: undefined,
+525:     })
+526: 
+```
+
+## Edit：给模型的是成功摘要，不是内部全部字段
+
+`src/tools/FileEditTool/FileEditTool.ts:575–594`
+
+Python: ToolResult.content；本例补充替换次数。
+
+```ts
+575:   mapToolResultToToolResultBlockParam(data: FileEditOutput, toolUseID) {
+576:     const { filePath, userModified, replaceAll } = data
+577:     const modifiedNote = userModified
+578:       ? '.  The user modified your proposed changes before accepting them. '
+579:       : ''
+580: 
+581:     if (replaceAll) {
+582:       return {
+583:         tool_use_id: toolUseID,
+584:         type: 'tool_result',
+585:         content: `The file ${filePath} has been updated${modifiedNote}. All occurrences were successfully replaced.`,
+586:       }
+587:     }
+588: 
+589:     return {
+590:       tool_use_id: toolUseID,
+591:       type: 'tool_result',
+592:       content: `The file ${filePath} has been updated successfully${modifiedNote}.`,
+593:     }
+594:   },
+```
+
+## Write：文件路径与完整内容
+
+`src/tools/FileWriteTool/FileWriteTool.ts:56–66`
+
+Python: Write.input_schema；file_tools.py 的 write。
+
+```ts
+56: const inputSchema = lazySchema(() =>
+57:   z.strictObject({
+58:     file_path: z
+59:       .string()
+60:       .describe(
+61:         'The absolute path to the file to write (must be absolute, not relative)',
+62:       ),
+63:     content: z.string().describe('The content to write to the file'),
+64:   }),
+65: )
+66: type InputSchema = ReturnType<typeof inputSchema>
+```
+
+## Write：已有文件必须先读并检测变动
+
+`src/tools/FileWriteTool/FileWriteTool.ts:184–220`
+
+Python: _check_fresh；额外要求已完整读取才允许整体覆盖。
+
+```ts
+184:     }
+185: 
+186:     const fs = getFsImplementation()
+187:     let fileMtimeMs: number
+188:     try {
+189:       const fileStat = await fs.stat(fullFilePath)
+190:       fileMtimeMs = fileStat.mtimeMs
+191:     } catch (e) {
+192:       if (isENOENT(e)) {
+193:         return { result: true }
+194:       }
+195:       throw e
+196:     }
+197: 
+198:     const readTimestamp = toolUseContext.readFileState.get(fullFilePath)
+199:     if (!readTimestamp || readTimestamp.isPartialView) {
+200:       return {
+201:         result: false,
+202:         message:
+203:           'File has not been read yet. Read it first before writing to it.',
+204:         errorCode: 2,
+205:       }
+206:     }
+207: 
+208:     // Reuse mtime from the stat above — avoids a redundant statSync via
+209:     // getFileModificationTime. The readTimestamp guard above ensures this
+210:     // block is always reached when the file exists.
+211:     const lastWriteTime = Math.floor(fileMtimeMs)
+212:     if (lastWriteTime > readTimestamp.timestamp) {
+213:       return {
+214:         result: false,
+215:         message:
+216:           'File has been modified since read, either by the user or by a linter. Read it again before attempting to write it.',
+217:         errorCode: 3,
+218:       }
+219:     }
+220: 
+```
+
+## Write：不是按起始行号修改
+
+`src/tools/FileWriteTool/FileWriteTool.ts:299–309`
+
+Python: _commit 全量替换文件内容。
+
+```ts
+299: 
+300:     // Write is a full content replacement — the model sent explicit line endings
+301:     // in `content` and meant them. Do not rewrite them. Previously we preserved
+302:     // the old file's line endings (or sampled the repo via ripgrep for new
+303:     // files), which silently corrupted e.g. bash scripts with \r on Linux when
+304:     // overwriting a CRLF file or when binaries in cwd poisoned the repo sample.
+305:     writeTextContent(fullFilePath, content, enc, 'LF')
+306: 
+307:     // Notify LSP servers about file modification (didChange) and save (didSave)
+308:     const lspManager = getLspServerManager()
+309:     if (lspManager) {
+```
+
+## Write：返回给模型的摘要
+
+`src/tools/FileWriteTool/FileWriteTool.ts:418–434`
+
+Python: ToolResult("File created/replaced...")。
+
+```ts
+418:   mapToolResultToToolResultBlockParam({ filePath, type }, toolUseID) {
+419:     switch (type) {
+420:       case 'create':
+421:         return {
+422:           tool_use_id: toolUseID,
+423:           type: 'tool_result',
+424:           content: `File created successfully at: ${filePath}`,
+425:         }
+426:       case 'update':
+427:         return {
+428:           tool_use_id: toolUseID,
+429:           type: 'tool_result',
+430:           content: `The file ${filePath} has been updated successfully.`,
+431:         }
+432:     }
+433:   },
+434: } satisfies ToolDef<InputSchema, Output>)
+```
+
+## Bash：命令与毫秒超时
+
+`src/tools/BashTool/BashTool.tsx:227–231`
+
+Python: Bash.input_schema 中 command/timeout。暂不提供后台模式或危险绕过参数。
+
+```ts
+227: const fullInputSchema = lazySchema(() => z.strictObject({
+228:   command: z.string().describe('The command to execute'),
+229:   timeout: semanticNumber(z.number().optional()).describe(`Optional timeout in milliseconds (max ${getMaxTimeoutMs()})`),
+230:   description: z.string().optional().describe(`Clear, concise description of what this command does in active voice. Never use words like "complex" or "risk" in the description - just describe what it does.
+231: 
+```
+
+## Bash：返回文本与失败标记
+
+`src/tools/BashTool/BashTool.tsx:601–623`
+
+Python: sandbox.py 的 stdout/stderr/exit_code 格式化。
+
+```ts
+601:     let errorMessage = stderr.trim();
+602:     if (interrupted) {
+603:       if (stderr) errorMessage += EOL;
+604:       errorMessage += '<error>Command was aborted before completion</error>';
+605:     }
+606:     let backgroundInfo = '';
+607:     if (backgroundTaskId) {
+608:       const outputPath = getTaskOutputPath(backgroundTaskId);
+609:       if (assistantAutoBackgrounded) {
+610:         backgroundInfo = `Command exceeded the assistant-mode blocking budget (${ASSISTANT_BLOCKING_BUDGET_MS / 1000}s) and was moved to the background with ID: ${backgroundTaskId}. It is still running — you will be notified when it completes. Output is being written to: ${outputPath}. In assistant mode, delegate long-running work to a subagent or use run_in_background to keep this conversation responsive.`;
+611:       } else if (backgroundedByUser) {
+612:         backgroundInfo = `Command was manually backgrounded by user with ID: ${backgroundTaskId}. Output is being written to: ${outputPath}`;
+613:       } else {
+614:         backgroundInfo = `Command running in background with ID: ${backgroundTaskId}. Output is being written to: ${outputPath}`;
+615:       }
+616:     }
+617:     return {
+618:       tool_use_id: toolUseID,
+619:       type: 'tool_result',
+620:       content: [processedStdout, errorMessage, backgroundInfo].filter(Boolean).join('\n'),
+621:       is_error: interrupted
+622:     };
+623:   },
+```
+
+## Bash：非零退出码还可能具有命令语义
+
+`src/tools/BashTool/commandSemantics.ts:1–40`
+
+Python 教学简化：统一将非零退出码标记为错误；保留原 exit code，不伪称完整复刻。
+
+```ts
+1: /**
+2:  * Command semantics configuration for interpreting exit codes in different contexts.
+3:  *
+4:  * Many commands use exit codes to convey information other than just success/failure.
+5:  * For example, grep returns 1 when no matches are found, which is not an error condition.
+6:  */
+7: 
+8: import { splitCommand_DEPRECATED } from '../../utils/bash/commands.js'
+9: 
+10: export type CommandSemantic = (
+11:   exitCode: number,
+12:   stdout: string,
+13:   stderr: string,
+14: ) => {
+15:   isError: boolean
+16:   message?: string
+17: }
+18: 
+19: /**
+20:  * Default semantic: treat only 0 as success, everything else as error
+21:  */
+22: const DEFAULT_SEMANTIC: CommandSemantic = (exitCode, _stdout, _stderr) => ({
+23:   isError: exitCode !== 0,
+24:   message:
+25:     exitCode !== 0 ? `Command failed with exit code ${exitCode}` : undefined,
+26: })
+27: 
+28: /**
+29:  * Command-specific semantics
+30:  */
+31: const COMMAND_SEMANTICS: Map<string, CommandSemantic> = new Map([
+32:   // grep: 0=matches found, 1=no matches, 2+=error
+33:   [
+34:     'grep',
+35:     (exitCode, _stdout, _stderr) => ({
+36:       isError: exitCode >= 2,
+37:       message: exitCode === 1 ? 'No matches found' : undefined,
+38:     }),
+39:   ],
+40: 
+```
+
+## 独立依赖，而非压缩包内实现
+
+`src/utils/sandbox/sandbox-adapter.ts:1–24`
+
+Node: sandbox_bridge.mjs import @anthropic-ai/sandbox-runtime；不重新实现操作系统隔离。
+
+```ts
+1: /**
+2:  * Adapter layer that wraps @anthropic-ai/sandbox-runtime with Claude CLI-specific integrations.
+3:  * This file provides the bridge between the external sandbox-runtime package and Claude CLI's
+4:  * settings system, tool integration, and additional features.
+5:  */
+6: 
+7: import type {
+8:   FsReadRestrictionConfig,
+9:   FsWriteRestrictionConfig,
+10:   IgnoreViolationsConfig,
+11:   NetworkHostPattern,
+12:   NetworkRestrictionConfig,
+13:   SandboxAskCallback,
+14:   SandboxDependencyCheck,
+15:   SandboxRuntimeConfig,
+16:   SandboxViolationEvent,
+17: } from '@anthropic-ai/sandbox-runtime'
+18: import {
+19:   SandboxManager as BaseSandboxManager,
+20:   SandboxRuntimeConfigSchema,
+21:   SandboxViolationStore,
+22: } from '@anthropic-ai/sandbox-runtime'
+23: import { rmSync, statSync } from 'fs'
+24: import { readFile } from 'fs/promises'
+```
+
+## 沙箱包装与初始化
+
+`src/utils/sandbox/sandbox-adapter.ts:704–749`
+
+Node: initialize → wrapWithSandbox。本例逐次命令初始化，而非原应用完整会话级缓存。
+
+```ts
+704: async function wrapWithSandbox(
+705:   command: string,
+706:   binShell?: string,
+707:   customConfig?: Partial<SandboxRuntimeConfig>,
+708:   abortSignal?: AbortSignal,
+709: ): Promise<string> {
+710:   // If sandboxing is enabled, ensure initialization is complete
+711:   if (isSandboxingEnabled()) {
+712:     if (initializationPromise) {
+713:       await initializationPromise
+714:     } else {
+715:       throw new Error('Sandbox failed to initialize. ')
+716:     }
+717:   }
+718: 
+719:   return BaseSandboxManager.wrapWithSandbox(
+720:     command,
+721:     binShell,
+722:     customConfig,
+723:     abortSignal,
+724:   )
+725: }
+726: 
+727: /**
+728:  * Initialize sandbox with log monitoring enabled by default
+729:  */
+730: async function initialize(
+731:   sandboxAskCallback?: SandboxAskCallback,
+732: ): Promise<void> {
+733:   // If already initializing or initialized, return the promise
+734:   if (initializationPromise) {
+735:     return initializationPromise
+736:   }
+737: 
+738:   // Check if sandboxing is enabled in settings
+739:   if (!isSandboxingEnabled()) {
+740:     return
+741:   }
+742: 
+743:   // Wrap the callback to enforce allowManagedDomainsOnly policy.
+744:   // This ensures all code paths (REPL, print/SDK) are covered.
+745:   const wrappedCallback: SandboxAskCallback | undefined = sandboxAskCallback
+746:     ? async (hostPattern: NetworkHostPattern) => {
+747:         if (shouldAllowManagedSandboxDomainsOnly()) {
+748:           logForDebugging(
+749:             `[sandbox] Blocked network request to ${hostPattern.host} (allowManagedDomainsOnly)`,
+```
+
+## 原代码委托 runtime 初始化
+
+`src/utils/sandbox/sandbox-adapter.ts:768–775`
+
+Node: await manager.initialize(config)。
+
+```ts
+768: 
+769:       const settings = getSettings_DEPRECATED()
+770:       const runtimeConfig = convertToSandboxRuntimeConfig(settings)
+771: 
+772:       // Log monitor is automatically enabled for macOS
+773:       await BaseSandboxManager.initialize(runtimeConfig, wrappedCallback)
+774: 
+775:       // Subscribe to settings changes to update sandbox config dynamically
+```
+
+## 进程创建前进行包装
+
+`src/utils/Shell.ts:259–266`
+
+Node: wrapped=await manager.wrapWithSandbox；再 spawn 包装结果。
+
+```ts
+259:   if (shouldUseSandbox) {
+260:     commandString = await SandboxManager.wrapWithSandbox(
+261:       commandString,
+262:       sandboxBinShell,
+263:       undefined,
+264:       abortSignal,
+265:     )
+266:     // Create sandbox temp directory for sandboxed processes with secure permissions
+```
+
+## 命令完成后清理
+
+`src/utils/Shell.ts:385–393`
+
+Node: finally cleanupAfterCommand。
+
+```ts
+385:     void shellCommand.result.then(async result => {
+386:       // On Linux, bwrap creates 0-byte mount-point files on the host to deny
+387:       // writes to non-existent paths (.bashrc, HEAD, etc.). These persist after
+388:       // bwrap exits as ghost dotfiles in cwd. Cleanup is synchronous and a no-op
+389:       // on macOS. Keep before any await so callers awaiting .result see a clean
+390:       // working tree in the same microtask.
+391:       if (shouldUseSandbox) {
+392:         SandboxManager.cleanupAfterCommand()
+393:       }
+```
+
+## 生命周期结束 reset
+
+`src/utils/sandbox/sandbox-adapter.ts:808–822`
+
+Node: finally await manager.reset。
+
+```ts
+808: async function reset(): Promise<void> {
+809:   // Clean up settings subscription
+810:   settingsSubscriptionCleanup?.()
+811:   settingsSubscriptionCleanup = undefined
+812:   worktreeMainRepoPath = undefined
+813:   bareGitRepoScrubPaths.length = 0
+814: 
+815:   // Clear memoized caches
+816:   checkDependencies.cache.clear?.()
+817:   isSupportedPlatform.cache.clear?.()
+818:   initializationPromise = undefined
+819: 
+820:   // Reset the base sandbox manager
+821:   return BaseSandboxManager.reset()
+822: }
+```
+
+## 刻意没有搬过来的功能
+
+Hooks、LSP 通知、遥测、用户批准 UI、文件历史、字符串容错匹配、后台任务、持久 Shell、PDF/图片、网络重试、完整权限引擎，不在这一版中。
+
+## 官方接口参考（用于依赖和协议，而非替代附件源码）
+
+- Sandbox Runtime 官方 README：https://github.com/anthropics/sandbox-runtime
+- Claude Code 沙箱说明：https://code.claude.com/docs/en/sandboxing
+- 工具结果协议：https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls
+- Python Messages API：https://platform.claude.com/docs/en/api/python/messages/create
+
+查阅日期：2026-09-28。运行环境无法连接 npm 注册表，因此没有确认或安装可用的最新 runtime 版本，未生成伪造的 package-lock。首次安装后应固定实际版本并保存 lock 文件。
+
+## 版本边界
+
+2026-09-28 查阅的在线 Tools reference 已描述某些新版本放宽“先读/文件变动”的条件；与本压缩包的严格校验片段不完全相同。本教学版按本轮讨论和附件快照保留严格先读、拒绝陈旧写入，不声称对应当前发布版的全部行为。

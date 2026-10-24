@@ -1,0 +1,40 @@
+"""No model/API key required. Actual tool calls, not simulated LLM intelligence."""
+import argparse
+import json
+import tempfile
+from pathlib import Path
+from mini_agent import build_tools
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--bash', action='store_true', help='Also invoke the REAL sandbox backend')
+    args = parser.parse_args()
+    with tempfile.TemporaryDirectory(prefix='agent-learning-') as tmp:
+        workspace = Path(tmp)
+        tools = build_tools(workspace)
+        file = str(workspace / 'hello.py')
+        calls = [
+            ('Write', {'file_path': file, 'content': 'name = "world"\nprint(f"Hello, {name}")\n'}),
+            ('Read', {'file_path': file, 'offset': 1, 'limit': 10}),
+            ('Edit', {'file_path': file, 'old_string': 'name = "world"', 'new_string': 'name = "Agent"'}),
+            ('Edit', {'file_path': file, 'old_string': 'Hello,', 'new_string': 'Hi,'}),
+            ('Read', {'file_path': file}),
+        ]
+        if args.bash:
+            calls.append(('Bash', {'command': 'python3 hello.py', 'timeout': 10000}))
+        for i, (name, arguments) in enumerate(calls, 1):
+            print(json.dumps({'type': 'tool_use', 'id': f'toolu_demo_{i}',
+                              'name': name, 'input': arguments}, ensure_ascii=False, indent=2))
+            print(json.dumps(tools.execute(name, arguments).to_block(f'toolu_demo_{i}'),
+                             ensure_ascii=False, indent=2))
+        # Demonstrate an external edit: the stale Edit must refuse to overwrite it.
+        tools.execute('Read', {'file_path': file})
+        Path(file).write_text('print("changed by someone else")\n', encoding='utf-8')
+        result = tools.execute('Edit', {'file_path': file, 'old_string': 'Hi,', 'new_string': 'Hey,'})
+        print('\nStale-read example:')
+        print(json.dumps(result.to_block('toolu_stale'), ensure_ascii=False, indent=2))
+
+
+if __name__ == '__main__':
+    main()

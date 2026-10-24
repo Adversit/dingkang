@@ -1,0 +1,48 @@
+YourWar · 你的战争 — Asset credits and licenses
+
+Game code, formation rules, terrain arrangement, effects and UI: original work created for this project. YourWar is an independent game and is not affiliated with Landfall or Totally Accurate Battle Simulator. No TABS assets, music, logos or source code are used.
+
+3D CHARACTER MODELS
+KayKit Character Pack: Adventurers 1.0 — Kay Lousberg / KayKit
+Source: https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0
+License: Creative Commons CC0 1.0 Universal
+Files: models/Knight.glb, models/Mage.glb, models/Barbarian.glb, models/Rogue_Hooded.glb
+Modifications: animation library reduced to 14 relevant clips; unused binary ranges removed; runtime accessory visibility and team-color capes; custom spear and bomb geometry. Models remain fully volumetric, textured and skeletal animated.
+Full bundled license: models/KAYKIT-LICENSE.txt
+
+MUSIC
+“Battle Theme A” — cynicmusic
+Source: https://opengameart.org/content/battle-theme-a
+Original download: https://opengameart.org/sites/default/files/battleThemeA.mp3
+License: CC0 1.0
+File: audio/battle.mp3
+Modification: transcoded to 80 kbps MP3, 32 kHz for web delivery; looped during combat.
+
+“Medieval Fair Loop” — Woli34
+Source: https://opengameart.org/content/medieval-fair-loop
+License: CC0 1.0
+File: audio/menu.ogg
+Used as deployment/menu background music.
+
+SOUND EFFECTS
+Kenney Impact Sounds — Kenney
+Source: https://kenney.nl/assets/impact-sounds
+License: CC0 1.0
+Files: audio/impactMetal_medium_00[0-2].ogg, impactPunch_heavy_00[0-2].ogg,
+impactWood_medium_00[0-2].ogg, impactSoft_heavy_00[0-2].ogg
+Full bundled license: audio/KENNEY-LICENSE.txt
+Usage: randomized sample variation, moderate pitch variation and a global trigger cap to avoid repetitive high-frequency tones.
+
+ENGINE
+Three.js r186 — Three.js authors
+Source: https://github.com/mrdoob/three.js
+License: MIT; full text at vendor/THREE-LICENSE.txt
+Includes GLTFLoader, SkeletonUtils, and BufferGeometryUtils.
+
+FONTS
+Noto Sans SC — Google / Adobe; SIL Open Font License 1.1
+Barlow Condensed — Jeremy Tribby; SIL Open Font License 1.1
+Served optionally by Google Fonts; system fonts are always available as fallback.
+
+License reference: https://creativecommons.org/publicdomain/zero/1.0/
+Sources verified 2026-10-02. CC0 attribution is not mandatory, but authors and origins are retained here for transparency.

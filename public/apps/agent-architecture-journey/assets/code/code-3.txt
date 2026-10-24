@@ -1,0 +1,10 @@
+{
+  "type": "tool_use",
+  "id": "toolu_read_001",
+  "name": "Read",
+  "input": {
+    "file_path": "/workspace/notes.txt",
+    "offset": 1,
+    "limit": 2
+  }
+}

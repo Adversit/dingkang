@@ -12,7 +12,7 @@
 
 </div>
 
-[![暖居小镇：可拖动、可点击的 Three.js 三维岛屿](docs/screenshots/cozy.webp)](https://dingkang-hub.dingikang.chatgpt.site/?style=cozy)
+[![暖居小镇：暖阳海岛与可进入的小屋](docs/screenshots/cozy.webp)](https://dingkang-hub.dingikang.chatgpt.site/?style=cozy)
 
 这是一个把独立站点整合为个人工作空间的完整项目。信息雷达、论文研究、产品开发、日常陪伴与七段游戏旅程，共用一个入口、一套账号与一组存储资源。各模块保留自己的功能与界面，可以搜索、收藏、继续最近使用的应用，也可以在数据中心管理文件和存档。
 
@@ -28,9 +28,28 @@
 | 灵感轨道 · `kinetic` | 暖居小镇 · `cozy` |
 |---|---|
 | [![灵感轨道实际截图](docs/screenshots/kinetic.webp)](https://dingkang-hub.dingikang.chatgpt.site/?style=kinetic) | [![暖居小镇实际截图](docs/screenshots/cozy.webp)](https://dingkang-hub.dingikang.chatgpt.site/?style=cozy) |
-| 流动轨道与交互入口，让研究、创造和生活相遇。 | Three.js 实时渲染的三维小岛；拖动观察，点击建筑进入应用分类。 |
+| 流动轨道与交互入口，让研究、创造和生活相遇。 | 暖阳海岛、细腻小屋与风云水光；选中建筑，进入房间，触碰物件打开应用。 |
 
-四种外观可以直接切换，已打开的应用保持挂载，游戏与工作内容不因换主题而重载。场景尊重系统的减少动效设置，在页面隐藏或打开应用时暂停背景渲染。暖居小镇包含真实三维模型、相机控制与射线拾取；无 WebGL 时保留可操作的页面入口。
+四种外观可以直接切换，已打开的应用保持挂载，游戏与工作内容不因换主题而重载。暖居采用**高精度烘焙美术与实时 WebGL 局部动态结合的固定视角 2.5D 场景**：保留木纹、石材、玻璃和织物的细节，让海水、薄云、微风与灯光在各自区域轻轻变化。镜头提供有限视差与横向观察，不提供任意角度自由漫游。环境音默认关闭，由用户主动开启；页面隐藏或离开场景时暂停声音与动态，动效遵循系统减少动效设置。WebGL 不可用时仍可从辅助清单使用应用。
+
+## 把应用，安放进房间里
+
+[![冒险收藏室环境美术：墙画、玻璃花园、沙盘与邮船](public/assets/hub/cozy/rooms/games-v2.webp)](https://dingkang-hub.dingikang.chatgpt.site/?style=cozy)
+
+上图为游戏中使用的室内环境美术；海岛与四种外观展示使用实际页面截图。选中轮廓、物件标签与动态效果请在站点中体验。
+
+推开研习书屋的门，知流是窗边的星象仪，知证是桌上的研究手稿，Agent 架构学习成为墙上的架构图。走进冒险收藏室，精灵玻璃花园、战争沙盘、邮船和山水卷轴各自通向一段游戏旅程。
+
+| 房间 | 应用物件 | 空间里的入口 |
+|---|---:|---|
+| 研习书屋 | 3 | 星象仪、研究手稿、架构图 |
+| 造物工坊 | 3 | 灵感画架、演进齿轮、开发工作台 |
+| 日常小屋 | 2 | 晚灯、钥匙架 |
+| 冒险收藏室 | 7 | 风景画、玻璃花园、街机、沙盘、邮船、卷轴、将旗 |
+
+先在岛上选中建筑，查看暖金轮廓与房间名称，再确认进入。房间内的墙画、玻璃花园、落地灯和桌上手稿都按实际画面标注点击范围，悬停可辨认对应应用。窄屏可横向观察并聚焦物件，也可直接使用“房间物件”清单；“列表与搜索”默认收起，需要时再展开。退出应用仍先等待存档保存，成功后回到本次会话中的原房间；刷新页面回到基地总览。
+
+所有物件调用同一个应用打开流程，继续使用同一套账号、API 和存档。完整物件对应关系与控制说明见 [暖居海岛与房间](docs/cozy-base.md)。室内素材使用内置图像生成工具制作，后续美术沿用 [场景美术规范](docs/design/cozy-art-direction.md) 与 [实际生成提示词](docs/design/cozy-room-art-prompts.md)。
 
 ## 应用目录
 
@@ -76,7 +95,7 @@ flowchart TB
 | 应用目录与分类 | [`lib/hub/catalog.ts`](lib/hub/catalog.ts) |
 | 主题定义、URL 与场景接口 | [`lib/hub/theme.ts`](lib/hub/theme.ts) |
 | 导航、收藏、导入与账号状态 | [`app/page.tsx`](app/page.tsx) |
-| 三维小镇与动态场景 | [`components/`](components/) · [`lib/hub/cozy-scene.ts`](lib/hub/cozy-scene.ts) |
+| 暖居场景、房间热点与局部动态 | [`components/`](components/) · [`lib/hub/cozy-scene.ts`](lib/hub/cozy-scene.ts) · [`lib/hub/cozy-room-art.ts`](lib/hub/cozy-room-art.ts) · [`lib/hub/cozy-atmosphere.ts`](lib/hub/cozy-atmosphere.ts) |
 | 云存档桥与模块启动等待 | [`public/hub-storage.js`](public/hub-storage.js) · [`components/ModuleStorageGate.tsx`](components/ModuleStorageGate.tsx) |
 | 保存状态、冲突与本机恢复副本 | [`components/HubStoragePanel.tsx`](components/HubStoragePanel.tsx) |
 | 统一 API 与版本检查 | [`lib/hub/server.ts`](lib/hub/server.ts) · [`app/api/hub/`](app/api/hub/) |
@@ -110,6 +129,8 @@ pnpm install --frozen-lockfile
 pnpm run build
 ```
 
+大体积静态资源随仓库保存在 `asset-pack/`：14 份不同资源还原到 15 个应用路径，共用素材复用同一套分片。`dev` 和 `build` 会离线校验、自动还原，不需要外部下载；也可运行 `pnpm assets:restore`。已有资源如被手动修改，还原会停止并保留修改。确认要更新资源时，运行 `pnpm assets:pack`，将新的 manifest 与分片一并提交；原始大文件保持忽略。`start` 直接使用已构建的 `dist`。
+
 首次本地运行需初始化 D1。构建会生成 `dist/server/wrangler.json`；对全新的本地数据库执行：
 
 ```sh
@@ -137,7 +158,7 @@ node --test tests/*.test.mjs lib/hub/*.test.mjs
 pnpm run build
 ```
 
-当前整合版本完成了 94 项共享与集成测试、TypeScript 检查和生产构建。人工验收覆盖四种外观的桌面与 375px 移动布局、侧栏、场景动效开关、三维场景拾取，以及应用打开期间切换主题不重载。具体模块还保留各自的测试文件；这不是自动 CI 状态徽章，后续改动仍需重新运行相关检查。
+共享测试覆盖身份、存档、版本冲突、备份导入、主题导航及房间返回；场景验证还需核对 15 个物件热点与目录的一一对应、资源路径和拾取范围。发布时另行检查四种外观的桌面与 375px 移动布局、建筑选中与进入、物件实际点击、窄屏观察、音效开关，以及应用打开期间切换主题不重载。具体模块保留各自的测试文件；静态数据和几何检查不能替代实际浏览器验收。新版场景的上线结论以部署结果与浏览器验收为准。
 
 生产部署使用 Sites 的源码发布流程：
 
@@ -158,6 +179,7 @@ pnpm run build
 | `modules/` | 各应用保留的业务源码、结构与模块测试 |
 | `public/apps/` | 静态应用及游戏入口 |
 | `public/assets/` | 按模块划分的图片、字体、音频与样式 |
+| `asset-pack/` | 大资源的离线分片与 SHA-256 校验清单 |
 | `db/`、`drizzle/` | 汇总数据库结构与版本化迁移 |
 | `tests/` | 存档、备份导入、主题和集成测试 |
 | `worker/`、`scripts/` | Worker 入口和开发、构建工具 |
@@ -169,6 +191,9 @@ pnpm run build
 
 - [统一站点与存储说明](docs/unification.md)
 - [统一存储 API](lib/hub/README.md)
+- [暖居海岛、房间与应用物件](docs/cozy-base.md)
+- [场景美术规范与提示词模板](docs/design/cozy-art-direction.md) · [室内实际生成提示词](docs/design/cozy-room-art-prompts.md)
+- [本轮验证记录与待复核项](docs/verification-2026-10-24.md)
 - [存档面板与离开保护](docs/storage-panel.md)
 - [迁移流程与验收](docs/migration-2026-10-23.md) · [游戏存档兼容](docs/game-migration.md)
 - [研究模块](docs/research-migration.md) · [产品模块](docs/product-migration.md) · [生活与学习模块](docs/personal-migration.md)

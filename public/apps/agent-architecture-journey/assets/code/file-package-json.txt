@@ -1,0 +1,7 @@
+{
+  "name": "agent-tools-learning-sandbox-bridge",
+  "private": true,
+  "type": "module",
+  "engines": {"node": ">=20"},
+  "dependencies": {"@anthropic-ai/sandbox-runtime": "latest"}
+}

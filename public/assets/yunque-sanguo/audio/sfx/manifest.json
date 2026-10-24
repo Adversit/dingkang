@@ -1,0 +1,210 @@
+[
+  {
+    "id": "sword-swing",
+    "description": "Recorded quick blade movement",
+    "duration": 0.58,
+    "sources": [
+      {
+        "author": "Kenney",
+        "source": "https://kenney.nl/assets/rpg-audio",
+        "license": "CC0-1.0"
+      }
+    ],
+    "license": "CC0-1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "attributionRequired": false,
+    "file": "sword-swing.mp3",
+    "bytes": 7880,
+    "truePeakDbfs": "-3.83",
+    "integratedLufs": "-15.65",
+    "decodeValid": true
+  },
+  {
+    "id": "sword-clash",
+    "description": "Recorded sword/knife metal collision",
+    "duration": 0.48,
+    "sources": [
+      {
+        "author": "Vehicle / Jan Schupke",
+        "source": "https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library",
+        "license": "CC0-1.0"
+      }
+    ],
+    "license": "CC0-1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "attributionRequired": false,
+    "file": "sword-clash.mp3",
+    "bytes": 6626,
+    "truePeakDbfs": "-3.18",
+    "integratedLufs": "-22.55",
+    "decodeValid": true
+  },
+  {
+    "id": "spear-whoosh",
+    "description": "Slower heavier weapon whoosh; pitched to 82%",
+    "duration": 0.693651,
+    "sources": [
+      {
+        "author": "Kenney",
+        "source": "https://kenney.nl/assets/rpg-audio",
+        "license": "CC0-1.0"
+      }
+    ],
+    "license": "CC0-1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "attributionRequired": false,
+    "file": "spear-whoosh.mp3",
+    "bytes": 9134,
+    "truePeakDbfs": "-2.94",
+    "integratedLufs": "-15.57",
+    "decodeValid": true
+  },
+  {
+    "id": "bow-release",
+    "description": "Second real bow shot selected; no laser",
+    "duration": 0.3,
+    "sources": [
+      {
+        "author": "Joseph SARDIN",
+        "source": "https://bigsoundbank.com/archery-s0549.html",
+        "license": "CC0-1.0"
+      }
+    ],
+    "license": "CC0-1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "attributionRequired": false,
+    "file": "bow-release.mp3",
+    "bytes": 4432,
+    "truePeakDbfs": "-3.47",
+    "integratedLufs": "-inf",
+    "decodeValid": true
+  },
+  {
+    "id": "arrow-hit",
+    "description": "Third real arrow impact into straw selected",
+    "duration": 0.38,
+    "sources": [
+      {
+        "author": "Joseph SARDIN",
+        "source": "https://bigsoundbank.com/an-arrow-on-a-target-s0548.html",
+        "license": "CC0-1.0"
+      }
+    ],
+    "license": "CC0-1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "attributionRequired": false,
+    "file": "arrow-hit.mp3",
+    "bytes": 5373,
+    "truePeakDbfs": "-2.57",
+    "integratedLufs": "-inf",
+    "decodeValid": true
+  },
+  {
+    "id": "heavy-hit",
+    "description": "Layered heavy body punch and lowered wood impact",
+    "duration": 0.47381,
+    "sources": [
+      {
+        "author": "Kenney",
+        "source": "https://kenney.nl/assets/impact-sounds",
+        "license": "CC0-1.0"
+      }
+    ],
+    "license": "CC0-1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "attributionRequired": false,
+    "file": "heavy-hit.mp3",
+    "bytes": 6626,
+    "truePeakDbfs": "-3.53",
+    "integratedLufs": "-17.55",
+    "decodeValid": true
+  },
+  {
+    "id": "magic-cast",
+    "description": "Reversed fireball swell as spell charge, pitch +12%",
+    "duration": 0.982154,
+    "sources": [
+      {
+        "author": "Julien Matthey",
+        "source": "https://freesound.org/people/Julien_Matthey/sounds/105016/",
+        "mirror": "https://opengameart.org/content/fireball-1",
+        "license": "CC0-1.0"
+      }
+    ],
+    "license": "CC0-1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "attributionRequired": false,
+    "file": "magic-cast.mp3",
+    "bytes": 12582,
+    "truePeakDbfs": "-3.27",
+    "integratedLufs": "-15.28",
+    "decodeValid": true
+  },
+  {
+    "id": "magic-impact",
+    "description": "Fireball impact with original texture; trimmed silence",
+    "duration": 1.72,
+    "sources": [
+      {
+        "author": "Julien Matthey",
+        "source": "https://freesound.org/people/Julien_Matthey/sounds/105016/",
+        "mirror": "https://opengameart.org/content/fireball-1",
+        "license": "CC0-1.0"
+      }
+    ],
+    "license": "CC0-1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "attributionRequired": false,
+    "file": "magic-impact.mp3",
+    "bytes": 21359,
+    "truePeakDbfs": "-3.20",
+    "integratedLufs": "-15.67",
+    "decodeValid": true
+  },
+  {
+    "id": "heal",
+    "description": "Fantasy restorative spell phrase; reserved for healing, never UI click",
+    "duration": 1.82,
+    "sources": [
+      {
+        "author": "JaggedStone",
+        "source": "https://opengameart.org/content/magic-spell-sfx",
+        "license": "CC0-1.0"
+      }
+    ],
+    "license": "CC0-1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "attributionRequired": false,
+    "file": "heal.mp3",
+    "bytes": 22613,
+    "truePeakDbfs": "-3.08",
+    "integratedLufs": "-13.10",
+    "decodeValid": true
+  },
+  {
+    "id": "ultimate",
+    "description": "Lowered fireball plus delayed heavy body hit and short echo; cinematic ultimate",
+    "duration": 2.608889,
+    "sources": [
+      {
+        "author": "Julien Matthey",
+        "source": "https://freesound.org/people/Julien_Matthey/sounds/105016/",
+        "mirror": "https://opengameart.org/content/fireball-1",
+        "license": "CC0-1.0"
+      },
+      {
+        "author": "Kenney",
+        "source": "https://kenney.nl/assets/impact-sounds",
+        "license": "CC0-1.0"
+      }
+    ],
+    "license": "CC0-1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "attributionRequired": false,
+    "file": "ultimate.mp3",
+    "bytes": 32017,
+    "truePeakDbfs": "-3.77",
+    "integratedLufs": "-16.32",
+    "decodeValid": true
+  }
+]

@@ -1,0 +1,28 @@
+<div class="code-scroll"><pre class="highlight"><code class="language-python">def compact_history(
+    messages: list[Message],
+    summarize_fn: Callable[[str], str],
+    keep_recent: int = 8,
+) -&gt; list[Message]:
+    if len(messages) &lt;= keep_recent:
+        return messages
+
+    old_messages = messages[:-keep_recent]
+    recent_messages = messages[-keep_recent:]
+
+    old_text = &quot;\n&quot;.join(
+        f&quot;{m.role}: {m.content}&quot;
+        for m in old_messages
+    )
+
+    summary = summarize_fn(old_text)
+
+    compact_message = Message(
+        role=&quot;user&quot;,
+        kind=&quot;compact_summary&quot;,
+        content=(
+            &quot;Context from earlier work:\n&quot;
+            f&quot;{summary}&quot;
+        ),
+    )
+
+    return [compact_message, *recent_messages]</code></pre></div>

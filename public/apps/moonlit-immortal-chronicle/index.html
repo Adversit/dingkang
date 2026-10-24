@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="dark" />
+<title>月下问仙录 · 文字修仙模拟器</title>
+<link rel="icon" href="/assets/moonlit-immortal-chronicle/favicon.svg" />
+<link rel="stylesheet" href="/assets/moonlit-immortal-chronicle/style.css" />
+<script src="/hub-storage.js" data-module="moonlit-immortal-chronicle"></script>
+</head>
+<body>
+  <div class="grain"></div>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">月</span><div><strong>月下问仙录</strong><small>一卷山海，一生仙途</small></div></div>
+      <div class="top-meta"><span id="date-label">太初历 · 春</span><span class="top-sep"></span><span id="weather-label">云深月明</span></div>
+      <button id="save-status" data-action="settings" class="save-indicator" aria-live="polite">正在连接云端…</button>
+      <button id="settings-open" class="icon-button" aria-label="打开设置" title="设置">⚙</button>
+    </header>
+    <div class="layout">
+      <aside class="left panel">
+        <div class="rail-title">修 / 行 / 者</div>
+        <div class="avatar"><div class="avatar-glyph">道</div><span class="avatar-orbit"></span></div>
+        <div class="identity"><div class="eyebrow">执镜人</div><h2 id="player-name">无名</h2><p id="realm-label">炼气 · 一层</p></div>
+        <div class="exp-wrap"><div class="exp-head"><span>修为</span><span id="exp-text">0 / 100</span></div><div class="progress"><i id="exp-bar"></i></div></div>
+        <div class="resource-grid">
+          <div><span>灵石</span><strong id="stone">0</strong></div><div><span>灵草</span><strong id="herb">0</strong></div>
+          <div><span>丹药</span><strong id="pill">0</strong></div><div><span>神识</span><strong id="energy">0</strong></div>
+        </div>
+        <div class="traits"><div><span>道心</span><b id="heart">0</b></div><div><span>因果</span><b id="karma">0</b></div><div><span>寿元</span><b id="life">0</b></div></div>
+        <div class="sect-card"><span class="eyebrow">所属仙门</span><strong id="sect-name">散修 · 自在天地间</strong><p id="sect-desc">山野有道，无拘无束。</p></div>
+        <div class="rail-footer">照夜残镜 <span>·</span> 自动记下你的仙途</div>
+      </aside>
+      <main class="main">
+        <div class="scene">
+          <div class="scene-art"></div><div class="scene-shade"></div>
+          <div class="scene-top"><span class="chapter" id="chapter">卷一 · 镜中月</span><span class="scene-tag" id="location">青崖 · 望月台</span></div>
+          <div class="scene-bottom"><span class="tiny-rule"></span><h1 id="scene-title">月下拾镜</h1><p id="scene-subtitle">山门之外，风把旧时代的名字吹入云海。</p></div>
+        </div>
+        <div class="main-body">
+          <div id="journey-guide" class="journey-guide"></div>
+          <nav class="tabs" aria-label="游戏区域"><button data-tab="story" class="active">山海纪事</button><button data-tab="practice">修行洞府</button><button data-tab="alchemy">丹房与行囊</button><button data-tab="disciples">师徒传承</button><button data-tab="chronicle">仙途手札</button></nav>
+          <section id="story-panel" class="tab-panel"></section>
+          <section id="practice-panel" class="tab-panel hidden"></section>
+          <section id="alchemy-panel" class="tab-panel hidden"></section>
+          <section id="disciples-panel" class="tab-panel hidden"></section>
+          <section id="chronicle-panel" class="tab-panel hidden"></section>
+        </div>
+      </main>
+      <aside class="right panel">
+        <div class="side-heading"><span>天机一瞥</span><i></i></div>
+        <div class="oracle"><div class="oracle-symbol">☾</div><p id="oracle-text">残镜未醒，万事仍可改写。</p></div>
+        <div class="side-heading"><span>当前路标</span><i></i></div>
+        <div id="objectives" class="objectives"></div>
+        <div class="side-heading"><span>近日因缘</span><i></i></div>
+        <div id="recent-log" class="recent-log"></div>
+        <button class="travel-button" id="explore-button"><span>踏入山海</span><small>消耗 1 神识 · 遭逢一段奇遇</small></button>
+      </aside>
+    </div>
+    <footer class="bottom-bar"><span>「大道五十，天衍四九。遁去其一，是你。」</span><span>单人文字修仙 · 登录后可同步仙途</span></footer>
+  </div>
+  <div id="modal-backdrop" class="modal-backdrop hidden"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><button id="modal-close" class="modal-close" aria-label="关闭">×</button><span class="eyebrow">照夜残镜 · 卷外</span><h2 id="modal-title">行卷设置</h2><div id="modal-content"></div></div></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  
+<script type="module">
+  if (!window.HubStorage) {
+    document.getElementById('save-status').textContent = '存档服务加载未完成，请刷新重试';
+    throw new Error('HubStorage bridge unavailable');
+  }
+  try { await window.HubStorage.ready; }
+  catch { /* The installed bridge retains device data while offline. */ }
+  const game = document.createElement('script');
+  game.src = '/assets/moonlit-immortal-chronicle/game.js';
+  game.onerror = () => { document.getElementById('save-status').textContent = '游戏加载未完成，请刷新重试'; };
+  document.body.appendChild(game);
+</script>
+</body>
+</html>

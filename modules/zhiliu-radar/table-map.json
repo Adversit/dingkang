@@ -1,0 +1,15 @@
+{
+  "sources": "zhiliu_radar__sources",
+  "items": "zhiliu_radar__items",
+  "item_sources": "zhiliu_radar__item_sources",
+  "events": "zhiliu_radar__events",
+  "item_event_links": "zhiliu_radar__item_event_links",
+  "reading_feedback": "zhiliu_radar__reading_feedback",
+  "user_preferences": "zhiliu_radar__user_preferences",
+  "digests": "zhiliu_radar__digests",
+  "ingestion_runs": "zhiliu_radar__ingestion_runs",
+  "operation_locks": "zhiliu_radar__operation_locks",
+  "idempotency": "zhiliu_radar__idempotency",
+  "site_settings": "zhiliu_radar__site_settings",
+  "model_outputs": "zhiliu_radar__model_outputs"
+}

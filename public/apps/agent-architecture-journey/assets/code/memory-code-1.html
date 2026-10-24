@@ -1,0 +1,43 @@
+<div class="code-scroll"><pre class="highlight"><code class="language-python">from __future__ import annotations
+
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Callable
+import json
+
+
+@dataclass
+class Message:
+    role: str
+    content: str
+    kind: str = &quot;text&quot;
+    tool_use_id: str | None = None
+
+
+@dataclass
+class SessionMemory:
+    current_task: str = &quot;&quot;
+    key_files: list[str] = field(default_factory=list)
+    errors_and_fixes: list[str] = field(default_factory=list)
+    key_results: list[str] = field(default_factory=list)
+    next_step: str = &quot;&quot;
+
+    def render(self) -&gt; str:
+        return f&quot;&quot;&quot;
+# Session Memory
+
+## Current Task
+{self.current_task}
+
+## Key Files
+{chr(10).join(f&quot;- {x}&quot; for x in self.key_files)}
+
+## Errors &amp; Fixes
+{chr(10).join(f&quot;- {x}&quot; for x in self.errors_and_fixes)}
+
+## Key Results
+{chr(10).join(f&quot;- {x}&quot; for x in self.key_results)}
+
+## Next Step
+{self.next_step}
+&quot;&quot;&quot;.strip()</code></pre></div>

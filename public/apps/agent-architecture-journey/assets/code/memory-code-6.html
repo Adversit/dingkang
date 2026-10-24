@@ -1,0 +1,28 @@
+<div class="code-scroll"><pre class="highlight"><code class="language-python">@dataclass
+class MemoryController:
+    minimum_tokens_to_init: int = 10_000
+    minimum_tokens_between_update: int = 5_000
+    tool_calls_between_updates: int = 3
+
+    initialized: bool = False
+    tokens_at_last_update: int = 0
+    tool_calls_since_update: int = 0
+
+    def should_update(self, current_tokens: int) -&gt; bool:
+        if not self.initialized:
+            return current_tokens &gt;= self.minimum_tokens_to_init
+
+        token_growth = (
+            current_tokens - self.tokens_at_last_update
+        )
+
+        return (
+            token_growth &gt;= self.minimum_tokens_between_update
+            or self.tool_calls_since_update
+            &gt;= self.tool_calls_between_updates
+        )
+
+    def mark_updated(self, current_tokens: int) -&gt; None:
+        self.initialized = True
+        self.tokens_at_last_update = current_tokens
+        self.tool_calls_since_update = 0</code></pre></div>

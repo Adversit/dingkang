@@ -1,0 +1,117 @@
+<div class="code-scroll"><pre class="highlight"><code class="language-python"><span class="sd">"""Tool definitions, input schemas, dispatch and model-facing results."""</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jsonschema</span><span class="w"> </span><span class="kn">import</span> <span class="n">Draft202012Validator</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ToolError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""An actionable tool failure, safe to report to the model."""</span>
+
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ToolResult</span><span class="p">:</span>
+    <span class="n">content</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">is_error</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_block</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tool_use_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+        <span class="c1"># is_error belongs to the result protocol, NOT input_schema.</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">'type'</span><span class="p">:</span> <span class="s1">'tool_result'</span><span class="p">,</span> <span class="s1">'tool_use_id'</span><span class="p">:</span> <span class="n">tool_use_id</span><span class="p">,</span>
+            <span class="s1">'content'</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">content</span><span class="p">,</span> <span class="s1">'is_error'</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_error</span><span class="p">,</span>
+        <span class="p">}</span>
+
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Tool</span><span class="p">:</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">description</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">input_schema</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+    <span class="n">handler</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">ToolResult</span><span class="p">]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">definition</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+        <span class="c1"># Python handlers are local; only these three fields go to the API.</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s1">'name'</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="s1">'description'</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">description</span><span class="p">,</span>
+                <span class="s1">'input_schema'</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_schema</span><span class="p">}</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ToolRegistry</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tools</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Tool</span><span class="p">]):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tools</span> <span class="o">=</span> <span class="p">{</span><span class="n">t</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tools</span><span class="p">}</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tools</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">tools</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">'Tool names must be unique'</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">validators</span> <span class="o">=</span> <span class="p">{</span><span class="n">t</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">Draft202012Validator</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">input_schema</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tools</span><span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">definitions</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">tool</span><span class="o">.</span><span class="n">definition</span><span class="p">()</span> <span class="k">for</span> <span class="n">tool</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tools</span><span class="o">.</span><span class="n">values</span><span class="p">()]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">arguments</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">ToolResult</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tools</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">ToolResult</span><span class="p">(</span><span class="sa">f</span><span class="s1">'Unknown tool: </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s1">'</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+        <span class="n">error</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">validators</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">iter_errors</span><span class="p">(</span><span class="n">arguments</span><span class="p">),</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">error</span><span class="p">:</span>
+            <span class="c1"># Do not echo the whole input: Write/Edit input may contain secrets.</span>
+            <span class="n">location</span> <span class="o">=</span> <span class="s1">'.'</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">error</span><span class="o">.</span><span class="n">path</span><span class="p">))</span> <span class="ow">or</span> <span class="s1">'input'</span>
+            <span class="k">return</span> <span class="n">ToolResult</span><span class="p">(</span><span class="sa">f</span><span class="s1">'Invalid arguments at </span><span class="si">{</span><span class="n">location</span><span class="si">}</span><span class="s1">: </span><span class="si">{</span><span class="n">error</span><span class="o">.</span><span class="n">validator</span><span class="si">}</span><span class="s1"> constraint failed.'</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">tools</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">handler</span><span class="p">(</span><span class="o">**</span><span class="n">arguments</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="n">ToolError</span><span class="p">,</span> <span class="ne">OSError</span><span class="p">,</span> <span class="ne">UnicodeError</span><span class="p">)</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">ToolResult</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">),</span> <span class="kc">True</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">schema</span><span class="p">(</span><span class="n">properties</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">required</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s1">'type'</span><span class="p">:</span> <span class="s1">'object'</span><span class="p">,</span> <span class="s1">'properties'</span><span class="p">:</span> <span class="n">properties</span><span class="p">,</span> <span class="s1">'required'</span><span class="p">:</span> <span class="n">required</span><span class="p">,</span>
+            <span class="s1">'additionalProperties'</span><span class="p">:</span> <span class="kc">False</span><span class="p">}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">build_tools</span><span class="p">(</span><span class="n">workspace</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ToolRegistry</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.file_tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">FileTools</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.sandbox</span><span class="w"> </span><span class="kn">import</span> <span class="n">SandboxRuntime</span>
+    <span class="n">files</span> <span class="o">=</span> <span class="n">FileTools</span><span class="p">(</span><span class="n">workspace</span><span class="p">)</span>
+    <span class="n">sandbox</span> <span class="o">=</span> <span class="n">SandboxRuntime</span><span class="p">(</span><span class="n">files</span><span class="o">.</span><span class="n">root</span><span class="p">)</span>
+    <span class="n">file_path</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'type'</span><span class="p">:</span> <span class="s1">'string'</span><span class="p">,</span> <span class="s1">'minLength'</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                 <span class="s1">'description'</span><span class="p">:</span> <span class="s1">'Absolute path inside the configured workspace.'</span><span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">bash</span><span class="p">(</span><span class="n">command</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10000</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ToolResult</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">sandbox</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="c1"># A command can change files even when it fails or times out.</span>
+            <span class="c1"># Never pretend a Bash result is a fresh Read snapshot.</span>
+            <span class="n">files</span><span class="o">.</span><span class="n">snapshots</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">ToolRegistry</span><span class="p">([</span>
+        <span class="n">Tool</span><span class="p">(</span><span class="s1">'Read'</span><span class="p">,</span>
+             <span class="s1">'Read a UTF-8 text file. offset is a 1-based starting line and limit is a line count. '</span>
+             <span class="s1">'Returns actual line numbers. Files over 1 MiB and oversized results are rejected. '</span>
+             <span class="s1">'No PDF, image, audio or video support in this learning version.'</span><span class="p">,</span>
+             <span class="n">schema</span><span class="p">({</span><span class="s1">'file_path'</span><span class="p">:</span> <span class="n">file_path</span><span class="p">,</span>
+                     <span class="s1">'offset'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'type'</span><span class="p">:</span> <span class="s1">'integer'</span><span class="p">,</span> <span class="s1">'minimum'</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">'default'</span><span class="p">:</span> <span class="mi">1</span><span class="p">},</span>
+                     <span class="s1">'limit'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'type'</span><span class="p">:</span> <span class="s1">'integer'</span><span class="p">,</span> <span class="s1">'minimum'</span><span class="p">:</span> <span class="mi">1</span><span class="p">}},</span> <span class="p">[</span><span class="s1">'file_path'</span><span class="p">]),</span> <span class="n">files</span><span class="o">.</span><span class="n">read</span><span class="p">),</span>
+        <span class="n">Tool</span><span class="p">(</span><span class="s1">'Write'</span><span class="p">,</span>
+             <span class="s1">'Create a new UTF-8 file or replace the ENTIRE contents of an existing file. '</span>
+             <span class="s1">'Read the entire existing file first. Refuses a stale read. Use Edit for local changes.'</span><span class="p">,</span>
+             <span class="n">schema</span><span class="p">({</span><span class="s1">'file_path'</span><span class="p">:</span> <span class="n">file_path</span><span class="p">,</span> <span class="s1">'content'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'type'</span><span class="p">:</span> <span class="s1">'string'</span><span class="p">}},</span>
+                    <span class="p">[</span><span class="s1">'file_path'</span><span class="p">,</span> <span class="s1">'content'</span><span class="p">]),</span> <span class="n">files</span><span class="o">.</span><span class="n">write</span><span class="p">),</span>
+        <span class="n">Tool</span><span class="p">(</span><span class="s1">'Edit'</span><span class="p">,</span>
+             <span class="s1">'Replace an exact old_string with new_string in an existing UTF-8 file. Read it first. '</span>
+             <span class="s1">'old_string may span multiple lines; exclude the displayed line-number prefixes. '</span>
+             <span class="s1">'It must match once unless replace_all=true. For different changes call Edit sequentially.'</span><span class="p">,</span>
+             <span class="n">schema</span><span class="p">({</span><span class="s1">'file_path'</span><span class="p">:</span> <span class="n">file_path</span><span class="p">,</span>
+                     <span class="s1">'old_string'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'type'</span><span class="p">:</span> <span class="s1">'string'</span><span class="p">,</span> <span class="s1">'minLength'</span><span class="p">:</span> <span class="mi">1</span><span class="p">},</span>
+                     <span class="s1">'new_string'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'type'</span><span class="p">:</span> <span class="s1">'string'</span><span class="p">},</span>
+                     <span class="s1">'replace_all'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'type'</span><span class="p">:</span> <span class="s1">'boolean'</span><span class="p">,</span> <span class="s1">'default'</span><span class="p">:</span> <span class="kc">False</span><span class="p">}},</span>
+                    <span class="p">[</span><span class="s1">'file_path'</span><span class="p">,</span> <span class="s1">'old_string'</span><span class="p">,</span> <span class="s1">'new_string'</span><span class="p">]),</span> <span class="n">files</span><span class="o">.</span><span class="n">edit</span><span class="p">),</span>
+        <span class="n">Tool</span><span class="p">(</span><span class="s1">'Bash'</span><span class="p">,</span>
+             <span class="s1">'Execute Bash through the required sandbox-runtime backend in the workspace. '</span>
+             <span class="s1">'Network is disabled. Returns stdout, stderr, exit status and timeout state. '</span>
+             <span class="s1">'timeout is milliseconds (100–60000). No unsandboxed fallback or persistent shell. '</span>
+             <span class="s1">'After any Bash call, Read again before editing existing files.'</span><span class="p">,</span>
+             <span class="n">schema</span><span class="p">({</span><span class="s1">'command'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'type'</span><span class="p">:</span> <span class="s1">'string'</span><span class="p">,</span> <span class="s1">'minLength'</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">'maxLength'</span><span class="p">:</span> <span class="mi">16000</span><span class="p">},</span>
+                     <span class="s1">'timeout'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'type'</span><span class="p">:</span> <span class="s1">'integer'</span><span class="p">,</span> <span class="s1">'minimum'</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span> <span class="s1">'maximum'</span><span class="p">:</span> <span class="mi">60000</span><span class="p">,</span>
+                                 <span class="s1">'default'</span><span class="p">:</span> <span class="mi">10000</span><span class="p">}},</span> <span class="p">[</span><span class="s1">'command'</span><span class="p">]),</span> <span class="n">bash</span><span class="p">),</span>
+    <span class="p">])</span>
+</code></pre></div>
+    

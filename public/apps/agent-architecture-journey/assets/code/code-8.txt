@@ -1,0 +1,6 @@
+{
+  "file_path": "/workspace/app.py",
+  "old_string": "def greet():\n    return \"hello\"",
+  "new_string": "def greet():\n    return \"hello, Agent\"",
+  "replace_all": false
+}

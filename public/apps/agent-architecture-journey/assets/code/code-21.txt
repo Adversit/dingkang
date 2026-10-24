@@ -1,0 +1,5 @@
+export ANTHROPIC_API_KEY='你的 API 密钥'
+export ANTHROPIC_MODEL='你账户可用且支持工具调用的模型 ID'
+
+python run_agent.py --workspace ./workspace \
+  --task '创建 hello.py，打印 Hello world；读取它；用 Edit 将 world 改成 Agent；最后通过 Bash 运行并报告结果。'

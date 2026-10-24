@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import '../../../public/apps/ai-dev-collaboration-workbench/canvas-layout.js';
+const {layout,route,fit,overlap}=globalThis.CanvasLayout;
+const fixture=()=>({moduleView:{expanded:{a:true,b:true}},nodes:[{id:'a',moduleLevel:'container',x:100,y:100},{id:'b',moduleLevel:'container',x:600,y:100},{id:'c',parentId:'a',x:110,y:120},{id:'d',parentId:'a',x:110,y:200},{id:'e',parentId:'b',x:610,y:120},{id:'note',x:100,y:350,w:250,h:150}]});
+test('children sit below headers, with clear arrow space and full containment',()=>{const p=fixture(),r=layout(p);for(const n of p.nodes.filter(n=>n.parentId)){const a=r.get(n.parentId),b=r.get(n.id);assert.ok(b.y>=a.y+180);assert.ok(b.x>=a.x+40);assert.ok(b.y+b.h<=a.y+a.h-40);assert.ok(b.x+b.w<=a.x+a.w-40);}assert.ok(!overlap(r.get('c'),r.get('d'),40));assert.ok(!overlap(r.get('a'),r.get('note'),24));});
+test('layout is pure and collapse-expand does not accumulate drift',()=>{const p=fixture(),before=JSON.stringify(p),first=layout(p);assert.equal(JSON.stringify(p),before);p.moduleView.expanded.a=false;layout(p);p.moduleView.expanded.a=true;assert.deepEqual(layout(p),first);});
+test('container translation carries its children by the same amount',()=>{const p=fixture(),before=layout(p);p.nodes[0].x+=20;p.nodes[0].y+=30;const after=layout(p);for(const id of ['a','c','d']){assert.equal(after.get(id).x-before.get(id).x,20);assert.equal(after.get(id).y-before.get(id).y,30);}});
+test('internal arrows connect bottom to top, including reverse relationships',()=>{const r=layout(fixture());assert.match(route(r.get('c'),r.get('d'),true).d,/^M280,430 /);assert.match(route(r.get('d'),r.get('c'),true).d,/^M280,494 /);});
+test('fit centers positive and negative world coordinates within viewport',()=>{for(const x of [-1200,1400]){const r={x,y:500,w:420,h:584},c=fit([r],900,700);assert.ok(r.x*c.z+c.x>=30);assert.ok((r.x+r.w)*c.z+c.x<=870);assert.ok(r.y*c.z+c.y>=30);assert.ok((r.y+r.h)*c.z+c.y<=670);}});

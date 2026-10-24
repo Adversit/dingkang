@@ -1,0 +1,58 @@
+<div class="code-scroll"><pre class="highlight"><code class="language-python">from pathlib import Path
+
+
+def fake_summary(history: str) -&gt; str:
+    return (
+        &quot;用户正在修改 app.py。&quot;
+        &quot;已经读取文件并执行过测试。&quot;
+        &quot;之前一次测试失败，原因是配置错误。&quot;
+        &quot;当前下一步是重新运行测试。&quot;
+    )
+
+
+def fake_update_memory(
+    messages: list[Message],
+    old: SessionMemory,
+) -&gt; SessionMemory:
+    return SessionMemory(
+        current_task=&quot;修改 app.py 并确认测试通过&quot;,
+        key_files=[&quot;app.py&quot;, &quot;tests/test_app.py&quot;],
+        errors_and_fixes=[
+            &quot;配置路径错误，已经修正&quot;,
+        ],
+        key_results=[
+            &quot;app.py 已完成局部修改&quot;,
+        ],
+        next_step=&quot;重新执行测试&quot;,
+    )
+
+
+context = ContextManager(
+    Path(&quot;./workspace&quot;),
+    max_context_tokens=40_000,
+)
+
+context.add_user(
+    &quot;帮我修改 app.py 中的配置逻辑&quot;
+)
+
+context.add_assistant(
+    &quot;我先读取 app.py&quot;
+)
+
+context.add_tool_result(
+    &quot;tool_read_001&quot;,
+    &quot;这里模拟一个很长的 Read/Bash 结果...&quot;
+)
+
+messages_for_llm = context.build_context(
+    summarize_fn=fake_summary,
+    update_memory_fn=fake_update_memory,
+)
+
+for message in messages_for_llm:
+    print(
+        message.role,
+        message.kind,
+        message.content[:200],
+    )</code></pre></div>

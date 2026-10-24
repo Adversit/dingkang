@@ -1,0 +1,15 @@
+    def edit(self, file_path: str, old_string: str, new_string: str,
+             replace_all: bool = False) -> ToolResult:
+        p = self._path(file_path)
+        text, previous = self._check_fresh(p)
+        if not old_string or old_string == new_string:
+            raise ToolError('old_string must be nonempty and differ from new_string. Use Write to create files.')
+        matches = text.count(old_string)
+        if matches == 0:
+            raise ToolError('old_string was not found. Copy exact content from Read, without line numbers.')
+        if matches > 1 and not replace_all:
+            raise ToolError(f'Found {matches} matches. Add surrounding context, or set replace_all=true intentionally.')
+        updated = text.replace(old_string, new_string, -1 if replace_all else 1)
+        self._commit(p, updated, previous, full_read=previous.full_read)
+        count = matches if replace_all else 1
+        return ToolResult(f'Updated {p}: replaced {count} occurrence(s). This confirms editing, not program correctness.')

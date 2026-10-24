@@ -1,0 +1,58 @@
+from pathlib import Path
+
+
+def fake_summary(history: str) -> str:
+    return (
+        "用户正在修改 app.py。"
+        "已经读取文件并执行过测试。"
+        "之前一次测试失败，原因是配置错误。"
+        "当前下一步是重新运行测试。"
+    )
+
+
+def fake_update_memory(
+    messages: list[Message],
+    old: SessionMemory,
+) -> SessionMemory:
+    return SessionMemory(
+        current_task="修改 app.py 并确认测试通过",
+        key_files=["app.py", "tests/test_app.py"],
+        errors_and_fixes=[
+            "配置路径错误，已经修正",
+        ],
+        key_results=[
+            "app.py 已完成局部修改",
+        ],
+        next_step="重新执行测试",
+    )
+
+
+context = ContextManager(
+    Path("./workspace"),
+    max_context_tokens=40_000,
+)
+
+context.add_user(
+    "帮我修改 app.py 中的配置逻辑"
+)
+
+context.add_assistant(
+    "我先读取 app.py"
+)
+
+context.add_tool_result(
+    "tool_read_001",
+    "这里模拟一个很长的 Read/Bash 结果..."
+)
+
+messages_for_llm = context.build_context(
+    summarize_fn=fake_summary,
+    update_memory_fn=fake_update_memory,
+)
+
+for message in messages_for_llm:
+    print(
+        message.role,
+        message.kind,
+        message.content[:200],
+    )

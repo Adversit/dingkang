@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+const path=new URL('../../../public/assets/moonlit-immortal-chronicle/game.js',import.meta.url).pathname;
+const source=fs.readFileSync(path,'utf8').replace(/\}\)\(\);\s*$/, `window.__moonlitTest={getState:()=>s,action,resolveCloudConflict,flushCloud};})();`);
+const KEY='moonlit-immortal-chronicle-v1';
+function boot(values={}) {
+  const data=new Map(Object.entries(values));const nodes=new Map();const listeners={};
+  const node=id=>{if(!nodes.has(id))nodes.set(id,{id,textContent:'',innerHTML:'',value:'',style:{},dataset:{},disabled:false,classList:{add(){},remove(){},toggle(){}},addEventListener(){},setAttribute(){}});return nodes.get(id)};
+  const localStorage={getItem:key=>data.get(key)??null,setItem:(key,value)=>data.set(key,String(value)),removeItem:key=>data.delete(key)};
+  let flushCalls=0,conflictChoice=null,remoteValue=null;
+  const bridge={ready:Promise.resolve(),status:{state:'saved',revision:1},flush:async()=>{flushCalls++},resolveConflict:async choice=>{conflictChoice=choice;if(choice==='cloud')localStorage.setItem(KEY,JSON.stringify(remoteValue));bridge.status={state:'saved',revision:2};}};
+  const window={HubStorage:bridge,addEventListener:(type,fn)=>(listeners[type]??=[]).push(fn)};
+  const document={getElementById:node,querySelectorAll:()=>[],addEventListener(){},hidden:false};
+  const context=vm.createContext({window,document,localStorage,console,setTimeout:()=>1,clearTimeout(){},confirm:()=>true});
+  vm.runInContext(source,context,{filename:path});
+  return {window,bridge,data,nodes,test:window.__moonlitTest,emit:(type,detail)=>(listeners[type]??[]).forEach(fn=>fn({detail})),setRemote:value=>remoteValue=value,getChoice:()=>conflictChoice,flushCalls:()=>flushCalls};
+}
+const fresh=boot();await new Promise(setImmediate);
+assert.equal(fresh.test.getState().name,'无名');
+fresh.test.action('origin:0');fresh.test.action('talent:0');
+const saved=JSON.parse(fresh.data.get(KEY));assert.equal(saved.name,'望舒');assert.ok(saved.talent);assert.ok(saved.flags);assert.ok(!('save' in saved));
+const reloaded=boot({[KEY]:JSON.stringify(saved)});await new Promise(setImmediate);assert.equal(reloaded.test.getState().talent,saved.talent);
+const legacy=boot({[KEY+':guest']:JSON.stringify({save:saved,revision:9,dirty:true})});await new Promise(setImmediate);assert.equal(legacy.test.getState().name,'望舒');legacy.test.action('inject');assert.ok(legacy.data.has(KEY));
+reloaded.bridge.status={state:'conflict',revision:3};reloaded.emit('hub-storage-status',reloaded.bridge.status);
+assert.match(reloaded.nodes.get('save-status').textContent,/两份进度/);
+const other={...saved,name:'远方存档',year:7};reloaded.setRemote(other);await reloaded.test.resolveCloudConflict('remote');assert.equal(reloaded.getChoice(),'cloud');assert.equal(reloaded.test.getState().name,'远方存档');
+reloaded.bridge.status={state:'offline',revision:3};reloaded.emit('hub-storage-status',reloaded.bridge.status);reloaded.test.action('inject');assert.ok(reloaded.data.get(KEY));assert.match(reloaded.nodes.get('save-status').textContent,/离线保存/);
+await reloaded.test.flushCloud();assert.equal(reloaded.flushCalls(),1);
+assert.doesNotMatch(source,/fetch\(['"]\/api\/save/);assert.doesNotMatch(source,/cloudRevision|cloudUser/);
+console.log('PASS: fresh save, reload, legacy envelope, cloud conflict choice, offline persistence, shared flush, no legacy API.');

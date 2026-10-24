@@ -1,0 +1,915 @@
+{
+  "checkedAt": "2026-10-19",
+  "evidence": "https://aihot.news/about",
+  "endpoint": "https://aihot.news/api/m/zhiliu-radar/site/stats",
+  "total": 885,
+  "kinds": {
+    "json_list": 25,
+    "mp_account": 23,
+    "rss": 184,
+    "web_list": 143,
+    "x_search": 510
+  },
+  "samples": [
+    {
+      "name": "Ethan Mollick",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "Sam Altman",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "Luis Velasco",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Vista",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "星海图 Galaxea",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "Omar Khattab",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Transluce",
+      "kind": "web_list",
+      "heatOnly": false
+    },
+    {
+      "name": "OpenHands 官方博客",
+      "kind": "web_list",
+      "heatOnly": false
+    },
+    {
+      "name": "The Register",
+      "kind": "rss",
+      "heatOnly": true
+    },
+    {
+      "name": "Nathan Lambert",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "Nathan Benaich",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "There's An AI For That",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "得否",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "蚂蚁百灵：Developer Blog",
+      "kind": "web_list",
+      "heatOnly": false
+    },
+    {
+      "name": "英国 AI Security Institute：Blog",
+      "kind": "web_list",
+      "heatOnly": false
+    },
+    {
+      "name": "智谱开放平台：模型与产品发布记录",
+      "kind": "web_list",
+      "heatOnly": false
+    },
+    {
+      "name": "ChinaTalk",
+      "kind": "rss",
+      "heatOnly": false
+    },
+    {
+      "name": "百度 Baidu",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "华尔街见闻",
+      "kind": "web_list",
+      "heatOnly": true
+    },
+    {
+      "name": "张小吉",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "百川智能",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "Owen",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "宝玉",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Mustafa Suleyman",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "Suno：Blog",
+      "kind": "web_list",
+      "heatOnly": false
+    },
+    {
+      "name": "Charlie Holtz",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "DynamicWang",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Psyho",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Jesse Lau 遁一子",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "TensorZero：实验与工程博客",
+      "kind": "web_list",
+      "heatOnly": false
+    },
+    {
+      "name": "蚂蚁百灵",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "九原客",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "NVIDIA Blog",
+      "kind": "rss",
+      "heatOnly": false
+    },
+    {
+      "name": "SemiAnalysis 长文 RSS",
+      "kind": "rss",
+      "heatOnly": false
+    },
+    {
+      "name": "Andrej Karpathy",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "O'Reilly Radar",
+      "kind": "rss",
+      "heatOnly": false
+    },
+    {
+      "name": "OpenAI Developers",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "Mr Panda",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Meta AI：Research Blog",
+      "kind": "web_list",
+      "heatOnly": false
+    },
+    {
+      "name": "宇树 Unitree",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "知识分享官",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "钛媒体 TMTPOST",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "MiniMax",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "Ian Johnson",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "公众号：龙猫LongCat",
+      "kind": "mp_account",
+      "heatOnly": false
+    },
+    {
+      "name": "Tech.eu",
+      "kind": "rss",
+      "heatOnly": true
+    },
+    {
+      "name": "公众号：百度智能云",
+      "kind": "mp_account",
+      "heatOnly": false
+    },
+    {
+      "name": "OpenClaw",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "Clément Delangue",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "Peter Welinder",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Hamel Husain",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Claude",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "SemiAnalysis",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "TBPN",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Techmeme",
+      "kind": "rss",
+      "heatOnly": true
+    },
+    {
+      "name": "Cognition",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "木马人",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Pydantic AI 官方文章",
+      "kind": "rss",
+      "heatOnly": false
+    },
+    {
+      "name": "MacRumors Apple Intelligence",
+      "kind": "web_list",
+      "heatOnly": true
+    },
+    {
+      "name": "AI 产品黄叔",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Factory 研究 / 产品",
+      "kind": "rss",
+      "heatOnly": false
+    },
+    {
+      "name": "掘金 AI 分类",
+      "kind": "json_list",
+      "heatOnly": true
+    },
+    {
+      "name": "公众号：昆仑万维",
+      "kind": "mp_account",
+      "heatOnly": false
+    },
+    {
+      "name": "AK",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "amit",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "极果",
+      "kind": "web_list",
+      "heatOnly": true
+    },
+    {
+      "name": "Haider",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "小众软件",
+      "kind": "rss",
+      "heatOnly": true
+    },
+    {
+      "name": "BAIR：Berkeley AI Research Blog",
+      "kind": "rss",
+      "heatOnly": false
+    },
+    {
+      "name": "Recraft 自有模型与设计产品",
+      "kind": "web_list",
+      "heatOnly": false
+    },
+    {
+      "name": "东方财富",
+      "kind": "web_list",
+      "heatOnly": true
+    },
+    {
+      "name": "Jakub Pachocki",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "aroha",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Jeff Dean",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "ServeTheHome",
+      "kind": "rss",
+      "heatOnly": true
+    },
+    {
+      "name": "DiDi_OK",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "蚂蚁 inclusionAI：GitHub 新仓库",
+      "kind": "json_list",
+      "heatOnly": false
+    },
+    {
+      "name": "华为云",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Every：最新文章",
+      "kind": "web_list",
+      "heatOnly": false
+    },
+    {
+      "name": "卡兹克",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "Sander Dieleman",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "n8n Blog",
+      "kind": "rss",
+      "heatOnly": false
+    },
+    {
+      "name": "Meta Engineering Blog",
+      "kind": "rss",
+      "heatOnly": false
+    },
+    {
+      "name": "InfoWorld",
+      "kind": "rss",
+      "heatOnly": true
+    },
+    {
+      "name": "Bindu Reddy",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Safe Superintelligence",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "钛媒体·AGI",
+      "kind": "web_list",
+      "heatOnly": true
+    },
+    {
+      "name": "Testing Catalog",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "Uncanny Harry",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Andrej Karpathy：Blog",
+      "kind": "web_list",
+      "heatOnly": false
+    },
+    {
+      "name": "David Ha",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "PixVerse",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "wong2",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Pieter Abbeel",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Richards Tu",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "车东西",
+      "kind": "rss",
+      "heatOnly": true
+    },
+    {
+      "name": "邵猛",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "Dash",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "ElevenLabs",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "Grok Bot",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "Soumith Chintala",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Preferred Networks：AI 研究与产品",
+      "kind": "web_list",
+      "heatOnly": false
+    },
+    {
+      "name": "Thurrott",
+      "kind": "rss",
+      "heatOnly": true
+    },
+    {
+      "name": "公众号：面壁智能",
+      "kind": "mp_account",
+      "heatOnly": false
+    },
+    {
+      "name": "Thinking Machines",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "Maxime Labonne",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Replit",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "响马",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Pedro Cuenca",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Anthropic：Claude.dev 开发者博客",
+      "kind": "rss",
+      "heatOnly": false
+    },
+    {
+      "name": "甲子光年",
+      "kind": "web_list",
+      "heatOnly": true
+    },
+    {
+      "name": "Claude：Blog",
+      "kind": "web_list",
+      "heatOnly": false
+    },
+    {
+      "name": "t3n",
+      "kind": "rss",
+      "heatOnly": true
+    },
+    {
+      "name": "Guillermo Rauch",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Qoder 产品与技术博客",
+      "kind": "json_list",
+      "heatOnly": false
+    },
+    {
+      "name": "Cat Wu",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "王巍 onevcat",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "博客园·AI",
+      "kind": "web_list",
+      "heatOnly": true
+    },
+    {
+      "name": "Neel Nanda",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "公众号：阶跃星辰",
+      "kind": "mp_account",
+      "heatOnly": false
+    },
+    {
+      "name": "Lisan al Gaib",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Rohan Paul",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "谢赛宁",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "Augment Code 博客",
+      "kind": "web_list",
+      "heatOnly": false
+    },
+    {
+      "name": "Hacker News 热门",
+      "kind": "rss",
+      "heatOnly": true
+    },
+    {
+      "name": "刘小排",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "CMU：Machine Learning Blog",
+      "kind": "rss",
+      "heatOnly": false
+    },
+    {
+      "name": "Lilian Weng",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "Claude Devs",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "CTech",
+      "kind": "web_list",
+      "heatOnly": true
+    },
+    {
+      "name": "Georgi Gerganov",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "Black Forest Labs：Blog",
+      "kind": "web_list",
+      "heatOnly": false
+    },
+    {
+      "name": "padphone",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "郭宇 guoyu.eth",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Mike Isaac",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "@mark_k",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Prime Intellect",
+      "kind": "web_list",
+      "heatOnly": false
+    },
+    {
+      "name": "The Bridge",
+      "kind": "rss",
+      "heatOnly": true
+    },
+    {
+      "name": "TechPowerUp",
+      "kind": "rss",
+      "heatOnly": true
+    },
+    {
+      "name": "苍何",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Replit：Blog",
+      "kind": "rss",
+      "heatOnly": false
+    },
+    {
+      "name": "Peter Steinberger",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Ben Tossell",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "OpenClaw：Blog",
+      "kind": "web_list",
+      "heatOnly": false
+    },
+    {
+      "name": "Scott Wu",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Browserbase / Stagehand 工程博客",
+      "kind": "web_list",
+      "heatOnly": false
+    },
+    {
+      "name": "面壁智能 OpenBMB",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "麦当mdldm",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "傅盛",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "蚂蚁 inclusionAI：HuggingFace 新模型",
+      "kind": "json_list",
+      "heatOnly": false
+    },
+    {
+      "name": "Gary Marcus",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "LovartAI",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Claude Code：GitHub Releases",
+      "kind": "rss",
+      "heatOnly": false
+    },
+    {
+      "name": "Mira Murati",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "el.cine",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Riley Goodside",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Alex Cornell",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "界面新闻",
+      "kind": "web_list",
+      "heatOnly": true
+    },
+    {
+      "name": "lllyasviel",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "公众号：卡尔的AI沃茨",
+      "kind": "mp_account",
+      "heatOnly": false
+    },
+    {
+      "name": "Zvi Mowshowitz：Don't Worry About the Vase",
+      "kind": "rss",
+      "heatOnly": true
+    },
+    {
+      "name": "Christine Awad",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "Beyang Liu",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "M1",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Larry & Leo & Lucky",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "青龍聖者",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Mark Chen",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "FayerWayer",
+      "kind": "web_list",
+      "heatOnly": true
+    },
+    {
+      "name": "Microsoft Research 博客",
+      "kind": "rss",
+      "heatOnly": false
+    },
+    {
+      "name": "Eric Newcomer",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "ZHO",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "唐杰",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "AIGCLINK",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Apple Machine Learning Research",
+      "kind": "rss",
+      "heatOnly": false
+    },
+    {
+      "name": "Junyang Lin",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Krish Naik",
+      "kind": "x_search",
+      "heatOnly": true
+    },
+    {
+      "name": "Ledge.ai",
+      "kind": "web_list",
+      "heatOnly": true
+    },
+    {
+      "name": "indigo",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "Perplexity",
+      "kind": "x_search",
+      "heatOnly": false
+    },
+    {
+      "name": "LangChain：Blog",
+      "kind": "rss",
+      "heatOnly": false
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+def estimate_tokens(text: str) -> int:
+    # 教学版粗略估算，不代替真正 tokenizer
+    return max(1, len(text) // 4)
+
+
+def estimate_context_tokens(messages: list[Message]) -> int:
+    return sum(estimate_tokens(m.content) for m in messages)

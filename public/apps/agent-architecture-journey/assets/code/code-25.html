@@ -1,0 +1,87 @@
+<div class="code-scroll"><pre class="highlight"><code class="language-json"><span class="p">{</span>
+<span class="w">  </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"tool_use"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"toolu_demo_1"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Write"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"input"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"file_path"</span><span class="p">:</span><span class="w"> </span><span class="s2">"/tmp/agent-learning-5d_xoqit/hello.py"</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">"content"</span><span class="p">:</span><span class="w"> </span><span class="s2">"name = \"world\"\nprint(f\"Hello, {name}\")\n"</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"tool_result"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"tool_use_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"toolu_demo_1"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"content"</span><span class="p">:</span><span class="w"> </span><span class="s2">"File created: /tmp/agent-learning-5d_xoqit/hello.py. This confirms writing, not program correctness."</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"is_error"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+<span class="p">}</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"tool_use"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"toolu_demo_2"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Read"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"input"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"file_path"</span><span class="p">:</span><span class="w"> </span><span class="s2">"/tmp/agent-learning-5d_xoqit/hello.py"</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">"offset"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">"limit"</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"tool_result"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"tool_use_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"toolu_demo_2"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"content"</span><span class="p">:</span><span class="w"> </span><span class="s2">"File: /tmp/agent-learning-5d_xoqit/hello.py\nLines 1-2 of 2\n1\tname = \"world\"\n2\tprint(f\"Hello, {name}\")"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"is_error"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+<span class="p">}</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"tool_use"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"toolu_demo_3"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Edit"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"input"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"file_path"</span><span class="p">:</span><span class="w"> </span><span class="s2">"/tmp/agent-learning-5d_xoqit/hello.py"</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">"old_string"</span><span class="p">:</span><span class="w"> </span><span class="s2">"name = \"world\""</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">"new_string"</span><span class="p">:</span><span class="w"> </span><span class="s2">"name = \"Agent\""</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"tool_result"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"tool_use_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"toolu_demo_3"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"content"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Updated /tmp/agent-learning-5d_xoqit/hello.py: replaced 1 occurrence(s). This confirms editing, not program correctness."</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"is_error"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+<span class="p">}</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"tool_use"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"toolu_demo_4"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Edit"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"input"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"file_path"</span><span class="p">:</span><span class="w"> </span><span class="s2">"/tmp/agent-learning-5d_xoqit/hello.py"</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">"old_string"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Hello,"</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">"new_string"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Hi,"</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"tool_result"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"tool_use_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"toolu_demo_4"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"content"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Updated /tmp/agent-learning-5d_xoqit/hello.py: replaced 1 occurrence(s). This confirms editing, not program correctness."</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"is_error"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+<span class="p">}</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"tool_use"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"toolu_demo_5"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Read"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"input"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"file_path"</span><span class="p">:</span><span class="w"> </span><span class="s2">"/tmp/agent-learning-5d_xoqit/hello.py"</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"tool_result"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"tool_use_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"toolu_demo_5"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"content"</span><span class="p">:</span><span class="w"> </span><span class="s2">"File: /tmp/agent-learning-5d_xoqit/hello.py\nLines 1-2 of 2\n1\tname = \"Agent\"\n2\tprint(f\"Hi, {name}\")"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"is_error"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+<span class="p">}</span>
+
+<span class="err">S</span><span class="kc">tale</span><span class="mi">-</span><span class="err">read</span><span class="w"> </span><span class="err">example</span><span class="p">:</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"tool_result"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"tool_use_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"toolu_stale"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"content"</span><span class="p">:</span><span class="w"> </span><span class="s2">"File has changed since Read. Read it again before modifying it."</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"is_error"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="p">}</span>
+</code></pre></div>
+    

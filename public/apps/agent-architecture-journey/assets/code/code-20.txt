@@ -1,0 +1,11 @@
+# 在项目目录安装真实 Node 依赖，并保留生成的锁文件。
+npm install --save-exact @anthropic-ai/sandbox-runtime@latest
+
+# Linux / WSL2 的系统依赖（按自己的环境执行）
+sudo apt-get install bubblewrap socat ripgrep
+
+# macOS 需要 rg；系统提供 sandbox-exec
+# brew install ripgrep
+
+python demo.py --bash
+RUN_SANDBOX_TESTS=1 python -m unittest discover -s tests -p test_sandbox_live.py -v

@@ -1,0 +1,8 @@
+    def _check_fresh(self, p: Path) -> tuple[str, Snapshot]:
+        previous = self.snapshots.get(p)
+        if previous is None:
+            raise ToolError('Read the file before modifying it.')
+        text, current = self._load(p)
+        if (current.mtime_ns, current.digest) != (previous.mtime_ns, previous.digest):
+            raise ToolError('File has changed since Read. Read it again before modifying it.')
+        return text, previous

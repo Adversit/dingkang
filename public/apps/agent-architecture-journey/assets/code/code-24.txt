@@ -1,0 +1,37 @@
+test_credential_file_read_denied (test_sandbox_live.RealSandboxTest.test_credential_file_read_denied) ... skipped 'Real sandbox tests require explicit opt-in and installed dependencies'
+test_direct_network_to_host_denied (test_sandbox_live.RealSandboxTest.test_direct_network_to_host_denied) ... skipped 'Real sandbox tests require explicit opt-in and installed dependencies'
+test_success (test_sandbox_live.RealSandboxTest.test_success) ... skipped 'Real sandbox tests require explicit opt-in and installed dependencies'
+test_timeout (test_sandbox_live.RealSandboxTest.test_timeout) ... skipped 'Real sandbox tests require explicit opt-in and installed dependencies'
+test_write_outside_workspace_denied (test_sandbox_live.RealSandboxTest.test_write_outside_workspace_denied) ... skipped 'Real sandbox tests require explicit opt-in and installed dependencies'
+test_api_failure_not_tool_failure (test_tools.AgentLoopTest.test_api_failure_not_tool_failure) ... ok
+test_tool_call_round_trip (test_tools.AgentLoopTest.test_tool_call_round_trip) ... ok
+test_ambiguous_then_replace_all (test_tools.ToolsTest.test_ambiguous_then_replace_all) ... ok
+test_bash_invalidates_old_read (test_tools.ToolsTest.test_bash_invalidates_old_read) ... ok
+test_bounded_input_and_output (test_tools.ToolsTest.test_bounded_input_and_output) ... ok
+test_create_race_does_not_overwrite (test_tools.ToolsTest.test_create_race_does_not_overwrite) ... ok
+test_delete_with_empty_new_string (test_tools.ToolsTest.test_delete_with_empty_new_string) ... ok
+test_empty_success_and_missing_error (test_tools.ToolsTest.test_empty_success_and_missing_error) ... ok
+test_invalid_text (test_tools.ToolsTest.test_invalid_text) ... ok
+test_local_fields_not_in_definition (test_tools.ToolsTest.test_local_fields_not_in_definition) ... ok
+test_mode_preserved (test_tools.ToolsTest.test_mode_preserved) ... ok
+test_multiline_edit (test_tools.ToolsTest.test_multiline_edit) ... ok
+test_node_env_and_return_contract_mocked (test_tools.ToolsTest.test_node_env_and_return_contract_mocked) ... ok
+test_not_found_and_noop (test_tools.ToolsTest.test_not_found_and_noop) ... ok
+test_out_of_range_is_observation (test_tools.ToolsTest.test_out_of_range_is_observation) ... ok
+test_partial_read_cannot_full_overwrite (test_tools.ToolsTest.test_partial_read_cannot_full_overwrite) ... ok
+test_path_and_credential_guard (test_tools.ToolsTest.test_path_and_credential_guard) ... ok
+test_read_range (test_tools.ToolsTest.test_read_range) ... ok
+test_sandbox_missing_dependency_no_execution (test_tools.ToolsTest.test_sandbox_missing_dependency_no_execution) ... ok
+test_schema_and_unknown_tool (test_tools.ToolsTest.test_schema_and_unknown_tool) ... ok
+test_sequential_different_edits (test_tools.ToolsTest.test_sequential_different_edits) ... ok
+test_stale_edit_even_with_same_mtime (test_tools.ToolsTest.test_stale_edit_even_with_same_mtime) ... ok
+test_stale_write (test_tools.ToolsTest.test_stale_write) ... ok
+test_symlink_and_hardlink (test_tools.ToolsTest.test_symlink_and_hardlink) ... ok
+test_tool_result_protocol (test_tools.ToolsTest.test_tool_result_protocol) ... ok
+test_write_create_and_overwrite (test_tools.ToolsTest.test_write_create_and_overwrite) ... ok
+test_write_requires_read (test_tools.ToolsTest.test_write_requires_read) ... ok
+
+----------------------------------------------------------------------
+Ran 32 tests in 0.048s
+
+OK (skipped=5)

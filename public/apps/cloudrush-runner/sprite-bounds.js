@@ -1,0 +1,2 @@
+// Source rectangles remove transparent atlas padding without altering artwork.
+export const SPRITE_BOUNDS={"pet0":[35,8,277,251],"mount0_3":[0,60,310,244],"mount1_1":[0,35,313,267],"mount0_2":[0,58,314,240],"mount2_3":[0,51,310,229],"mount0_1":[0,53,313,244],"mount2_2":[0,40,314,215],"mount1_3":[0,39,313,274],"pet2":[0,26,279,242],"mount1_0":[17,37,297,268],"pet1":[53,22,260,239],"pet3":[11,41,284,203],"mount2_1":[0,39,313,238],"mount2_0":[9,43,305,226],"mount0_0":[14,58,300,236],"mount1_2":[0,34,314,272]};

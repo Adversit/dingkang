@@ -1,0 +1,115 @@
+"""Tool definitions, input schemas, dispatch and model-facing results."""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Callable
+from jsonschema import Draft202012Validator
+
+
+class ToolError(Exception):
+    """An actionable tool failure, safe to report to the model."""
+
+
+@dataclass
+class ToolResult:
+    content: str
+    is_error: bool = False
+
+    def to_block(self, tool_use_id: str) -> dict[str, Any]:
+        # is_error belongs to the result protocol, NOT input_schema.
+        return {
+            'type': 'tool_result', 'tool_use_id': tool_use_id,
+            'content': self.content, 'is_error': self.is_error,
+        }
+
+
+@dataclass
+class Tool:
+    name: str
+    description: str
+    input_schema: dict[str, Any]
+    handler: Callable[..., ToolResult]
+
+    def definition(self) -> dict[str, Any]:
+        # Python handlers are local; only these three fields go to the API.
+        return {'name': self.name, 'description': self.description,
+                'input_schema': self.input_schema}
+
+
+class ToolRegistry:
+    def __init__(self, tools: list[Tool]):
+        self.tools = {t.name: t for t in tools}
+        if len(self.tools) != len(tools):
+            raise ValueError('Tool names must be unique')
+        self.validators = {t.name: Draft202012Validator(t.input_schema) for t in tools}
+
+    def definitions(self) -> list[dict[str, Any]]:
+        return [tool.definition() for tool in self.tools.values()]
+
+    def execute(self, name: str, arguments: dict[str, Any]) -> ToolResult:
+        if name not in self.tools:
+            return ToolResult(f'Unknown tool: {name}', True)
+        error = next(self.validators[name].iter_errors(arguments), None)
+        if error:
+            # Do not echo the whole input: Write/Edit input may contain secrets.
+            location = '.'.join(map(str, error.path)) or 'input'
+            return ToolResult(f'Invalid arguments at {location}: {error.validator} constraint failed.', True)
+        try:
+            return self.tools[name].handler(**arguments)
+        except (ToolError, OSError, UnicodeError) as exc:
+            return ToolResult(str(exc), True)
+
+
+def schema(properties: dict[str, Any], required: list[str]) -> dict[str, Any]:
+    return {'type': 'object', 'properties': properties, 'required': required,
+            'additionalProperties': False}
+
+
+def build_tools(workspace: Path) -> ToolRegistry:
+    from .file_tools import FileTools
+    from .sandbox import SandboxRuntime
+    files = FileTools(workspace)
+    sandbox = SandboxRuntime(files.root)
+    file_path = {'type': 'string', 'minLength': 1,
+                 'description': 'Absolute path inside the configured workspace.'}
+
+    def bash(command: str, timeout: int = 10000) -> ToolResult:
+        try:
+            return sandbox.run(command, timeout)
+        finally:
+            # A command can change files even when it fails or times out.
+            # Never pretend a Bash result is a fresh Read snapshot.
+            files.snapshots.clear()
+
+    return ToolRegistry([
+        Tool('Read',
+             'Read a UTF-8 text file. offset is a 1-based starting line and limit is a line count. '
+             'Returns actual line numbers. Files over 1 MiB and oversized results are rejected. '
+             'No PDF, image, audio or video support in this learning version.',
+             schema({'file_path': file_path,
+                     'offset': {'type': 'integer', 'minimum': 1, 'default': 1},
+                     'limit': {'type': 'integer', 'minimum': 1}}, ['file_path']), files.read),
+        Tool('Write',
+             'Create a new UTF-8 file or replace the ENTIRE contents of an existing file. '
+             'Read the entire existing file first. Refuses a stale read. Use Edit for local changes.',
+             schema({'file_path': file_path, 'content': {'type': 'string'}},
+                    ['file_path', 'content']), files.write),
+        Tool('Edit',
+             'Replace an exact old_string with new_string in an existing UTF-8 file. Read it first. '
+             'old_string may span multiple lines; exclude the displayed line-number prefixes. '
+             'It must match once unless replace_all=true. For different changes call Edit sequentially.',
+             schema({'file_path': file_path,
+                     'old_string': {'type': 'string', 'minLength': 1},
+                     'new_string': {'type': 'string'},
+                     'replace_all': {'type': 'boolean', 'default': False}},
+                    ['file_path', 'old_string', 'new_string']), files.edit),
+        Tool('Bash',
+             'Execute Bash through the required sandbox-runtime backend in the workspace. '
+             'Network is disabled. Returns stdout, stderr, exit status and timeout state. '
+             'timeout is milliseconds (100–60000). No unsandboxed fallback or persistent shell. '
+             'After any Bash call, Read again before editing existing files.',
+             schema({'command': {'type': 'string', 'minLength': 1, 'maxLength': 16000},
+                     'timeout': {'type': 'integer', 'minimum': 100, 'maximum': 60000,
+                                 'default': 10000}}, ['command']), bash),
+    ])

@@ -1,0 +1,386 @@
+[
+  {
+    "id": "public-dacc0f34a582",
+    "name": "Recode China AI",
+    "url": "https://www.recodechinaai.com/feed",
+    "kind": "rss",
+    "category": "AI 产品",
+    "quality": 25,
+    "official": 0,
+    "origin": "AIHOT 公开来源 · 原站订阅",
+    "upstreamId": "",
+    "owner": "",
+    "tags": [
+      "媒体 / 研究"
+    ],
+    "evidence": "https://www.recodechinaai.com/p/china-proposes-ai-export-controls"
+  },
+  {
+    "id": "public-ef3ff28c60b4",
+    "name": "MarkTechPost",
+    "url": "https://www.marktechpost.com/feed/",
+    "kind": "rss",
+    "category": "AI 产品",
+    "quality": 25,
+    "official": 0,
+    "origin": "AIHOT 公开来源 · 原站订阅",
+    "upstreamId": "",
+    "owner": "",
+    "tags": [
+      "媒体 / 研究"
+    ],
+    "evidence": "https://www.marktechpost.com/2026/10/18/nvidia-runai-open-source-gpu-orchestration-kubernetes/"
+  },
+  {
+    "id": "public-075825d17d98",
+    "name": "SemiAnalysis 长文 RSS",
+    "url": "https://newsletter.semianalysis.com/feed",
+    "kind": "rss",
+    "category": "AI 产品",
+    "quality": 25,
+    "official": 0,
+    "origin": "AIHOT 公开来源 · 原站订阅",
+    "upstreamId": "",
+    "owner": "",
+    "tags": [
+      "媒体 / 研究"
+    ],
+    "evidence": "https://newsletter.semianalysis.com/p/datacenters-2027-the-year-of-acceleration"
+  },
+  {
+    "id": "public-4b9afa2b8493",
+    "name": "Air Street Press",
+    "url": "https://press.airstreet.com/feed",
+    "kind": "rss",
+    "category": "AI 产品",
+    "quality": 25,
+    "official": 0,
+    "origin": "AIHOT 公开来源 · 原站订阅",
+    "upstreamId": "",
+    "owner": "",
+    "tags": [
+      "媒体 / 研究"
+    ],
+    "evidence": "https://press.airstreet.com/"
+  },
+  {
+    "id": "public-chinatalk-media",
+    "name": "ChinaTalk",
+    "url": "https://www.chinatalk.media/feed",
+    "kind": "rss",
+    "category": "AI 产品",
+    "quality": 25,
+    "official": 0,
+    "origin": "AIHOT 公开来源 · 原站订阅",
+    "upstreamId": "",
+    "owner": "chinatalk.media",
+    "tags": [
+      "媒体 / 研究"
+    ],
+    "evidence": "https://www.chinatalk.media/"
+  },
+  {
+    "id": "public-oreilly-com",
+    "name": "O'Reilly Radar",
+    "url": "https://www.oreilly.com/radar/feed/index.xml",
+    "kind": "rss",
+    "category": "AI 产品",
+    "quality": 25,
+    "official": 0,
+    "origin": "AIHOT 公开来源 · 原站订阅",
+    "upstreamId": "",
+    "owner": "oreilly.com",
+    "tags": [
+      "媒体 / 研究"
+    ],
+    "evidence": "https://www.oreilly.com/radar/"
+  },
+  {
+    "id": "public-tech-eu",
+    "name": "Tech.eu",
+    "url": "https://tech.eu/feed/",
+    "kind": "rss",
+    "category": "AI 产品",
+    "quality": 25,
+    "official": 0,
+    "origin": "AIHOT 公开来源 · 原站订阅",
+    "upstreamId": "",
+    "owner": "tech.eu",
+    "tags": [
+      "媒体 / 研究"
+    ],
+    "evidence": "https://tech.eu/"
+  },
+  {
+    "id": "public-techmeme-com",
+    "name": "Techmeme",
+    "url": "https://www.techmeme.com/feed.xml",
+    "kind": "rss",
+    "category": "AI 产品",
+    "quality": 20,
+    "official": 0,
+    "origin": "AIHOT 公开来源 · 原站订阅",
+    "upstreamId": "",
+    "owner": "techmeme.com",
+    "tags": [
+      "聚合线索"
+    ],
+    "evidence": "https://www.techmeme.com/"
+  },
+  {
+    "id": "public-pydantic-dev",
+    "name": "Pydantic Blog（含 AI 文章）",
+    "url": "https://pydantic.dev/feed.xml",
+    "kind": "rss",
+    "category": "Agent 工程",
+    "quality": 29,
+    "official": 1,
+    "origin": "AIHOT 公开来源 · 原站订阅",
+    "upstreamId": "",
+    "owner": "pydantic.dev",
+    "tags": [
+      "官方"
+    ],
+    "evidence": "https://pydantic.dev/articles"
+  },
+  {
+    "id": "public-appinn-com",
+    "name": "小众软件",
+    "url": "https://www.appinn.com/feed/",
+    "kind": "rss",
+    "category": "软件工程",
+    "quality": 25,
+    "official": 0,
+    "origin": "AIHOT 公开来源 · 原站订阅",
+    "upstreamId": "",
+    "owner": "appinn.com",
+    "tags": [
+      "媒体 / 研究"
+    ],
+    "evidence": "https://www.appinn.com/"
+  },
+  {
+    "id": "public-servethehome-com",
+    "name": "ServeTheHome",
+    "url": "https://www.servethehome.com/feed/",
+    "kind": "rss",
+    "category": "软件工程",
+    "quality": 25,
+    "official": 0,
+    "origin": "AIHOT 公开来源 · 原站订阅",
+    "upstreamId": "",
+    "owner": "servethehome.com",
+    "tags": [
+      "媒体 / 研究"
+    ],
+    "evidence": "https://www.servethehome.com/"
+  },
+  {
+    "id": "public-blog-n8n-io",
+    "name": "n8n Blog",
+    "url": "https://blog.n8n.io/rss/",
+    "kind": "rss",
+    "category": "Agent 工程",
+    "quality": 29,
+    "official": 1,
+    "origin": "AIHOT 公开来源 · 原站订阅",
+    "upstreamId": "",
+    "owner": "blog.n8n.io",
+    "tags": [
+      "官方"
+    ],
+    "evidence": "https://blog.n8n.io/"
+  },
+  {
+    "id": "public-engineering-fb-com",
+    "name": "Meta Engineering Blog",
+    "url": "https://engineering.fb.com/feed/",
+    "kind": "rss",
+    "category": "软件工程",
+    "quality": 29,
+    "official": 1,
+    "origin": "AIHOT 公开来源 · 原站订阅",
+    "upstreamId": "",
+    "owner": "engineering.fb.com",
+    "tags": [
+      "官方"
+    ],
+    "evidence": "https://engineering.fb.com/"
+  },
+  {
+    "id": "public-infoworld-com",
+    "name": "InfoWorld",
+    "url": "https://www.infoworld.com/feed/",
+    "kind": "rss",
+    "category": "软件工程",
+    "quality": 25,
+    "official": 0,
+    "origin": "AIHOT 公开来源 · 原站订阅",
+    "upstreamId": "",
+    "owner": "infoworld.com",
+    "tags": [
+      "媒体 / 研究"
+    ],
+    "evidence": "https://www.infoworld.com/"
+  },
+  {
+    "id": "public-thurrott-com",
+    "name": "Thurrott",
+    "url": "https://www.thurrott.com/blog/rss",
+    "kind": "rss",
+    "category": "软件工程",
+    "quality": 25,
+    "official": 0,
+    "origin": "AIHOT 公开来源 · 原站订阅",
+    "upstreamId": "",
+    "owner": "thurrott.com",
+    "tags": [
+      "媒体 / 研究"
+    ],
+    "evidence": "https://www.thurrott.com/"
+  },
+  {
+    "id": "public-claude-dev",
+    "name": "Anthropic：Claude.dev 开发者博客",
+    "url": "https://claude.dev/rss.xml",
+    "kind": "rss",
+    "category": "Agent 工程",
+    "quality": 29,
+    "official": 1,
+    "origin": "AIHOT 公开来源 · 原站订阅",
+    "upstreamId": "",
+    "owner": "anthropic",
+    "tags": [
+      "官方"
+    ],
+    "evidence": "https://claude.dev/"
+  },
+  {
+    "id": "public-t3n-de",
+    "name": "t3n",
+    "url": "https://t3n.de/rss.xml",
+    "kind": "rss",
+    "category": "AI 产品",
+    "quality": 25,
+    "official": 0,
+    "origin": "AIHOT 公开来源 · 原站订阅",
+    "upstreamId": "",
+    "owner": "t3n.de",
+    "tags": [
+      "媒体 / 研究"
+    ],
+    "evidence": "https://t3n.de/"
+  },
+  {
+    "id": "public-news-ycombinator-com",
+    "name": "Hacker News 热门",
+    "url": "https://news.ycombinator.com/rss",
+    "kind": "rss",
+    "category": "软件工程",
+    "quality": 20,
+    "official": 0,
+    "origin": "AIHOT 公开来源 · 原站订阅",
+    "upstreamId": "",
+    "owner": "news.ycombinator.com",
+    "tags": [
+      "聚合线索"
+    ],
+    "evidence": "https://news.ycombinator.com/"
+  },
+  {
+    "id": "public-blog-ml-cmu-edu",
+    "name": "CMU：Machine Learning Blog",
+    "url": "https://blog.ml.cmu.edu/feed/",
+    "kind": "rss",
+    "category": "AI 产品",
+    "quality": 29,
+    "official": 1,
+    "origin": "AIHOT 公开来源 · 原站订阅",
+    "upstreamId": "",
+    "owner": "blog.ml.cmu.edu",
+    "tags": [
+      "官方"
+    ],
+    "evidence": "https://blog.ml.cmu.edu/"
+  },
+  {
+    "id": "public-techpowerup-com",
+    "name": "TechPowerUp",
+    "url": "https://www.techpowerup.com/rss/news",
+    "kind": "rss",
+    "category": "软件工程",
+    "quality": 25,
+    "official": 0,
+    "origin": "AIHOT 公开来源 · 原站订阅",
+    "upstreamId": "",
+    "owner": "techpowerup.com",
+    "tags": [
+      "媒体 / 研究"
+    ],
+    "evidence": "https://www.techpowerup.com/"
+  },
+  {
+    "id": "public-machinelearning-apple-com",
+    "name": "Apple Machine Learning Research",
+    "url": "https://machinelearning.apple.com/rss.xml",
+    "kind": "rss",
+    "category": "AI 产品",
+    "quality": 29,
+    "official": 1,
+    "origin": "AIHOT 公开来源 · 原站订阅",
+    "upstreamId": "",
+    "owner": "machinelearning.apple.com",
+    "tags": [
+      "官方"
+    ],
+    "evidence": "https://machinelearning.apple.com/"
+  },
+  {
+    "id": "public-theregister-com",
+    "name": "The Register",
+    "url": "https://www.theregister.com/?lab_viewport=rss",
+    "kind": "rss",
+    "category": "软件工程",
+    "quality": 25,
+    "official": 0,
+    "origin": "AIHOT 公开来源 · 原站订阅",
+    "upstreamId": "",
+    "owner": "theregister.com",
+    "tags": [
+      "媒体"
+    ],
+    "evidence": "https://www.theregister.com/design/page/feeds"
+  },
+  {
+    "id": "public-factory",
+    "name": "Factory 研究 / 产品",
+    "url": "https://factory.com/news/rss",
+    "kind": "rss",
+    "category": "Agent 工程",
+    "quality": 29,
+    "official": 1,
+    "origin": "AIHOT 公开来源 · 原站订阅",
+    "upstreamId": "",
+    "owner": "factory",
+    "tags": [
+      "官方"
+    ],
+    "evidence": "https://factory.ai/news"
+  },
+  {
+    "id": "public-claude-code-releases",
+    "name": "Claude Code：GitHub Releases",
+    "url": "https://github.com/anthropics/claude-code/releases.atom",
+    "kind": "rss",
+    "category": "Agent 工程",
+    "quality": 29,
+    "official": 1,
+    "origin": "AIHOT 公开来源 · 原站订阅",
+    "upstreamId": "",
+    "owner": "anthropic",
+    "tags": [
+      "官方"
+    ],
+    "evidence": "https://github.com/anthropics/claude-code/releases"
+  }
+]

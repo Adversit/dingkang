@@ -1,0 +1,13 @@
+    def write(self, file_path: str, content: str) -> ToolResult:
+        p = self._path(file_path)
+        exists = p.exists()
+        previous = None
+        if exists:
+            _, previous = self._check_fresh(p)
+            if not previous.full_read:
+                raise ToolError('Read the entire file before full replacement; use Edit for local changes.')
+        elif p in self.snapshots:
+            raise ToolError('Previously read file was deleted. Confirm the situation before creating it again.')
+        self._commit(p, content, previous, full_read=True)
+        action = 'replaced completely' if exists else 'created'
+        return ToolResult(f'File {action}: {p}. This confirms writing, not program correctness.')

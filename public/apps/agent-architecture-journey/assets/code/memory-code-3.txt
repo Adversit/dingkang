@@ -1,0 +1,28 @@
+class ToolResultStore:
+    def __init__(self, root: Path, threshold_chars: int = 10_000):
+        self.root = root
+        self.root.mkdir(parents=True, exist_ok=True)
+        self.threshold_chars = threshold_chars
+
+    def maybe_persist(
+        self,
+        tool_use_id: str,
+        content: str,
+    ) -> str:
+        if len(content) <= self.threshold_chars:
+            return content
+
+        path = self.root / f"{tool_use_id}.txt"
+        path.write_text(content, encoding="utf-8")
+
+        preview = content[:2000]
+
+        return (
+            "<persisted-output>\n"
+            f"Output too large ({len(content)} chars).\n"
+            f"Full output saved to: {path}\n\n"
+            "Preview:\n"
+            f"{preview}\n"
+            "...\n"
+            "</persisted-output>"
+        )

@@ -1,0 +1,107 @@
+/* Readable type at the browser's default zoom; canvas still supports spatial zoom. */
+html:root{font-size:16px}
+body .home-main{max-width:1440px;padding-inline:clamp(24px,5vw,72px)}
+body .home-main p,body .hero-note{font-size:1.125rem;line-height:1.8}
+body .home-main .eyebrow{font-size:.875rem}
+body .home-main h2{font-size:clamp(26px,2.3vw,34px);line-height:1.4}
+body .entry-section{box-sizing:border-box;min-height:calc(100svh - 80px);padding:clamp(32px,5vh,64px) 0;display:flex;flex-direction:column;justify-content:center;gap:28px;scroll-margin-top:24px}
+body .entry-section .section-heading{margin:0}
+body .entry-section .section-heading p{max-width:900px;font-size:1.125rem;margin-bottom:0}
+body .entry-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+body .entry-choice{min-height:220px;padding:24px;gap:12px}
+body .entry-choice strong{font-size:1.125rem;line-height:1.5}
+body .entry-choice span{font-size:1rem;line-height:1.65}
+body .entry-choice small{font-size:.8125rem}
+body .entry-choice em{font-size:.875rem;line-height:1.5;padding-top:16px;overflow-wrap:anywhere}
+body .entry-choice:focus-visible{outline:3px solid var(--focus);outline-offset:-3px}
+body .home-main .hero-links,body .home-main .text-button,body .home-method button{font-size:1rem}
+body .home-main .hero-foot,body .home-main footer,body .home-main .example-strip small{font-size:.875rem}
+body .browser{width:250px}
+body .browser button,body .browser p,body .toolbar select,body .toolbar .text-button,body .search-field input{font-size:.875rem}
+body .browser-footer,body #save-label,body .toolbar .meta,body .node-kicker{font-size:.75rem}
+body .rail-item{font-size:.75rem}
+body .inspector p,body .inspector .artifact-content,body .inspector .acceptance-row p,body .method-detail,body .artifact-row p{font-size:1rem;line-height:1.7}
+body .inspector h2,body .inspector .related-link,body .inspector .text-button,body .acceptance-row strong{font-size:1rem}
+body .inspector h1{font-size:1.75rem}
+body .status-tag,body .related-link small,body .acceptance-row .status-tag,body .acceptance-row footer button{font-size:.8125rem}
+body .page-body p,body .form-field,body dialog input,body dialog textarea,body dialog select,body .setting-row,body .method-detail dl{font-size:1rem}
+body .method-map strong{font-size:1rem}body .method-map span,body .method-detail dt,body .canvas-instructions,body .canvas-legend span{font-size:.875rem}
+body .toolbar-left{min-width:0;overflow-x:auto}body .toolbar-right{flex-shrink:0}
+@media(max-width:1100px){body .entry-grid{grid-template-columns:repeat(2,minmax(0,1fr))}body .entry-choice{min-height:190px}body .entry-section{min-height:auto}body .toolbar-right .stage-picker{display:none}}
+@media(max-width:700px){body .entry-grid{grid-template-columns:1fr}body .entry-choice{min-height:180px;padding:22px}body .entry-section{padding:36px 0;gap:24px}body .home-main p,body .entry-section .section-heading p{font-size:1rem}body .browser{display:none}body .canvas-legend{flex-wrap:wrap;max-width:90%}body .canvas-legend span{font-size:.75rem}}
+
+/* Put the decision point in reach and keep each section visually distinct. */
+body .hero{min-height:0;max-width:840px;padding:clamp(48px,8vh,96px) 0 clamp(44px,7vh,80px)}
+body .hero h1{font-size:clamp(2.25rem,4vw,3.25rem);line-height:1.3}
+body .hero-note{margin-bottom:24px}
+body .hero-foot{margin-top:20px}
+body .entry-section{min-height:0;padding:clamp(40px,6vh,72px) 0;justify-content:flex-start}
+body .entry-grid{border:0;gap:12px}
+body .entry-choice{min-height:210px;border:1px solid var(--border);border-radius:10px;background:var(--surface);transition:border-color .16s,transform .16s,box-shadow .16s}
+body .entry-choice:hover{border-color:var(--focus);transform:translateY(-2px);box-shadow:0 8px 24px rgba(31,31,29,.06)}
+body .entry-choice:active{transform:translateY(0)}
+body .how-section{padding:clamp(48px,7vh,80px) 0}
+@media(max-width:700px){body .hero{padding:42px 0 36px}body .hero h1{font-size:2rem}body .entry-grid{gap:10px}body .entry-choice{min-height:0}body .hero-links{flex-wrap:wrap;gap:12px 22px}}
+@media(prefers-reduced-motion:reduce){body .entry-choice{transition:none}body .entry-choice:hover{transform:none}}
+
+/* Keep account actions together, with the project name as the header anchor. */
+body .home-actions{display:flex;align-items:center;gap:12px;flex-shrink:0}
+body .home-header .wordmark{font-size:1rem;min-width:0}
+body .home-header{max-width:none;height:80px;padding-inline:clamp(18px,2.5vw,36px)}
+body .home-header .wordmark{gap:13px;font-size:1.125rem;font-weight:650;line-height:1.2}
+body .home-header .wordmark svg{width:34px;height:34px;flex:none}
+body #account-control[data-sync-issue="true"]{color:var(--risk);border:1px solid var(--risk);border-radius:6px;padding:6px 9px;background:var(--surface);font-weight:600}
+
+/* Acceptance and export details are regular working text, including on mobile. */
+body .pack-file,body .pack-file small,body .manual-decision,body .manual-decision p,
+body .inspector .pack-callout,body .inspector .pack-callout p{font-size:.875rem;line-height:1.6}
+body .inspector .acceptance-row .status-tag,body .inspector .acceptance-row footer button{font-size:.875rem}
+body .module-meta,body .module-boundary,body .node-kicker{font-size:.75rem}
+
+@media(max-width:700px){
+  body .home-header{height:72px;gap:12px;padding-inline:18px}
+  body .home-header .wordmark{gap:9px;font-size:.9375rem}
+  body .home-header .wordmark svg{width:30px;height:30px}
+  body .home-header .wordmark{overflow:hidden;white-space:nowrap}
+  body .home-header .wordmark span{overflow:hidden;text-overflow:ellipsis}
+  body .home-actions{gap:6px}
+  body .admin-shortcut{display:none}
+  body .toolbar{height:auto;min-height:96px;flex-wrap:wrap;align-content:center;padding:6px 9px;gap:4px}
+  body .toolbar-right{order:1;flex:0 0 100%;justify-content:flex-end;min-width:0;min-height:34px}
+  body .toolbar-left{order:2;flex:0 0 100%;max-width:100%;min-height:38px;overflow-x:auto;overflow-y:hidden}
+  body .toolbar-right #account-control{font-size:.875rem;padding:5px 8px}
+  body .toolbar .icon-btn{width:36px;min-width:36px}
+  body .rail-item{font-size:.75rem}
+  body .canvas-layout{position:relative}
+  body .canvas-layout .inspector{left:0;right:0;top:0;bottom:0}
+  body .canvas-layout.full-detail-mode .inspector{position:relative}
+}
+
+/* Keep the working controls legible and usable on narrow screens. */
+body .rail-item:focus-visible,body .toolbar button:focus-visible,body .file-nav button:focus-visible,
+body .method-map button:focus-visible,body .project-row:focus-visible{outline:3px solid var(--focus);outline-offset:-3px}
+body .toolbar-left{scrollbar-width:thin;scrollbar-color:var(--border-strong) transparent}
+body .toolbar button,body .toolbar select{flex-shrink:0}
+body .page-body{min-width:0}
+body .inspector table{display:block;max-width:100%;overflow-x:auto;white-space:normal}
+@media(max-width:700px){
+  body .work-shell{min-width:0}
+  body .work-main{min-width:0}
+  body .rail{width:62px;min-width:62px}
+  body .rail-item{width:54px;min-height:52px;font-size:.75rem;line-height:1.2}
+  body .rail .language{font-size:.75rem}
+  body .toolbar-left{scrollbar-width:auto;gap:4px;padding-bottom:3px}
+  body .toolbar .icon-btn{width:40px;min-width:40px;min-height:40px}
+  body .toolbar select{max-width:140px;font-size:.875rem;min-height:40px}
+  body .canvas-instructions{font-size:.75rem;line-height:1.45;max-width:calc(100% - 24px)}
+  body .semantic-label{font-size:.75rem}
+  body .canvas-layout .inspector{left:0;top:0}
+  body .detail-scroll{padding:24px 18px}
+  body .page-body{padding:28px 18px 60px}
+  body .page-heading h1{font-size:1.75rem;line-height:1.3}
+  body .method-map button:not(.active) span{display:block}
+  body .method-map button{min-height:70px;gap:5px}
+  body .inspector table{font-size:.875rem}
+  body .inspector th,body .inspector td{padding:9px 8px}
+}
+@media(max-width:390px){body .home-header .wordmark{max-width:56vw}body .home-actions{gap:4px}body .hero h1{font-size:1.875rem}}
