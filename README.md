@@ -27,8 +27,10 @@
 
 | 灵感轨道 · `kinetic` | 暖居小镇 · `cozy` |
 |---|---|
-| [![灵感轨道实际截图](docs/screenshots/kinetic.webp)](https://dingkang-hub.dingikang.chatgpt.site/?style=kinetic) | [![暖居小镇实际截图](docs/screenshots/cozy.webp)](https://dingkang-hub.dingikang.chatgpt.site/?style=cozy) |
-| 流动轨道与交互入口，让研究、创造和生活相遇。 | 暖阳海岛、细腻小屋与风云水光；选中建筑，进入房间，触碰物件打开应用。 |
+| [![灵感轨道实际截图：轻量动态版本](docs/screenshots/kinetic.webp)](https://dingkang-hub.dingikang.chatgpt.site/?style=kinetic) | [![暖居小镇实际截图](docs/screenshots/cozy.webp)](https://dingkang-hub.dingikang.chatgpt.site/?style=cozy) |
+| 冷白空间中的银蓝形体、流动背景与整页交互，让灵感一路延伸到应用。 | 暖阳海岛、细腻小屋与风云水光；选中建筑，进入房间，触碰物件打开应用。 |
+
+**灵感轨道**让动态贯穿整个工作空间：主视觉随滚动融入页面边缘，导航滑块跟随选择，研究与产品入口轻轻运转，应用封面响应指针。主视觉由代码实时绘制，无需新增生成图片；支持 WebGL 的设备使用立体金属丝带，不支持时保留轻量动态画面。上方截图展示后者。首屏可直接暂停动效，系统减少动效、页面隐藏或打开应用时也会停止持续运动。设计与验证范围见 [整页动态设计](docs/design/kinetic-motion.md)。
 
 四种外观可以直接切换，已打开的应用保持挂载，游戏与工作内容不因换主题而重载。暖居采用**高精度烘焙美术与实时 WebGL 局部动态结合的固定视角 2.5D 场景**：保留木纹、石材、玻璃和织物的细节，让海水、薄云、微风与灯光在各自区域轻轻变化。镜头提供有限视差与横向观察，不提供任意角度自由漫游。环境音默认关闭，由用户主动开启；页面隐藏或离开场景时暂停声音与动态，动效遵循系统减少动效设置。WebGL 不可用时仍可从辅助清单使用应用。
 
@@ -95,6 +97,7 @@ flowchart TB
 | 应用目录与分类 | [`lib/hub/catalog.ts`](lib/hub/catalog.ts) |
 | 主题定义、URL 与场景接口 | [`lib/hub/theme.ts`](lib/hub/theme.ts) |
 | 导航、收藏、导入与账号状态 | [`app/page.tsx`](app/page.tsx) |
+| 灵感轨道的整页背景与交互动态 | [`components/KineticBackdrop.tsx`](components/KineticBackdrop.tsx) · [`lib/hub/kinetic-motion.ts`](lib/hub/kinetic-motion.ts) · [`app/kinetic.css`](app/kinetic.css) |
 | 暖居场景、房间热点与局部动态 | [`components/`](components/) · [`lib/hub/cozy-scene.ts`](lib/hub/cozy-scene.ts) · [`lib/hub/cozy-room-art.ts`](lib/hub/cozy-room-art.ts) · [`lib/hub/cozy-atmosphere.ts`](lib/hub/cozy-atmosphere.ts) |
 | 云存档桥与模块启动等待 | [`public/hub-storage.js`](public/hub-storage.js) · [`components/ModuleStorageGate.tsx`](components/ModuleStorageGate.tsx) |
 | 保存状态、冲突与本机恢复副本 | [`components/HubStoragePanel.tsx`](components/HubStoragePanel.tsx) |
@@ -192,6 +195,7 @@ pnpm run build
 - [统一站点与存储说明](docs/unification.md)
 - [统一存储 API](lib/hub/README.md)
 - [暖居海岛、房间与应用物件](docs/cozy-base.md)
+- [灵感轨道整页动态设计与验证范围](docs/design/kinetic-motion.md)
 - [场景美术规范与提示词模板](docs/design/cozy-art-direction.md) · [室内实际生成提示词](docs/design/cozy-room-art-prompts.md)
 - [本轮验证记录与待复核项](docs/verification-2026-10-24.md)
 - [存档面板与离开保护](docs/storage-panel.md)

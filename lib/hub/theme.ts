@@ -37,7 +37,7 @@ export const hubThemes:readonly HubTheme[] = [
   },
   {
     id:'kinetic',name:'灵感轨道',description:'让想法相遇，让灵感流动。',identity:'灵感轨道',
-    colors:{background:'#101C39',surface:'#172A4B',raised:'#21385D',text:'#F4F8FF',muted:'#BACDE3',accent:'#9BDEFF',accentText:'#112744',line:'#38516F'},
+    colors:{background:'#F1F4FA',surface:'#FFFFFF',raised:'#E4EAF6',text:'#1E2944',muted:'#5B687F',accent:'#3549C5',accentText:'#FFFFFF',line:'#CFD7E5'},
     scene:{src:null,position:'center',shade:'transparent'},
     motion:{supported:true,durationSeconds:28},
   },

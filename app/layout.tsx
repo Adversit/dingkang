@@ -1,5 +1,6 @@
 import type {Metadata} from 'next';
 import './globals.css';
+import './kinetic.css';
 
 export const metadata:Metadata={
   title:'丁康的工作空间',

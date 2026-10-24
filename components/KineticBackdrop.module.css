@@ -1,0 +1,34 @@
+.field {
+  --sculpture-x: 75vw;
+  --sculpture-y: 440px;
+  --sculpture-size: min(46vw, 730px);
+  --sculpture-presence: 1;
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  contain: layout paint;
+}
+.canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.wash { position: absolute; width: 90vw; height: 85vh; right: -24vw; top: -14vh; border-radius: 50%; background: radial-gradient(ellipse at 40% 48%, #b7c5ed38, #d2c8ee24 40%, transparent 70%); transform-origin: 35% 60%; }
+.reflection { position: absolute; width: 70vw; height: 62vh; left: -29vw; top: 45vh; border-radius: 50%; background: radial-gradient(ellipse, #96d6d630, #c8d6e518 43%, transparent 71%); }
+.field[data-motion='active'] .wash { animation: wash-drift 22s ease-in-out infinite alternate; }
+.field[data-motion='active'] .reflection { animation: reflection-drift 28s ease-in-out infinite alternate; }
+@keyframes wash-drift { to { transform: translate3d(-8vw, 14vh, 0) rotate(-18deg) scale(1.15); } }
+@keyframes reflection-drift { to { transform: translate3d(19vw, -21vh, 0) scale(1.18); } }
+.fallback { position: absolute; left: var(--sculpture-x); top: var(--sculpture-y); width: var(--sculpture-size); height: var(--sculpture-size); transform: translate(-50%, -50%) rotate(-18deg); opacity: var(--sculpture-presence); perspective: 900px; }
+.fallback i { position: absolute; inset: 15%; border: clamp(15px, 3.4vw, 49px) solid #bdc9e0; border-radius: 50%; background: transparent; box-shadow: inset 8px 6px 14px #faffff, inset -10px -5px 17px #687eab, 13px 14px 16px #495a7e15; transform: rotateY(-36deg) rotateX(24deg); }
+.fallback i:nth-child(2) { inset: 20%; border-color: #c1b7ea; border-width: clamp(9px, 2.1vw, 30px); transform: rotateY(53deg) rotateX(-33deg) rotate(-35deg); }
+.fallback i:nth-child(3) { inset: 2%; border-width: 2px; border-color: #7884b7; transform: rotateX(61deg) rotateY(-15deg); box-shadow: none; }
+.field[data-renderer='webgl'] .fallback { visibility: hidden; }
+.field[data-motion='active'][data-renderer='fallback'] .fallback { animation: fallback-turn 18s ease-in-out infinite alternate; }
+@keyframes fallback-turn { to { transform: translate(-50%, -50%) rotate(12deg); } }
+@media (max-width: 759px) {
+  .field { --sculpture-x: 50vw; --sculpture-y: 650px; --sculpture-size: 93vw; }
+  .wash { width: 150vw; right: -60vw; }
+  .reflection { width: 130vw; left: -70vw; opacity: .65; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .field *, .field *::before, .field *::after { animation: none !important; transition: none !important; }
+}

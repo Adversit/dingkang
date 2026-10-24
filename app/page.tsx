@@ -10,6 +10,8 @@ import HubStoragePanel,{flushHubModule} from '@/components/HubStoragePanel';
 import {findModuleStorage,hubStorageMode} from '@/lib/hub/storage-panel';
 import BackupPasteInput from '@/components/BackupPasteInput';
 import KineticScene from '@/components/KineticScene';
+import KineticBackdrop from '@/components/KineticBackdrop';
+import KineticMotion from '@/components/KineticMotion';
 import CozyBaseScene from '@/components/CozyBaseScene';
 
 type Session={authenticated:boolean;userId?:string;displayName?:string};
@@ -239,6 +241,7 @@ export default function Hub(){
 
   return <div className={'hub-shell theme-'+theme.id+(open?' module-open':'')+(cozyHome?' cozy-space-open':'')+(cozyHome&&cozyDirectoryOpen?' cozy-directory-open':'')} style={themeVariables(theme) as CSSProperties} data-motion={moving?'on':'off'}>
     <a className="hub-skip" href="#hub-main">跳到主要内容</a>
+    {theme.id==='kinetic'&&<><KineticBackdrop motion={moving} view={open?'module':section}/><KineticMotion motion={moving} viewKey={section+'|'+search+'|'+favorites.join(',')+'|'+(open?.id||'')}/><div className="hub-kinetic-progress" aria-hidden="true"/></>}
     {theme.id==='classic'&&<>
       {sidebarOpen&&<button className="hub-sidebar-scrim" aria-label="关闭导航" onClick={()=>setSidebarOpen(false)}/>}
       <aside className={'hub-sidebar '+(sidebarOpen?'is-open':'')} aria-label="工作空间导航">
@@ -277,7 +280,7 @@ export default function Hub(){
         <div className="hub-frame-wrap">{frameLoading&&<div className="hub-frame-loading" role="status"><LoaderCircle size={28} className="hub-spin"/><p>正在打开{open.name}…</p></div>}<iframe key={open.id} ref={frameRef} src={open.path} title={open.name} allow="fullscreen; clipboard-write; autoplay" onLoad={()=>setFrameLoading(false)}/></div>
       </div>:<>
         {showHero&&theme.id==='classic'&&<section className="hub-classic-welcome hub-content"><div><h1>今天，从这里继续。</h1><p>应用、资料和日常，都在手边。</p></div>{recentModules.length>0&&<div className="hub-classic-recents"><h2>最近使用</h2><div>{recentModules.slice(0,3).map(module=><button key={module.id} disabled={controlsDisabled} onClick={()=>launch(module)}><AppIcon module={module}/><span><strong>{module.name}</strong><small>{module.subtitle}</small></span><ArrowUpRight size={20}/></button>)}</div></div>}</section>}
-        {showHero&&theme.id==='kinetic'&&<KineticScene {...sceneProps}/>}
+        {showHero&&theme.id==='kinetic'&&<KineticScene {...sceneProps} motionEnabled={appearance.motion} reducedMotion={reducedMotion} onToggleMotion={()=>persist({appearance:{...appearanceRef.current,motion:!appearanceRef.current.motion}})}/>}
         {cozyHome&&<div className="hub-cozy-space"><CozyBaseScene {...sceneProps} initialRoom={cozyRoom.current} onRoomChange={rememberCozyRoom}/></div>}
         {showHero&&theme.id==='night-harbor'&&<section className="hub-hero" aria-labelledby="hero-title">
           {theme.scene.src&&<div className="hub-scene" aria-hidden="true"><img src={theme.scene.src} alt="" style={{objectPosition:theme.scene.position}} fetchPriority="high"/><div className="hub-scene-shade"/></div>}
@@ -305,12 +308,13 @@ export default function Hub(){
           {section!=='favorites'&&<nav className="hub-category-filter" aria-label="应用分类"><button className={section==='all'?'active':''} onClick={()=>selectSection('all')}>全部</button>{categories.map(category=><button key={category.id} className={section===category.id?'active':''} onClick={()=>selectSection(category.id)}>{category.name}</button>)}</nav>}
           {visible.length===0?<div className="hub-empty hub-no-apps">{section==='favorites'?<Star size={38}/>:<Search size={38}/>}<h3>{query?'没有找到这个应用':'还没有收藏应用'}</h3><p>{query?'试试名称，例如“知证”或“三国”。':'应用旁的星标，会把它留在这里。'}</p><button className="hub-button" onClick={()=>selectSection('all')}>查看全部应用</button></div>:categories.filter(category=>visible.some(module=>module.category===category.id)).map(category=>{
             const presentation=categoryPresentation[category.id],scenic=theme.id!=='classic'&&(category.id==='games'||category.id==='life');
-            return <section className={'hub-collection '+(scenic?'scenic':'editorial')} key={category.id} aria-labelledby={'category-'+category.id}>
+            return <section className={'hub-collection '+(scenic?'scenic':'editorial')} data-category={category.id} key={category.id} aria-labelledby={'category-'+category.id}>
               <div className="hub-collection-heading"><div><p>{category.name}</p><h3 id={'category-'+category.id}>{presentation.title}</h3></div><span>{presentation.description}</span></div>
               <div className={scenic?'hub-art-grid':'hub-editorial-grid'}>{visible.filter(module=>module.category===category.id).map(module=>{
                 const art=moduleArtwork[module.id];
                 return <article className={'hub-application '+(art?'has-art':'type-art')} key={module.id}>
                   <button className="hub-app-launch" onClick={()=>launch(module)} disabled={controlsDisabled}>
+                    {theme.id==='kinetic'&&!scenic&&<div className={'hub-kinetic-glyph glyph-'+module.category} aria-hidden="true"><i/><i/><i/><i/><span><AppIcon module={module} size={35}/></span></div>}
                     {scenic&&<div className="hub-artwork">{art?<img src={art.src} alt={art.label} loading="lazy" style={{objectPosition:art.position}}/>:<div className={'hub-art-type art-'+module.id}><AppIcon module={module} size={48}/><span>{module.id==='yourwar-battle-forge'?'YourWar':module.name}</span></div>}<span className="hub-open-mark" aria-hidden="true"><ArrowUpRight size={26}/></span></div>}
                     <div className="hub-app-copy">{!scenic&&<AppIcon module={module} size={27}/>}<div><h4>{module.name}</h4><p>{module.description}</p></div>{!scenic&&<ArrowUpRight className="hub-editorial-arrow" size={23}/>}</div>
                   </button>
