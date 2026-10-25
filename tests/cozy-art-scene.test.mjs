@@ -11,6 +11,7 @@ import {cozyBuildings, COZY_ART_ASPECT} from '../lib/hub/cozy-world.ts';
 // These points identify the visible focal objects in the finished paintings.
 // They are independent click fixtures, not centroids derived from hit polygons.
 const objectPoints = {
+  'jlu-campus': [.620, .871],
   'zhiliu-radar': [.12, .4], 'zhizheng-research': [.53, .67],
   'agent-architecture-journey': [.88, .28], 'aipm-studio-dk': [.14, .4],
   'evopm-workbench': [.50, .4], 'ai-dev-collaboration-workbench': [.815, .4],
@@ -150,7 +151,7 @@ test('clicking each island building previews it without entering or launching an
   assert.equal(h.requestedTextures.length, 1, 'selection must not fetch an interior until confirmation');
 });
 
-test('real polygon raycasts reach all 15 focal objects in desktop and narrow mobile viewports', async t => {
+test('real polygon raycasts reach every catalog focal object in desktop and narrow mobile viewports', async t => {
   for (const [width, height] of [[1440, 660], [375, 590], [320, 720]]) await t.test(`${width} x ${height}`, async subtest => {
     const h = await sceneHarness(subtest, {width, height});
     for (const category of categories) {

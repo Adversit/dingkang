@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "site": "https://dingkang-hub.dingikang.chatgpt.site",
+  "startedAt": "2026-10-25T15:35:02.653Z",
+  "scope": "9 个独立匿名会话、最多 8 人一房的有限验收；不代表长期容量或所有网络环境。",
+  "checks": [
+    {
+      "name": "数据库及传输能力健康检查",
+      "status": "passed",
+      "durationMs": 4498,
+      "maxPlayers": 8,
+      "workerWebSocketApi": true
+    },
+    {
+      "name": "创建九个独立匿名身份",
+      "status": "passed",
+      "durationMs": 12870,
+      "count": 9
+    },
+    {
+      "name": "八人真实同房与第九人容量拒绝",
+      "status": "passed",
+      "durationMs": 15287,
+      "simultaneousPlayers": 8,
+      "overflowRejected": true
+    },
+    {
+      "name": "HTTP 移动互见、房间隔离与防伪造",
+      "status": "passed",
+      "durationMs": 9506
+    },
+    {
+      "name": "房内聊天持久化、本人删除与房间隔离",
+      "status": "passed",
+      "durationMs": 7588
+    },
+    {
+      "name": "同校区广场跨测试房间共享",
+      "status": "skipped",
+      "durationMs": 537,
+      "skipped": true,
+      "reason": "检测到其他在线房间，为避免向真实玩家显示测试消息，未执行广场写入。"
+    },
+    {
+      "name": "地图白名单传送与同室内坐标同步",
+      "status": "passed",
+      "durationMs": 24068
+    },
+    {
+      "name": "WebSocket 升级、双客户端移动与断线重连",
+      "status": "passed",
+      "durationMs": 14462,
+      "independentConnections": 2,
+      "reconnected": true
+    },
+    {
+      "name": "北区独立地图和切房后旧离开请求隔离",
+      "status": "passed",
+      "durationMs": 10596,
+      "campus": "north"
+    }
+  ],
+  "transports": {
+    "http": true,
+    "websocket": true
+  },
+  "cleanup": {
+    "messagesDeleted": 1,
+    "sessionsLeft": 9,
+    "errors": []
+  },
+  "finishedAt": "2026-10-25T15:36:50.041Z",
+  "requestCount": 165,
+  "latency": {
+    "http": {
+      "samples": 165,
+      "p50Ms": 1910.77,
+      "p95Ms": 7998.01,
+      "maxMs": 8373.2
+    },
+    "websocket": {
+      "samples": 5,
+      "p50Ms": 892.12,
+      "p95Ms": 1767.42,
+      "maxMs": 1767.42
+    }
+  },
+  "passed": false,
+  "note": "仅为本次短时验收的真实响应数据；空测试房间可能作为历史记录保留，所有成功清理的测试角色已离线。"
+}

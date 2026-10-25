@@ -1,0 +1,213 @@
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-10-25",
+  "purpose": "独立名称与别名证据层；不修改原始OSM数据、地图ID、碰撞与传送点。",
+  "attribution": "© OpenStreetMap contributors; 吉林大学公开名称公告与报道（仅作事实核验与出处引用）",
+  "licenseNotice": "本项目的OSM对象关联与派生标注按ODbL-1.0提供。所链接的官方文章、地图程序、影像、矢量和模型仍保留原权利；本文件不含其几何、内部画布坐标或图片。",
+  "entries": [
+    {
+      "campusId": "qianwei-south",
+      "osmId": "way/1473632399",
+      "displayName": "吕振羽楼",
+      "aliases": [
+        "行政楼"
+      ],
+      "status": "official-name-fact-verified",
+      "geometryChanged": false,
+      "evidence": [
+        {
+          "url": "https://xcb.jlu.edu.cn/info/1009/1074.htm",
+          "title": "关于对中心校区部分楼宇命名的公告",
+          "publishedDate": "2021-12-03",
+          "basis": "校方正式新旧名称对应公告；按已有OSM同名对象关联，未改变几何。"
+        }
+      ]
+    },
+    {
+      "campusId": "qianwei-south",
+      "osmId": "way/1473759426",
+      "displayName": "前卫体育馆",
+      "aliases": [
+        "体育馆"
+      ],
+      "status": "official-name-fact-verified",
+      "geometryChanged": false,
+      "evidence": [
+        {
+          "url": "https://xcb.jlu.edu.cn/info/1009/1074.htm",
+          "title": "关于对中心校区部分楼宇命名的公告",
+          "publishedDate": "2021-12-03",
+          "basis": "校方正式新旧名称对应公告；按已有OSM同名对象关联，未改变几何。"
+        }
+      ]
+    },
+    {
+      "campusId": "qianwei-south",
+      "osmId": "relation/20167438",
+      "displayName": "王湘浩楼",
+      "aliases": [
+        "计算机楼"
+      ],
+      "status": "official-name-fact-verified",
+      "geometryChanged": false,
+      "evidence": [
+        {
+          "url": "https://xcb.jlu.edu.cn/info/1009/1074.htm",
+          "title": "关于对中心校区部分楼宇命名的公告",
+          "publishedDate": "2021-12-03",
+          "basis": "校方正式新旧名称对应公告；按已有OSM同名对象关联，未改变几何。"
+        }
+      ]
+    },
+    {
+      "campusId": "qianwei-south",
+      "osmId": "way/1473789021",
+      "displayName": "翔远餐厅",
+      "aliases": [
+        "A餐厅"
+      ],
+      "status": "official-name-fact-verified",
+      "geometryChanged": false,
+      "evidence": [
+        {
+          "url": "https://xcb.jlu.edu.cn/info/1009/1074.htm",
+          "title": "关于对中心校区部分楼宇命名的公告",
+          "publishedDate": "2021-12-03",
+          "basis": "校方正式新旧名称对应公告；按已有OSM同名对象关联，未改变几何。"
+        }
+      ]
+    },
+    {
+      "campusId": "qianwei-south",
+      "osmId": "way/1473789018",
+      "displayName": "鸿鹄餐厅",
+      "aliases": [
+        "C餐厅"
+      ],
+      "status": "official-name-fact-verified",
+      "geometryChanged": false,
+      "evidence": [
+        {
+          "url": "https://xcb.jlu.edu.cn/info/1009/1074.htm",
+          "title": "关于对中心校区部分楼宇命名的公告",
+          "publishedDate": "2021-12-03",
+          "basis": "校方正式新旧名称对应公告；按已有OSM同名对象关联，未改变几何。"
+        }
+      ]
+    },
+    {
+      "campusId": "qianwei-north",
+      "osmId": "way/297751912",
+      "displayName": "理化楼",
+      "aliases": [
+        "前卫北区理化楼"
+      ],
+      "status": "existing-osm-name-officially-corroborated",
+      "geometryChanged": false,
+      "evidence": [
+        {
+          "url": "https://news.jlu.edu.cn/info/1021/60859.htm",
+          "title": "边铁带队到前卫北区、朝阳校区调研",
+          "publishedDate": "2026-04-08",
+          "basis": "校方近期报道确认前卫北区理化楼仍为在用楼宇名称；OSM原有同名对象。"
+        }
+      ]
+    }
+  ],
+  "unresolved": [
+    {
+      "campusId": "qianwei-north",
+      "name": "科技楼",
+      "aliases": [],
+      "osmId": null,
+      "position": null,
+      "navigationEnabled": false,
+      "status": "official-name-confirmed-position-unresolved",
+      "sourceUrl": "https://news.jlu.edu.cn/info/1021/60859.htm",
+      "sourceDate": "2026-04-08",
+      "note": "公开官方资料可确认名称，但尚无可独立验证的OSM轮廓对应；不分配猜测坐标，不自动改名。"
+    },
+    {
+      "campusId": "qianwei-north",
+      "name": "原计算中心楼",
+      "aliases": [
+        "计算中心"
+      ],
+      "osmId": null,
+      "position": null,
+      "navigationEnabled": false,
+      "status": "official-name-confirmed-position-unresolved",
+      "sourceUrl": "https://news.jlu.edu.cn/info/1021/60859.htm",
+      "sourceDate": "2026-04-08",
+      "note": "公开官方资料可确认名称，但尚无可独立验证的OSM轮廓对应；不分配猜测坐标，不自动改名。"
+    },
+    {
+      "campusId": "qianwei-north",
+      "name": "鸣放宫",
+      "aliases": [],
+      "osmId": null,
+      "position": null,
+      "navigationEnabled": false,
+      "status": "official-name-confirmed-position-unresolved",
+      "sourceUrl": "https://news.jlu.edu.cn/info/1166/29450.htm",
+      "sourceDate": "2005-03-24",
+      "note": "公开官方资料可确认名称，但尚无可独立验证的OSM轮廓对应；不分配猜测坐标，不自动改名。"
+    },
+    {
+      "campusId": "qianwei-north",
+      "name": "设备楼",
+      "aliases": [],
+      "osmId": null,
+      "position": null,
+      "navigationEnabled": false,
+      "status": "official-name-confirmed-position-unresolved",
+      "sourceUrl": "https://www.jlu.edu.cn/info/1238/36174.htm",
+      "sourceDate": null,
+      "note": "公开官方资料可确认名称，但尚无可独立验证的OSM轮廓对应；不分配猜测坐标，不自动改名。"
+    },
+    {
+      "campusId": "qianwei-north",
+      "name": "图书馆",
+      "aliases": [],
+      "osmId": null,
+      "position": null,
+      "navigationEnabled": false,
+      "status": "official-name-confirmed-position-unresolved",
+      "sourceUrl": "https://www.jlu.edu.cn/info/1238/36174.htm",
+      "sourceDate": null,
+      "note": "公开官方资料可确认名称，但尚无可独立验证的OSM轮廓对应；不分配猜测坐标，不自动改名。"
+    },
+    {
+      "campusId": "qianwei-north",
+      "name": "文科楼",
+      "aliases": [],
+      "osmId": null,
+      "position": null,
+      "navigationEnabled": false,
+      "status": "official-name-confirmed-position-unresolved",
+      "sourceUrl": "https://www.jlu.edu.cn/info/1238/36174.htm",
+      "sourceDate": null,
+      "note": "公开官方资料可确认名称，但尚无可独立验证的OSM轮廓对应；不分配猜测坐标，不自动改名。"
+    }
+  ],
+  "officialApiReview": {
+    "endpoint": "https://map.jlu.edu.cn/pois?term=",
+    "method": "GET",
+    "requiresAuthenticationObserved": false,
+    "observation": "公开前端的搜索联想接口。按理化楼、科技楼、鸣放宫、计算中心等已知名称查询返回200及名称；位置为官方地图内部画布坐标，非声明的WGS84经纬度。",
+    "reuseLicense": "No explicit open-data redistribution licence found in the inspected public homepage, frontend references or launch announcement.",
+    "decision": "仅用于核验少量公开名称事实；不复制该接口坐标数据库、矢量、模型或图片。"
+  },
+  "pendingResourceRequest": {
+    "requiredFor": "把北区全部无名OSM轮廓可靠地映射到现行正式名称，并校准真实入口与通行限制。现有公开OSM漫游不因此阻塞。",
+    "items": [
+      "前卫北区现行正式楼名及别名表",
+      "楼宇标识与WGS84/明确坐标系位置或可公开复用轮廓对应表",
+      "校门和建筑入口位置及步行通行限制",
+      "允许公开展示、衍生开发与再分发的授权范围和署名要求"
+    ],
+    "department": "吉林大学资产管理处数据资产管理科",
+    "contactSource": "https://zcgl.jlu.edu.cn/info/1067/5881.htm",
+    "telephone": "0431-85152166"
+  }
+}

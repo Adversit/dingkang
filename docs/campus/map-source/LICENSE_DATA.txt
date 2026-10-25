@@ -1,0 +1,13 @@
+DATA LICENSE / 地图数据许可
+
+© OpenStreetMap contributors
+This directory contains OpenStreetMap data and an adapted database licensed under the Open Data Commons Open Database License (ODbL) 1.0.
+
+Copyright and attribution: https://www.openstreetmap.org/copyright
+Full ODbL 1.0: https://opendatacommons.org/licenses/odbl/1-0/
+
+The complete derived databases used by this app are distributed as qianwei-south.json and qianwei-north.json. Keep this notice, attribution and ODbL availability notice when redistributing the data or works made from it. OSM data licensing is separate from the app code and independently authored artwork.
+
+地图采用独立下载的 OSM 开放数据，建筑、地表、道路、POI 和米制坐标派生数据库按 ODbL 1.0 提供。请保留 OpenStreetMap 及其贡献者署名，并标明数据许可。应用程序与自制视觉素材另行管理许可；该许可不涵盖参考站程序、人物、建筑美术或吉林大学官方三维地图模型。
+
+No content copied from the reference game's JavaScript, CSS, characters or artwork is included in this dataset. No official-campus 3D model or tile assets are included.

@@ -1,4 +1,5 @@
 import { sqliteTable, text, integer, primaryKey, index, uniqueIndex } from 'drizzle-orm/sqlite-core';
+export * from '../lib/campus/schema';
 
 export const hubStates = sqliteTable('hub_states', {
   ownerId: text('owner_id').notNull(),

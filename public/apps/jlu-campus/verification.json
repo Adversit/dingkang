@@ -1,0 +1,407 @@
+{
+  "schemaVersion": 2,
+  "updatedAt": "2026-10-25",
+  "site": "https://dingkang-hub.dingikang.chatgpt.site",
+  "summary": "最近核验运行版本v17：北区理化楼出生点的遮挡建筑半透明，姓名与脚圈清晰，控制台无报错，已返回南区。地图、联机和已列交互均有分项证据；北区精确资料补全暂停，长期稳态并发与近乎一致整体视觉未验收。",
+  "local": {
+    "title": "历史全量回归记录",
+    "tests": 95,
+    "passed": 95,
+    "failed": 0,
+    "sourceSha256": "d83d266b8e9d9793bd904421bfabf5514b82fd1b47074a1c2c0e6a142d2e024a",
+    "note": "来自当前docs/campus/test-results.tap的95项历史全量记录。其后新增校园用例以campusLatest单独记录，不将两个记录相加。",
+    "coverage": [
+      "空间几何、真实路径、数据与服务器入口一致性",
+      "会话权限、房间上限、消息频道、恢复与删除缓存",
+      "工作空间存储、导入、导航和布局回归"
+    ]
+  },
+  "online": {
+    "startedAt": "2026-10-25T15:35:02.653Z",
+    "finishedAt": "2026-10-25T15:36:50.041Z",
+    "scope": "9 个独立匿名会话、最多 8 人一房的有限验收；不代表长期容量或所有网络环境。",
+    "checks": [
+      {
+        "name": "数据库及传输能力健康检查",
+        "status": "passed",
+        "durationMs": 4498
+      },
+      {
+        "name": "创建九个独立匿名身份",
+        "status": "passed",
+        "durationMs": 12870
+      },
+      {
+        "name": "八人真实同房与第九人容量拒绝",
+        "status": "passed",
+        "durationMs": 15287,
+        "simultaneousPlayers": 8,
+        "overflowRejected": true
+      },
+      {
+        "name": "HTTP 移动互见、房间隔离与防伪造",
+        "status": "passed",
+        "durationMs": 9506
+      },
+      {
+        "name": "房内聊天持久化、本人删除与房间隔离",
+        "status": "passed",
+        "durationMs": 7588
+      },
+      {
+        "name": "同校区广场跨测试房间共享",
+        "status": "skipped",
+        "durationMs": 537,
+        "reason": "检测到其他在线房间，为避免向真实玩家显示测试消息，未执行广场写入。"
+      },
+      {
+        "name": "地图白名单传送与同室内坐标同步",
+        "status": "passed",
+        "durationMs": 24068
+      },
+      {
+        "name": "WebSocket 升级、双客户端移动与断线重连",
+        "status": "passed",
+        "durationMs": 14462,
+        "independentConnections": 2,
+        "reconnected": true
+      },
+      {
+        "name": "北区独立地图和切房后旧离开请求隔离",
+        "status": "passed",
+        "durationMs": 10596
+      }
+    ],
+    "passedChecks": 8,
+    "failedChecks": 0,
+    "skippedChecks": 1,
+    "transports": {
+      "http": true,
+      "websocket": true
+    },
+    "latency": {
+      "http": {
+        "samples": 165,
+        "p50Ms": 1910.77,
+        "p95Ms": 7998.01,
+        "maxMs": 8373.2
+      },
+      "websocket": {
+        "samples": 5,
+        "p50Ms": 892.12,
+        "p95Ms": 1767.42,
+        "maxMs": 1767.42
+      }
+    },
+    "requestCount": 165,
+    "cleanup": {
+      "messagesDeleted": 1,
+      "sessionsLeft": 9,
+      "errorCount": 0
+    },
+    "note": "这轮报告中overall passed为false，因为广场写入被保守跳过，并非已执行检查失败。延迟属于本轮混合请求和5个WS样本，不能视为长期容量结论；后续仍需优化并复测。"
+  },
+  "remaining": [
+    "北区23个未命名建筑、真实入口和通行限制的精确补全等待官方可复用资料",
+    "实体手机和更多浏览器／网络环境",
+    "长期8人稳态并发、持续全校漫游、HTTP尾延迟",
+    "与参考站近乎一致的整体视觉验收"
+  ],
+  "browser": {
+    "date": "2026-10-25",
+    "source": "主流程浏览器实际操作记录",
+    "scope": "桌面与375×812浏览器手机视口、两独立sessionStorage身份；不是实体手机设备测试，不代表长期负载或视觉完全一致。",
+    "checks": [
+      {
+        "name": "A/B独立匿名身份同组，人数显示2人",
+        "status": "passed"
+      },
+      {
+        "name": "B通过界面修改昵称与外观",
+        "status": "passed"
+      },
+      {
+        "name": "B发送广场消息，A收到；A可举报、B可撤回",
+        "status": "passed"
+      },
+      {
+        "name": "B撤回消息后A/B均显示已撤回",
+        "status": "passed"
+      },
+      {
+        "name": "B新建临时组，原组A为1人、新组B为1人",
+        "status": "passed"
+      },
+      {
+        "name": "搜索中心图书馆、显示距离、标记与服务端传送",
+        "status": "passed"
+      },
+      {
+        "name": "日新楼室内入口进入",
+        "status": "passed"
+      },
+      {
+        "name": "不同房间的广场消息可互收，房间频道消息保持隔离",
+        "status": "passed"
+      },
+      {
+        "name": "B撤回后A/B均显示三条消息已撤回",
+        "status": "passed"
+      },
+      {
+        "name": "桌面与375×812新版画面可见树木、立面和入口角色",
+        "status": "passed"
+      },
+      {
+        "name": "日新楼室内完整陈设画面可见",
+        "status": "passed"
+      },
+      {
+        "name": "实际切换前卫北区成功",
+        "status": "passed"
+      },
+      {
+        "name": "自动天气显示5°C晴，来源为当前天气接口",
+        "status": "passed"
+      }
+    ],
+    "remaining": [
+      "实体手机与更多浏览器／网络环境",
+      "持续全校漫游、长稳态并发与HTTP长尾延迟",
+      "与参考站近乎一致的整体视觉验收"
+    ]
+  },
+  "release": {
+    "latestVerifiedRuntimeVersion": 17,
+    "verifiedRuntimeCommit": "6c04bead673c56e2a0a11f345adbb9bf0f36dad5",
+    "verifiedRuntimeDeploymentId": "appgdep_6ade2ca48e18819181026be55373a6bd",
+    "verifiedRuntimeDeployedAt": "2026-10-25T16:22:08.200203Z",
+    "note": "记录最近核验的运行版本；后续文档更新不自动改变运行验收范围。"
+  },
+  "campusLatest": {
+    "title": "最新校园定向检查",
+    "tests": 45,
+    "passed": 45,
+    "failed": 0,
+    "source": "docs/campus/campus-tests-final.tap",
+    "suites": {
+      "places": 6,
+      "server": 16,
+      "network": 12,
+      "geometry": 11
+    },
+    "note": "覆盖新公共地标、安全传送、受限门禁、服务端权限、WebSocket缓存和网络恢复；不替代视觉、手机或长期负载测试。",
+    "sourceSha256": "56d664f21cb213fb8e1148a0d189c7ed6a36cc4e49c4c4ece213d0c70efaf2d7"
+  },
+  "transportRetest": {
+    "version": 14,
+    "sourceCommit": "d206c4a775993a23ed3efdb11d00f081abcd9b82",
+    "startedAt": "2026-10-25T15:51:34.427Z",
+    "finishedAt": "2026-10-25T15:52:26.722Z",
+    "scope": "批处理优化后的两会话短程复测；不等同于长期负载容量。",
+    "passed": true,
+    "checks": [
+      {
+        "name": "连接预热及数据库往返基线",
+        "status": "passed",
+        "ms": 15000
+      },
+      {
+        "name": "两独立会话和真实同房",
+        "status": "passed",
+        "ms": 4584
+      },
+      {
+        "name": "HTTP 同步往返",
+        "status": "passed",
+        "ms": 2692
+      },
+      {
+        "name": "WebSocket 稳态同步与相互可见",
+        "status": "passed",
+        "ms": 3898,
+        "connections": 2,
+        "syncSamples": 12
+      },
+      {
+        "name": "WebSocket 重连和HTTP并发写后的权威序号",
+        "status": "passed",
+        "ms": 5853
+      },
+      {
+        "name": "已知QA范围内的广场跨房共享",
+        "status": "passed",
+        "ms": 15608
+      }
+    ],
+    "latency": {
+      "http_sync": {
+        "samples": 8,
+        "p50Ms": 754.21,
+        "p95Ms": 4529.8
+      },
+      "ws_steady_sync": {
+        "samples": 12,
+        "p50Ms": 251.71,
+        "p95Ms": 298.1
+      },
+      "ws_initial_snapshot": {
+        "samples": 2,
+        "p50Ms": 463.69,
+        "p95Ms": 467.68
+      },
+      "ws_cache_refresh": {
+        "samples": 1,
+        "p50Ms": 835.27,
+        "p95Ms": 835.27
+      },
+      "ws_reconnect_snapshot": {
+        "samples": 1,
+        "p50Ms": 491.51,
+        "p95Ms": 491.51
+      }
+    },
+    "requests": 26,
+    "cleanup": {
+      "sessionsLeft": 2,
+      "messagesDeleted": 1,
+      "errorCount": 0
+    },
+    "note": "稳态WebSocket只有12个样本：p50 251.71ms，p95 298.10ms。HTTP同步仍有多秒尾延迟。该结果不等于长期负载、所有网络环境或原站同级容量承诺。"
+  },
+  "places": {
+    "publicPlaces": 43,
+    "accessiblePublicPlaces": 41,
+    "buildingDestinations": 109,
+    "allowedDestinations": 150,
+    "note": "41个公共地标安全点加109个建筑安全点。受限或未确认可通行的校门仅标记，不进入白名单；湖面目的地位于湖岸。"
+  },
+  "browserV15": {
+    "version": 15,
+    "deploymentCommit": "98f942b74019589bad951b95f2177c9738ef48cc",
+    "source": "主流程在已部署v15的真实浏览器操作",
+    "deviceScope": "桌面与375×812手机模拟视口，非实体手机",
+    "checks": [
+      {
+        "name": "搜索清湖并通过服务器传送至安全湖岸",
+        "status": "passed"
+      },
+      {
+        "name": "小北门显示限制通行详情，步行／传送按钮禁用",
+        "status": "passed"
+      },
+      {
+        "name": "搜索旧称“计算机楼”命中王湘浩楼",
+        "status": "passed"
+      },
+      {
+        "name": "375×812手机视口切换模拟雪夜",
+        "status": "passed"
+      },
+      {
+        "name": "手机摇杆拖动能移动，松开停止",
+        "status": "passed"
+      },
+      {
+        "name": "手机点击日新楼NPC并成功触发对话",
+        "status": "passed"
+      },
+      {
+        "name": "实际进入中心图书馆室内",
+        "status": "passed"
+      },
+      {
+        "name": "手机大地图缩放与拖动",
+        "status": "passed"
+      }
+    ],
+    "note": "这些是已执行交互证据；树冠自身可辨识性于v16继续复核，北区建筑遮挡于v17复核。"
+  },
+  "browserV16": {
+    "version": 16,
+    "source": "已部署v16的真实浏览器操作",
+    "deviceScope": "桌面与375×812浏览器模拟视口，非实体手机",
+    "checks": [
+      {
+        "name": "清湖树冠遮挡时人物、姓名和脚圈可辨识",
+        "status": "passed"
+      },
+      {
+        "name": "模拟雨线可见，观察期间无控制台warning或error",
+        "status": "passed"
+      },
+      {
+        "name": "从主站cozy房间物件清单进入校园，桌面可用",
+        "status": "passed"
+      },
+      {
+        "name": "从主站cozy房间物件清单进入校园，375像素视口可用",
+        "status": "passed"
+      },
+      {
+        "name": "A/B测试浏览器角色已退出临时QA房间",
+        "status": "passed"
+      }
+    ],
+    "openIssue": "北区出生点楼顶遮挡已在v17部署后真实UI复核通过，详见browserV17。"
+  },
+  "stability": {
+    "version": 16,
+    "source": "docs/campus/live-stability-verification.json",
+    "sourceSha256": "9cce417689efd301aa9c2b539df5726a713a1fb72130ef596f8c7f735b756ea5",
+    "startedAt": "2026-10-25T16:14:15.786Z",
+    "activeStartedAt": "2026-10-25T16:14:40.758Z",
+    "finishedAt": "2026-10-25T16:16:49.382Z",
+    "actualActiveSeconds": 120.04,
+    "testConnections": 2,
+    "targetHzPerConnection": 2,
+    "attempts": 480,
+    "successes": 480,
+    "failures": 0,
+    "reconnects": 0,
+    "successfulSyncsPerConnection": [
+      240,
+      240
+    ],
+    "latency": {
+      "samples": 480,
+      "p50Ms": 244.92,
+      "p95Ms": 346.15,
+      "p99Ms": 472,
+      "maxMs": 532.79
+    },
+    "cleanup": {
+      "testSessionsLeft": 2,
+      "errorCount": 0
+    },
+    "positionScenario": "出生点附近初始小位移后持续位置心跳。",
+    "snapshotCheck": "每次同步快照检查至少存在一个非本人的远端玩家；未对每帧限定为另一测试身份。测试期间另有授权浏览器测试角色短暂在同房。",
+    "claimLimit": "只证明两独立测试连接在出生点附近连续120秒的同步和远端存在检查；不证明长时间全校漫游、8人稳态负载或200人容量。指定对端ID的互见由另一次v14双客户端功能检查覆盖。",
+    "passed": true
+  },
+  "latestVerifiedRuntimeVersion": 17,
+  "browserV17": {
+    "version": 17,
+    "source": "刷新已部署v17后真实浏览器检查",
+    "checks": [
+      {
+        "name": "切换前卫北区理化楼，遮挡建筑半透明",
+        "status": "passed"
+      },
+      {
+        "name": "自身名牌与脚圈清晰可辨",
+        "status": "passed"
+      },
+      {
+        "name": "检查期间控制台无警告／错误",
+        "status": "passed"
+      },
+      {
+        "name": "检查后成功返回南区",
+        "status": "passed"
+      }
+    ],
+    "geometryTestsPassed": 11,
+    "note": "这是北区出生点可辨识性分项实测，不代表参考站近乎一致的整体视觉、实体手机或长期负载通过。"
+  }
+}

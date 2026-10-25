@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "site": "https://dingkang-hub.dingikang.chatgpt.site",
+  "startedAt": "2026-10-25T16:14:15.786Z",
+  "durationTargetSeconds": 120,
+  "targetClients": 2,
+  "targetHzPerClient": 2,
+  "scope": "两个独立匿名会话的有界连续联机验证；不代表长期稳定性或大规模并发容量。",
+  "events": [],
+  "failures": [],
+  "cleanup": {
+    "left": 2,
+    "errors": []
+  },
+  "activeStartedAt": "2026-10-25T16:14:40.758Z",
+  "actualActiveSeconds": 120.04,
+  "attempts": 480,
+  "successes": 480,
+  "reconnects": 0,
+  "httpRequests": 7,
+  "progress": [
+    {
+      "seconds": 30,
+      "successes": 122,
+      "failures": 0,
+      "reconnects": 0
+    },
+    {
+      "seconds": 60,
+      "successes": 242,
+      "failures": 0,
+      "reconnects": 0
+    },
+    {
+      "seconds": 90,
+      "successes": 362,
+      "failures": 0,
+      "reconnects": 0
+    }
+  ],
+  "latency": {
+    "samples": 480,
+    "p50Ms": 244.92,
+    "p95Ms": 346.15,
+    "p99Ms": 472,
+    "maxMs": 532.79
+  },
+  "finishedAt": "2026-10-25T16:16:49.382Z",
+  "passed": true,
+  "verificationBoundary": {
+    "testedConnections": 2,
+    "successfulSyncsPerTestConnection": [
+      240,
+      240
+    ],
+    "positionScenario": "出生点附近初始小位移后持续位置心跳。",
+    "remotePresenceCheck": "每个同步快照检查至少存在一个非本人的远端玩家。",
+    "specificPeerIdentityCheckedOnEverySnapshot": false,
+    "otherAuthorizedQaVisitor": "主代理确认其浏览器角色A在测试过程中进入同一房间；两测试角色清理后该角色成为剩余1人。",
+    "claimLimit": "本次证明两独立测试连接连续120秒的同步与远端存在检查通过；不单独作为指定两测试身份逐帧互见的证明。精确对端ID的位置互见另由v14双客户端功能复测验证。"
+  }
+}

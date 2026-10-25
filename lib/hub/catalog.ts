@@ -7,6 +7,7 @@ export const categories: {id:ModuleCategory;name:string;description:string;icon:
   {id:'games',name:'游戏',description:'选一段旅程，接着上次的进度。',icon:'game'},
 ];
 export const modules:HubModule[] = [
+  {id:'jlu-campus',name:'吉大校园漫游',subtitle:'前卫校园 · 像素世界',description:'南北校区地图、多人同行与建设计划',category:'games',path:'/apps/jlu-campus/index.html',icon:'home',color:'#527e6b'},
   {id:'zhiliu-radar',name:'知流',subtitle:'个人信息雷达',description:'精选信息、信源与阅读记录',category:'research',path:'/m/zhiliu-radar',icon:'radar',color:'#456c90'},
   {id:'zhizheng-research',name:'知证',subtitle:'论文研究工作台',description:'论文阅读、复刻与知识图谱',category:'research',path:'/m/zhizheng-research',icon:'research',color:'#5d6b9b'},
   {id:'agent-architecture-journey',name:'Agent 架构学习',subtitle:'从零搭建 Agent',description:'学习笔记、代码与架构画布',category:'research',path:'/apps/agent-architecture-journey/index.html',icon:'book',color:'#497e73'},

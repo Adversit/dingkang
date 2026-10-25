@@ -1,0 +1,72 @@
+{
+  "verifiedAt": "2026-10-25",
+  "south": {
+    "counts": {
+      "boundary": 1,
+      "buildings": 83,
+      "water": 3,
+      "surfaces": 600,
+      "roads": 1025,
+      "pois": 284,
+      "barriers": 0,
+      "buildingHoles": 30,
+      "namedBuildings": 62,
+      "buildingsWithLevels": 37,
+      "buildingsWithHeight": 0,
+      "entranceNodes": 110,
+      "gateNodes": 17
+    },
+    "boundary": "https://www.openstreetmap.org/way/298032902",
+    "widthMetres": 2069.0,
+    "heightMetres": 1306.18,
+    "spawn": [
+      999.98,
+      755.25
+    ],
+    "landmarkDestinations": 83,
+    "geojsonPolygonCount": 687
+  },
+  "north": {
+    "counts": {
+      "boundary": 1,
+      "buildings": 26,
+      "water": 0,
+      "surfaces": 22,
+      "roads": 21,
+      "pois": 0,
+      "barriers": 0,
+      "buildingHoles": 0,
+      "namedBuildings": 3,
+      "buildingsWithLevels": 19,
+      "buildingsWithHeight": 0,
+      "entranceNodes": 0,
+      "gateNodes": 0
+    },
+    "boundary": "https://www.openstreetmap.org/relation/20216071",
+    "widthMetres": 894.43,
+    "heightMetres": 250.91,
+    "spawn": [
+      660.76,
+      234.11
+    ],
+    "landmarkDestinations": 26,
+    "geojsonPolygonCount": 50
+  },
+  "verification": [
+    "All emitted polygon geometries are valid after coordinate rounding.",
+    "No duplicate IDs within each output layer.",
+    "All 109 building destinations are inside the campus boundary and outside building and water obstacles; minimum measured clearance 1.494 metres after rounding.",
+    "All 30 building courtyard holes retained in the south campus.",
+    "All bounding-box partial multipolygon relations were re-fetched in full; zero incomplete relation geometries were omitted in final conversion.",
+    "Landmarks correspond one-to-one with the 109 retained building features."
+  ],
+  "limitations": [
+    "Element counts are OSM record counts, not a measured real-world coverage percentage.",
+    "North campus includes its complete mapped boundary but the OSM content is sparse: only 3 of 26 buildings are named; no entrance or gate nodes.",
+    "No campus barrier ways are mapped in these extracts. The game boundary is a gameplay limit, not a surveyed wall.",
+    "No building heights are provided. Only 37 south and 19 north buildings carry floor counts.",
+    "Destination entrance positions are derived safe road points, not verified physical door thresholds.",
+    "Road access rules, construction, stairs and disconnected paths need explicit handling.",
+    "Visual tree/building details added by the renderer are stylised art, not geographic measurements."
+  ]
+}

@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 1,
+  "site": "https://dingkang-hub.dingikang.chatgpt.site",
+  "startedAt": "2026-10-25T15:51:34.427Z",
+  "purpose": "批处理优化后的两会话短程复测；不等同于长期负载容量。",
+  "checks": [
+    {
+      "name": "连接预热及数据库往返基线",
+      "status": "passed",
+      "ms": 15000
+    },
+    {
+      "name": "两独立会话和真实同房",
+      "status": "passed",
+      "ms": 4584
+    },
+    {
+      "name": "HTTP 同步往返",
+      "status": "passed",
+      "ms": 2692
+    },
+    {
+      "name": "WebSocket 稳态同步与相互可见",
+      "status": "passed",
+      "ms": 3898,
+      "connections": 2,
+      "syncSamples": 12
+    },
+    {
+      "name": "WebSocket 重连和HTTP并发写后的权威序号",
+      "status": "passed",
+      "ms": 5853
+    },
+    {
+      "name": "已知QA范围内的广场跨房共享",
+      "status": "passed",
+      "ms": 15608
+    }
+  ],
+  "cleanup": {
+    "left": 2,
+    "deleted": 1,
+    "errors": []
+  },
+  "latency": {
+    "cold_health": {
+      "samples": 1,
+      "p50Ms": 5323.46,
+      "p95Ms": 5323.46
+    },
+    "warm_no_database": {
+      "samples": 3,
+      "p50Ms": 80.88,
+      "p95Ms": 2761.88
+    },
+    "warm_one_database": {
+      "samples": 3,
+      "p50Ms": 2990.19,
+      "p95Ms": 6079.53
+    },
+    "session": {
+      "samples": 2,
+      "p50Ms": 769.48,
+      "p95Ms": 776.98
+    },
+    "rooms": {
+      "samples": 3,
+      "p50Ms": 2150.37,
+      "p95Ms": 3308.83
+    },
+    "join": {
+      "samples": 1,
+      "p50Ms": 1656.38,
+      "p95Ms": 1656.38
+    },
+    "http_sync": {
+      "samples": 8,
+      "p50Ms": 754.21,
+      "p95Ms": 4529.8
+    },
+    "ws_initial_snapshot": {
+      "samples": 2,
+      "p50Ms": 463.69,
+      "p95Ms": 467.68
+    },
+    "ws_steady_sync": {
+      "samples": 12,
+      "p50Ms": 251.71,
+      "p95Ms": 298.1
+    },
+    "ws_snapshot": {
+      "samples": 1,
+      "p50Ms": 534.3,
+      "p95Ms": 534.3
+    },
+    "ws_cache_refresh": {
+      "samples": 1,
+      "p50Ms": 835.27,
+      "p95Ms": 835.27
+    },
+    "ws_reconnect_snapshot": {
+      "samples": 1,
+      "p50Ms": 491.51,
+      "p95Ms": 491.51
+    },
+    "messages": {
+      "samples": 2,
+      "p50Ms": 716.92,
+      "p95Ms": 4170.47
+    },
+    "messages/5": {
+      "samples": 1,
+      "p50Ms": 994.34,
+      "p95Ms": 994.34
+    },
+    "leave": {
+      "samples": 2,
+      "p50Ms": 1253.24,
+      "p95Ms": 3404.71
+    }
+  },
+  "requests": 26,
+  "finishedAt": "2026-10-25T15:52:26.722Z",
+  "passed": true
+}

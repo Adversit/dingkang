@@ -85,6 +85,7 @@ export function themeVariables(theme:HubTheme):Record<string,string> {
 }
 export type HubArtwork={src:string;position?:string;label:string};
 export const moduleArtwork:Record<string,HubArtwork> = {
+  'jlu-campus':{src:'/apps/jlu-campus/data/overview.svg',position:'50% 50%',label:'吉林大学前卫南区真实 OSM 几何地图'},
   'yourwar-battle-forge':{src:'/assets/hub/yourwar.webp',position:'50% 52%',label:'YourWar 战术沙盘场景'},
   'pocket-arcade-ten':{src:'/assets/hub/pocket-arcade.webp',position:'50% 48%',label:'游乐场中的游戏场景'},
   'wandeng-evening':{src:'/assets/wandeng-evening/scenes/evening-room.webp',position:'50% 54%',label:'晚灯中的陪伴场景'},
@@ -98,5 +99,5 @@ export const categoryPresentation:Record<ModuleCategory,{title:string;descriptio
   research:{title:'沿着好奇，向前一步。',description:'发现信息，整理研究，把理解慢慢变深。'},
   product:{title:'让想法，成为作品。',description:'从产品判断，到一次完整的交付。'},
   life:{title:'生活里，也留一点温度。',description:'照顾共同的日常，收好属于自己的片刻。'},
-  games:{title:'现在，去另一个世界。',description:'七段不同的旅程，随时接着上次出发。'},
+  games:{title:'现在，去另一个世界。',description:'不同的旅程，随时接着上次出发。'},
 };

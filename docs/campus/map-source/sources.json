@@ -1,0 +1,64 @@
+{
+  "collectedAt": "2026-10-25",
+  "attribution": "© OpenStreetMap contributors",
+  "license": "ODbL-1.0",
+  "copyrightUrl": "https://www.openstreetmap.org/copyright",
+  "licenseUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+  "method": "Independent unauthenticated downloads from the OpenStreetMap API, converted using the included Python script. No assets from the reference game or the official 3D map are included.",
+  "sources": [
+    {
+      "file": "south-raw.osm",
+      "url": "https://api.openstreetmap.org/api/0.6/map?bbox=125.2567,43.8133,125.2845,43.8272",
+      "sha256": "93ec75558596d5046a407d0fa0274280ea810cb3656bcdaf14db7995e46c35a0"
+    },
+    {
+      "file": "north-raw.osm",
+      "url": "https://api.openstreetmap.org/api/0.6/map?bbox=125.3075,43.8725,125.3260,43.8865",
+      "sha256": "2c586bf4b7bc51401c19fba6b7b5785be302c44b1f23bd73bbe949e044b48b4f"
+    },
+    {
+      "file": "boundary-south.osm",
+      "url": "https://api.openstreetmap.org/api/0.6/way/298032902/full",
+      "sha256": "dcbbc113ca0c17c81fa6fcd36d83bc794405a550351a21790c6071d57094f2ee"
+    },
+    {
+      "file": "boundary-north.osm",
+      "url": "https://api.openstreetmap.org/api/0.6/relation/20216071/full",
+      "sha256": "8cd8fb4c5d9755932257fe45fe1fa838a09cece3f9f40ff845344057f42b2af0"
+    },
+    {
+      "file": "relation-20175924.osm",
+      "url": "https://api.openstreetmap.org/api/0.6/relation/20175924/full",
+      "sha256": "21b30c14ce61485b3d71a51a66475325ae366d2486c88a8c2ef2543534d6566e"
+    },
+    {
+      "file": "relation-20707723.osm",
+      "url": "https://api.openstreetmap.org/api/0.6/relation/20707723/full",
+      "sha256": "2920501ada42d934ea3cc21d8a85e98697f2b13f890a8f38e53408717cd4874e"
+    },
+    {
+      "file": "relation-20707725.osm",
+      "url": "https://api.openstreetmap.org/api/0.6/relation/20707725/full",
+      "sha256": "be93387045abfd5505b0482400eb280ee3ec09b1496d7521019202b70aafcfd8"
+    },
+    {
+      "file": "relation-20824167.osm",
+      "url": "https://api.openstreetmap.org/api/0.6/relation/20824167/full",
+      "sha256": "80a90b89a704444e91724fee6e51d2ae0d4bd16be55b43f593f3261e36eacca9"
+    }
+  ],
+  "referenceOnly": [
+    {
+      "url": "https://www.jlu.edu.cn/xxgk/xydy/dlwz.htm",
+      "use": "Campus naming and addresses; no imagery copied"
+    },
+    {
+      "url": "https://map.jlu.edu.cn/",
+      "use": "Official reference; no models, textures or tile assets copied"
+    },
+    {
+      "url": "https://zcgl.jlu.edu.cn/info/1067/5881.htm",
+      "use": "2026-04-17 official service announcement; no dataset redistribution license found"
+    }
+  ]
+}

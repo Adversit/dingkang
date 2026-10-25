@@ -8,6 +8,27 @@
       "when": 1792726129345,
       "tag": "0000_sad_lucky_pierre",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1792941758750,
+      "tag": "0001_keen_blazing_skull",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1792941831476,
+      "tag": "0002_stale_morph",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1792941944903,
+      "tag": "0003_white_silver_sable",
+      "breakpoints": true
     }
   ]
 }

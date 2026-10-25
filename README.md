@@ -210,3 +210,8 @@ pnpm run build
 **自己的空间，自己的节奏。**
 
 </div>
+# 吉林大学前卫校园漫游
+
+校园模块入口为 `/apps/jlu-campus/index.html`，也可从工作空间的游戏目录打开。建设计划在 `/apps/jlu-campus/plan.html`，研发协作工作台侧栏提供同一入口。南北区地图使用独立取得的 OpenStreetMap 数据，全部数据来源与已知缺项见 `public/apps/jlu-campus/data/`。原始快照与转换脚本在 `docs/campus/map-source/`，不依赖参考网站的程序或美术。
+
+多人状态由独立的 `campus_` D1 表保存；Worker 提供 `/api/campus/` 协议，前端优先尝试 WebSocket，必要时回退到真实 HTTP 同步。实际验收结果与迁移方案见 `docs/campus/`，功能是否通过以该版本的证据为准。

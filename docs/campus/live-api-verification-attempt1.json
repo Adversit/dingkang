@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "site": "https://dingkang-hub.dingikang.chatgpt.site",
+  "startedAt": "2026-10-25T15:32:38.385Z",
+  "scope": "9 个独立匿名会话、最多 8 人一房的有限验收；不代表长期容量或所有网络环境。",
+  "checks": [
+    {
+      "name": "数据库及传输能力健康检查",
+      "status": "passed",
+      "durationMs": 5139,
+      "maxPlayers": 8,
+      "workerWebSocketApi": true
+    },
+    {
+      "name": "创建九个独立匿名身份",
+      "status": "passed",
+      "durationMs": 33631,
+      "count": 9
+    },
+    {
+      "name": "八人真实同房与第九人容量拒绝",
+      "status": "failed",
+      "durationMs": 27535,
+      "error": "join：预期 HTTP 409，实际 200；未知错误："
+    }
+  ],
+  "transports": {
+    "http": false,
+    "websocket": false
+  },
+  "cleanup": {
+    "messagesDeleted": 0,
+    "sessionsLeft": 8,
+    "errors": []
+  },
+  "error": "join：预期 HTTP 409，实际 200；未知错误：",
+  "finishedAt": "2026-10-25T15:33:52.365Z",
+  "requestCount": 27,
+  "latency": {
+    "http": {
+      "samples": 27,
+      "p50Ms": 2477.01,
+      "p95Ms": 5143.17,
+      "maxMs": 5220.81
+    },
+    "websocket": {
+      "samples": 0,
+      "p50Ms": null,
+      "p95Ms": null,
+      "maxMs": null
+    }
+  },
+  "passed": false,
+  "note": "仅为本次短时验收的真实响应数据；空测试房间可能作为历史记录保留，所有成功清理的测试角色已离线。"
+}
