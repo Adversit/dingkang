@@ -1,5 +1,5 @@
-/** Original pixel interiors. Every freestanding object occupies an existing
- * furniture rectangle; floor graphics and wall art introduce no obstacles. */
+/** Original pixel interiors. Collision uses ground footprints; raised artwork
+ * extends above them and shares depth ordering with the characters. */
 const BOOKS=['#58877f','#bd7868','#d8ba73','#8288a5','#77905f','#b0997c'];
 
 function rect(c,color,x,y,w,h){c.fillStyle=color;c.fillRect(x,y,w,h);}
@@ -63,14 +63,7 @@ function drawLibraryArt(ctx,interior,{width,height,scale=4}){
   // Wall-mounted posters and small hanging plants remain inside the wall band.
   for(const y of [35,75,112]){rect(ctx,'#c8b38a',.6,y,3.5,9);rect(ctx,'#e6d8b0',1,y+.5,2.7,8);rect(ctx,'#6e9381',1.4,y+1.3,1.8,3);rect(ctx,'#aa9871',1.4,y+5.5,1.8,.4);}
   for(const y of [18,60,102]){rect(ctx,'#b3946e',w-3.8,y+4,2.7,2);rect(ctx,'#739464',w-4.2,y,3.4,5);rect(ctx,'#a2b57d',w-3.5,y+.8,1.6,2);}
-  for(let i=0;i<interior.furniture.length;i++){
-    const f=interior.furniture[i],row=Math.floor(i/4),col=i%4;
-    if(row===0)bookshelf(ctx,f,i);
-      else if(row===1)readingTable(ctx,f,i);
-      else if(col===0||col===3)bookshelf(ctx,f,i+4);
-      else{readingTable(ctx,f,i);text(ctx,col===1?'借阅服务':'电子阅览',f.x+f.w/2,f.y+f.h-1.7,3.5,'#465f56');}
-
-  }
+  for(const f of interior.furniture){rect(ctx,'#32483723',f.x+1,f.y+2,f.w,f.h);}
   // These are flat floor inlays, not furniture or additional collision areas.
   text(ctx,library?'让阅读成为习惯':'书香 · 咖啡 · 校园日常',w/2,104,4,'#667c69');
   text(ctx,library?'中心图书馆':'日新生活馆',w/2,113,4.5,'#637e71');
@@ -79,8 +72,8 @@ function drawLibraryArt(ctx,interior,{width,height,scale=4}){
   ctx.restore();
 }
 
-// Rixin uses the shared tile layout. All raised objects stay inside their
-// authoritative footprints; the patterns below are original Canvas artwork.
+// Rixin uses the shared tile layout. Art has its own visual elevation while
+// collision rectangles remain authoritative at ground level.
 const P=1/16;
 const FLOOR={ceramic:'#d9d8cc',terrazzo:'#d2c9b8',parquet:'#b48d64',carpet:'#657e77',mat:'#7d8a7b'};
 function tone(color,delta){
@@ -105,7 +98,7 @@ function floorPatch(c,f,view){
   rect(c,color,f.x,f.y,f.w,f.h);
   const xa=Math.max(Math.floor(f.x),Math.floor(view.x)),ya=Math.max(Math.floor(f.y),Math.floor(view.y));
   const xb=Math.min(f.x+f.w,view.x+view.w),yb=Math.min(f.y+f.h,view.y+view.h);
-  c.save();c.beginPath();c.rect(f.x,f.y,f.w,f.h);c.clip();
+  c.save();
   for(let y=ya;y<yb;y++)for(let x=xa;x<xb;x++){
     const seed=(x*7+y*11)%13;
     if(kind==='parquet'){
@@ -289,7 +282,7 @@ function decorationArt(c,f){
 }
 function objectArt(c,f,index){
   const kind=String(f.kind||'').toLowerCase().replaceAll('_','-'),item={...f,kind};
-  c.save();c.beginPath();c.rect(f.x,f.y,f.w,f.h);c.clip();
+  c.save();
   if(/escalator/.test(kind))escalatorArt(c,item);
   else if(/elevator|lift/.test(kind))elevatorArt(c,item);
   else if(/stairs|staircase|stair/.test(kind))stairsArt(c,item);
@@ -331,12 +324,12 @@ function drawRixinArt(c,interior,{width,height,scale=24}){
     const horizontal=door.w>=door.h;rect(c,'#b2af9255',door.x,door.y,door.w,door.h);
     if(horizontal)rect(c,'#e3ddc1',door.x,door.y+door.h-P,door.w,P);else rect(c,'#e3ddc1',door.x+door.w-P,door.y,P,door.h);
   }
-  for(let i=0;i<layout.objects.length;i++){const item=layout.objects[i];if(visible(item))objectArt(c,item,i);}
+  for(const item of layout.objects)if(visible(item)){rect(c,'#304b4326',item.x+.16,item.y+.18,item.w+.08,item.h+.1);}
   c.restore();
 }
 
-// The interior art is static. Cache one 16 px/tile bitmap for the layout so
-// walking redraws a single image rather than thousands of floor fragments.
+// Cache the floor and low walls separately from raised furniture. The floor
+// remains a single bitmap; only visible furniture sprites enter depth sorting.
 const interiorTextures=new WeakMap();
 function drawCachedRixinArt(ctx,interior,options){
   const layout=interior.layout;
@@ -357,4 +350,81 @@ function drawCachedRixinArt(ctx,interior,options){
 export function drawInteriorArt(ctx,interior,options){
   if(interior.layout?.id==='way/1473779965')drawCachedRixinArt(ctx,interior,options);
   else drawLibraryArt(ctx,interior,options);
+}
+
+
+// A furniture sprite is generated once per layout object. Its top can extend
+// upward, but the bottom/depth is always the existing collision footprint.
+const furnitureTextures=new WeakMap();
+function elevation(f,library){
+  const k=f.kind||'';
+  if(library)return /shelf/.test(k)?10:4;
+  if(/shelf|fridge|vending|clothes|garment|coat|backdrop|elevator|pillar|column/.test(k))return 1.35;
+  if(/table|desk|counter|bar|repair|display|printer|manicure/.test(k))return .7;
+  if(/chair|stool|bench|sofa/.test(k))return .4;
+  if(/plant|flower|pot|camera/.test(k))return .65;
+  if(/stairs|escalator/.test(k))return .32;
+  if(/sign|poster|clock|mirror|exit|photo-wall/.test(k))return .12;
+  return .5;
+}
+function drawRaisedObject(c,f,index,library,rise){
+  const x=f.x,y=f.y,w=f.w,h=f.h,front=y+h,unit=library?1:P;
+  const wood=f.color||(/shelf|table|desk|counter|bench/.test(f.kind)?'#b3956b':'#8a9d8f');
+  // Table and chair legs leave visible space under the top; cabinets have fronts.
+  if(/table|desk|chair|stool|bench/.test(f.kind)){
+    const leg=library?1.2:.12;
+    rect(c,'#536256',x+unit,front-rise,w-unit*2,Math.min(rise*.3,unit*3));
+    for(const xx of [x+unit,x+w-unit-leg])rect(c,'#626d5b',xx,front-rise,leg,rise);
+  }else{
+    rect(c,tone(wood,-36),x,front-rise,w,rise);
+    rect(c,tone(wood,-17),x+unit,front-rise+unit,w-unit*2,Math.max(unit,rise-unit*2));
+    rect(c,'#465c5040',x,front-unit,w,unit);
+    if(/shelf/.test(f.kind)){
+      const step=library?3:.38;
+      for(let yy=front-rise+step;yy<front-unit;yy+=step){
+        rect(c,'#4c5242',x+unit,yy-step+unit,w-unit*2,step-unit);
+        for(let xx=x+unit*2,n=0;xx<x+w-unit*2;xx+=library?2:.19,n++){rect(c,BOOKS[(n+index)%BOOKS.length],xx,yy-step+unit*2,library?1.5:.14,Math.max(unit,step-unit*3));}
+        rect(c,tone(wood,22),x,yy,w,unit);
+      }
+    }else if(/counter|bar|display|repair|printer|appliance|vending|fridge/.test(f.kind)){
+      const panel=library?8:1;
+      for(let xx=x+panel;xx<x+w-unit;xx+=panel)rect(c,tone(wood,-40),xx,front-rise+unit,unit,rise-unit*2);
+      rect(c,'#dece9e',x+w*.48,front-rise*.55,Math.min(w*.2,library?3:.3),unit);
+    }
+  }
+  c.save();c.translate(0,-rise);
+  if(library){
+    if(/shelf/.test(f.kind))bookshelf(c,f,index);
+    else readingTable(c,f,index);
+  }else objectArt(c,f,index);
+  c.restore();
+  rect(c,'#e8dfbc88',x,front-rise,w,unit);
+}
+function furnitureSprite(layout,f,index,library){
+  let cache=furnitureTextures.get(layout);if(!cache){cache=new Map();furnitureTextures.set(layout,cache);}
+  if(cache.has(f))return cache.get(f);
+  const rise=elevation(f,library),density=library?4:16,pad=library?2:.25;
+  const bounds={x:f.x-pad,y:f.y-rise-pad,w:f.w+pad*2,h:f.h+rise+pad*2};
+  let canvas=null;
+  if(typeof OffscreenCanvas==='function')canvas=new OffscreenCanvas(Math.ceil(bounds.w*density),Math.ceil(bounds.h*density));
+  else if(typeof document!=='undefined'){canvas=document.createElement('canvas');canvas.width=Math.ceil(bounds.w*density);canvas.height=Math.ceil(bounds.h*density);}
+  const c=canvas?.getContext('2d');
+  if(c){c.imageSmoothingEnabled=false;c.scale(density,density);c.translate(-bounds.x,-bounds.y);drawRaisedObject(c,f,index,library,rise);}
+  const sprite={canvas:c?canvas:null,bounds,rise,density};cache.set(f,sprite);return sprite;
+}
+export function getInteriorDrawables(interior,{width,height,scale}){
+  const layout=interior.layout,library=layout.id!=='way/1473779965',items=layout.objects||interior.furniture;
+  const ox=width/2-interior.cameraX*scale,oy=height/2-interior.cameraY*scale,result=[];
+  for(let i=0;i<items.length;i++){
+    const f=items[i],rise=elevation(f,library);
+    // Include the raised portion when culling; a tall shelf can be visible
+    // even when its footprint has just moved below the screen.
+    if(ox+(f.x+f.w+1)*scale<0||ox+(f.x-1)*scale>width||oy+(f.y+f.h+1)*scale<0||oy+(f.y-rise-1)*scale>height)continue;
+    result.push({depth:f.y+f.h,id:f.id,draw(ctx){
+      const sprite=furnitureSprite(layout,f,i,library),b=sprite.bounds;
+      if(sprite.canvas)ctx.drawImage(sprite.canvas,ox+b.x*scale,oy+b.y*scale,sprite.canvas.width/sprite.density*scale,sprite.canvas.height/sprite.density*scale);
+      else{ctx.save();ctx.translate(ox,oy);ctx.scale(scale,scale);drawRaisedObject(ctx,f,i,library,rise);ctx.restore();}
+    }});
+  }
+  return result;
 }
