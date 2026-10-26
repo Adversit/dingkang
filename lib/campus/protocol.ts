@@ -7,7 +7,7 @@ export type CampusDirection = 'up' | 'down' | 'left' | 'right';
 export type CampusAppearance = { avatar: number };
 export type CampusPlayer = {
   id: string; nickname: string; appearance: CampusAppearance; x: number; y: number;
-  direction: CampusDirection; moving: boolean; interior: string | null; interiorX:number|null; interiorY:number|null; seq: number; updatedAt: number;
+  direction: CampusDirection; moving: boolean; interior: string | null; interiorRevision?:string|null; interiorX:number|null; interiorY:number|null; seq: number; updatedAt: number;
 };
 export type CampusRoom = {
   id: string; code: string; title: string; campus: CampusId; maxPlayers: number; players?: number;

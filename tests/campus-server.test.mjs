@@ -3,12 +3,14 @@ import {test} from 'node:test';
 import {DatabaseSync} from 'node:sqlite';
 import fs from 'node:fs';
 import path from 'node:path';
-import {fileURLToPath} from 'node:url';
+import {fileURLToPath,pathToFileURL} from 'node:url';
 import ts from 'typescript';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const geometry=JSON.parse(fs.readFileSync(path.join(root,'lib/campus/collision-data.json'),'utf8'));
-const source=fs.readFileSync(path.join(root,'lib/campus/server.ts'),'utf8').replace("import collisionData from './collision-data.json';",`const collisionData = ${JSON.stringify(geometry)};`);
+const layoutModule=pathToFileURL(path.join(root,'public/apps/jlu-campus/interior-layout.js')).href;
+const {getInteriorLayout,isInteriorWalkable,interiorExitAt}=await import(layoutModule);
+const source=fs.readFileSync(path.join(root,'lib/campus/server.ts'),'utf8').replace("import collisionData from './collision-data.json';",`const collisionData = ${JSON.stringify(geometry)};`).replace('../../public/apps/jlu-campus/interior-layout.js',layoutModule);
 const compiled=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText;
 const {handleCampusRequest,isCampusWalkable,moveForTest}=await import('data:text/javascript;base64,'+Buffer.from(compiled+'\nexport {move as moveForTest};').toString('base64'));
 const migrations=['0001_keen_blazing_skull.sql','0002_stale_morph.sql','0003_white_silver_sable.sql'].map(name=>fs.readFileSync(path.join(root,'drizzle',name),'utf8'));
@@ -256,4 +258,121 @@ test('same-room rejoin cannot create an ABA overwrite by an older socket pose',a
   f.state.now+=100;
   const stale=await moveForTest(f.db,session,{roomId:initial.room.id,seq:1,x:original.x,y:original.y,direction:'down'},f.state.now,false,connection);
   assert.equal(stale.players[0].x,rejoined.players[0].x);assert.equal(stale.players[0].seq,0);
+});
+
+test('Rixin requires the current layout revision and never interprets retired hall coordinates as tiles',async()=>{
+  const f=fixture(),a=await f.session(),joined=await f.room(a),id='way/1473779965',layout=getInteriorLayout(id);
+  const at=(await f.call('teleport',{method:'POST',token:a.token,body:{roomId:joined.room.id,poiId:id,seq:1}})).players[0];
+  const input={roomId:joined.room.id,x:at.x,y:at.y,direction:'up',interior:id,interiorX:95,interiorY:123};
+  f.state.now+=100;
+  const rejected=await f.call('sync',{method:'POST',token:a.token,body:{...input,seq:2},status:409});
+  assert.equal(rejected.code,'INTERIOR_LAYOUT_CHANGED');assert.equal(rejected.snapshot.players[0].interior,null);
+  const entered=await f.call('sync',{method:'POST',token:a.token,body:{...input,seq:3,interiorRevision:layout.revision}});
+  assert.equal(entered.players[0].interior,id);assert.equal(entered.players[0].interiorRevision,layout.revision);
+  assert.equal(entered.players[0].interiorX,layout.spawn.x);assert.equal(entered.players[0].interiorY,layout.spawn.y);
+  assert.equal(f.sql.prepare('SELECT interior FROM campus_players WHERE session_id=?').get(a.id).interior,id+'@'+layout.revision);
+  f.state.now+=100;
+  const old=await f.call('sync',{method:'POST',token:a.token,body:{...input,seq:4},status:409});
+  assert.equal(old.snapshot.players[0].interior,null);assert.equal(old.snapshot.players[0].x,entered.players[0].x);
+  f.state.now+=100;
+  const outside=await f.call('sync',{method:'POST',token:a.token,body:{...input,x:old.snapshot.players[0].x,y:old.snapshot.players[0].y,seq:5,interior:null,interiorRevision:null}});
+  assert.equal(outside.players[0].interior,null,'the corrected old client can continue outdoors without an error loop');
+});
+
+test('persisted legacy Rixin occupants are evacuated once and can re-enter the revised shared layout',async()=>{
+  const f=fixture(),a=await f.session(),joined=await f.room(a),id='way/1473779965',layout=getInteriorLayout(id);
+  const at=(await f.call('teleport',{method:'POST',token:a.token,body:{roomId:joined.room.id,poiId:id,seq:1}})).players[0];
+  f.sql.prepare('UPDATE campus_players SET interior=?,interior_x=95,interior_y=60 WHERE session_id=?').run(id,a.id);
+  const input={roomId:joined.room.id,x:at.x,y:at.y,direction:'up',interior:id,interiorRevision:layout.revision,interiorX:layout.spawn.x,interiorY:layout.spawn.y};
+  f.state.now+=100;
+  const corrected=await f.call('sync',{method:'POST',token:a.token,body:{...input,seq:2},status:409});
+  assert.equal(corrected.code,'INTERIOR_LAYOUT_CHANGED');assert.equal(corrected.snapshot.players[0].interior,null);
+  assert.equal(corrected.snapshot.players[0].x,at.x);assert.equal(corrected.snapshot.players[0].y,at.y);
+  f.state.now+=100;
+  const entered=await f.call('sync',{method:'POST',token:a.token,body:{...input,seq:3}});
+  assert.equal(entered.players[0].interiorRevision,layout.revision);assert.equal(entered.players[0].interiorX,layout.spawn.x);
+});
+
+test('all seven Rixin exits share server geometry, while premature exit returns an authoritative recovery pose',async()=>{
+  const f=fixture(),a=await f.session(),joined=await f.room(a),id='way/1473779965',layout=getInteriorLayout(id);
+  assert.equal(layout.exits.length,7);
+  const at=(await f.call('teleport',{method:'POST',token:a.token,body:{roomId:joined.room.id,poiId:id,seq:1}})).players[0];
+  let seq=1;
+  const input={roomId:joined.room.id,x:at.x,y:at.y,direction:'down',interior:null,interiorRevision:null};
+  for(const exit of layout.exits){
+    const point={x:exit.x+exit.w/2,y:exit.y+exit.h/2};
+    assert.equal(interiorExitAt(layout,point.x,point.y)?.id,exit.id,exit.id+' must have a reachable exit trigger');
+    f.sql.prepare('UPDATE campus_players SET interior=?,interior_x=?,interior_y=? WHERE session_id=?').run(id+'@'+layout.revision,point.x,point.y,a.id);
+    f.state.now+=100;
+    const left=await f.call('sync',{method:'POST',token:a.token,body:{...input,seq:++seq}});
+    assert.equal(left.players[0].interior,null);assert.equal(left.players[0].x,exit.exterior[0]);assert.equal(left.players[0].y,exit.exterior[1]);
+  }
+  let interiorPoint;
+  for(let y=2;y<layout.height-2&&!interiorPoint;y++)for(let x=2;x<layout.width-2&&!interiorPoint;x++)if(isInteriorWalkable(layout,x,y)&&!interiorExitAt(layout,x,y))interiorPoint={x,y};
+  assert.ok(interiorPoint);
+  f.sql.prepare('UPDATE campus_players SET interior=?,interior_x=?,interior_y=? WHERE session_id=?').run(id+'@'+layout.revision,interiorPoint.x,interiorPoint.y,a.id);
+  f.state.now+=100;
+  const early=await f.call('sync',{method:'POST',token:a.token,body:{...input,seq:++seq},status:409});
+  assert.equal(early.code,'EXIT_REQUIRED');assert.equal(early.snapshot.players[0].interior,id);assert.equal(early.snapshot.players[0].interiorRevision,layout.revision);
+});
+
+test('Rixin movement checks wall crossings as well as legal endpoints and preserves the outside anchor',async()=>{
+  const f=fixture(),a=await f.session(),joined=await f.room(a),id='way/1473779965',layout=getInteriorLayout(id);
+  const at=(await f.call('teleport',{method:'POST',token:a.token,body:{roomId:joined.room.id,poiId:id,seq:1}})).players[0];
+  const margin=layout.footRadius+.1;
+  let crossing;
+  for(const solid of layout.solids){
+    const candidates=[[[solid.x-margin,solid.y+solid.h/2],[solid.x+solid.w+margin,solid.y+solid.h/2]],[[solid.x+solid.w/2,solid.y-margin],[solid.x+solid.w/2,solid.y+solid.h+margin]]];
+    for(const [a,b] of candidates)if(Math.hypot(a[0]-b[0],a[1]-b[1])<layout.maxSpeed*2 && isInteriorWalkable(layout,...a)&&isInteriorWalkable(layout,...b)){crossing=[a,b];break;}
+    if(crossing)break;
+  }
+  assert.ok(crossing,'shared layout must expose an actual wall with legal points on either side');
+  const [from,to]=crossing;
+  f.sql.prepare('UPDATE campus_players SET interior=?,interior_x=?,interior_y=? WHERE session_id=?').run(id+'@'+layout.revision,...from,a.id);
+  f.state.now+=2000;
+  const input={roomId:joined.room.id,x:at.x,y:at.y,direction:'right',interior:id,interiorRevision:layout.revision,interiorX:to[0],interiorY:to[1],seq:2};
+  const blocked=await f.call('sync',{method:'POST',token:a.token,body:input,status:409});
+  assert.equal(blocked.code,'INTERIOR_COLLISION');assert.equal(blocked.snapshot.players[0].interiorX,from[0]);assert.equal(blocked.snapshot.players[0].interiorY,from[1]);
+  const anchor=await f.call('sync',{method:'POST',token:a.token,body:{...input,x:at.x+1},status:409});
+  assert.equal(anchor.code,'INTERIOR_ANCHOR');assert.equal(anchor.snapshot.players[0].x,at.x);
+});
+
+test('a cached retired interior cannot evacuate a newer versioned pose or replay over its sequence',async()=>{
+  const f=fixture(),a=await f.session(),joined=await f.room(a),id='way/1473779965',layout=getInteriorLayout(id);
+  const at=(await f.call('teleport',{method:'POST',token:a.token,body:{roomId:joined.room.id,poiId:id,seq:1}})).players[0];
+  f.sql.prepare('UPDATE campus_players SET interior=?,interior_x=95,interior_y=60 WHERE session_id=?').run(id,a.id);
+  const session=f.sql.prepare('SELECT * FROM campus_sessions WHERE id=?').get(a.id),room=f.sql.prepare('SELECT * FROM campus_rooms WHERE id=?').get(joined.room.id);
+  const connection={context:{room,player:f.sql.prepare('SELECT * FROM campus_players WHERE session_id=?').get(a.id)}};
+  f.sql.prepare('UPDATE campus_players SET interior=?,interior_x=?,interior_y=?,seq=3,updated_at=? WHERE session_id=?').run(id+'@'+layout.revision,layout.spawn.x,layout.spawn.y,++f.state.now,a.id);
+  const input={roomId:joined.room.id,x:at.x,y:at.y,direction:'up',interior:id,interiorX:95,interiorY:60};
+  f.state.now+=100;
+  const replay=await f.call('sync',{method:'POST',token:a.token,body:{...input,seq:2}});
+  assert.equal(replay.players[0].interiorRevision,layout.revision);assert.equal(replay.players[0].seq,3);
+  await assert.rejects(moveForTest(f.db,session,{...input,seq:4},f.state.now,false,connection),error=>error.code==='INTERIOR_LAYOUT_CHANGED'&&error.snapshot.players[0].interiorRevision===layout.revision);
+  const retained=f.sql.prepare('SELECT * FROM campus_players WHERE session_id=?').get(a.id);
+  assert.equal(retained.interior,id+'@'+layout.revision);assert.equal(retained.seq,3);assert.equal(retained.interior_x,layout.spawn.x);
+});
+
+test('all seven verified exterior doors select their own interior spawn and ignore forged door selectors',async()=>{
+  const f=fixture(),a=await f.session(),joined=await f.room(a),id='way/1473779965',layout=getInteriorLayout(id);let seq=0;
+  for(const door of layout.exits){
+    assert.equal(isCampusWalkable('south',...door.exterior),true,door.id+' must be a safe exterior destination');
+    f.sql.prepare('UPDATE campus_players SET x=?,y=?,interior=NULL,interior_x=NULL,interior_y=NULL WHERE session_id=?').run(...door.exterior,a.id);
+    f.state.now+=100;
+    const entered=await f.call('sync',{method:'POST',token:a.token,body:{roomId:joined.room.id,x:door.exterior[0],y:door.exterior[1],direction:'up',interior:id,interiorRevision:layout.revision,interiorX:5000,interiorY:5000,doorId:'forged',interiorDoorId:'main',seq:++seq}});
+    const self=entered.players[0];assert.equal(self.interiorX,door.spawn.x);assert.equal(self.interiorY,door.spawn.y);assert.equal(self.x,door.exterior[0]);assert.equal(self.y,door.exterior[1]);
+    // Even an accepted room+revision cannot exit from a non-door pose or choose a target by claiming a door ID.
+    f.state.now+=100;
+    const early=await f.call('sync',{method:'POST',token:a.token,body:{roomId:joined.room.id,x:9999,y:9999,direction:'down',interior:null,interiorRevision:layout.revision,doorId:'main',seq:++seq},status:409});
+    assert.equal(early.code,'EXIT_REQUIRED');assert.equal(early.snapshot.players[0].x,door.exterior[0]);
+    f.sql.prepare('UPDATE campus_players SET interior_x=?,interior_y=? WHERE session_id=?').run(door.x+door.w/2,door.y+door.h/2,a.id);
+    f.state.now+=100;
+    const exited=await f.call('sync',{method:'POST',token:a.token,body:{roomId:joined.room.id,x:9999,y:9999,direction:'down',interior:null,doorId:'forged',seq:++seq}});
+    assert.equal(exited.players[0].x,door.exterior[0]);assert.equal(exited.players[0].y,door.exterior[1]);assert.equal(exited.players[0].interior,null);
+  }
+  f.state.now+=100;
+  const outside=await f.call('sync',{method:'POST',token:a.token,body:{roomId:joined.room.id,x:9999,y:9999,direction:'down',interior:null,doorId:'main',seq:++seq},status:409});assert.equal(outside.code,'MOVE_TOO_FAST');
+  const distant=geometry.south.landmarks.find(place=>place.id==='way/1473651054').entrance;
+  f.sql.prepare('UPDATE campus_players SET x=?,y=? WHERE session_id=?').run(...distant,a.id);f.state.now+=100;
+  await f.call('sync',{method:'POST',token:a.token,body:{roomId:joined.room.id,x:distant[0],y:distant[1],direction:'down',interior:id,interiorRevision:layout.revision,doorId:'main',seq:++seq},status:400});
 });

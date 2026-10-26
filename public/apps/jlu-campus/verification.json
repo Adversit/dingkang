@@ -1,8 +1,8 @@
 {
   "schemaVersion": 2,
-  "updatedAt": "2026-10-25",
+  "updatedAt": "2026-10-26",
   "site": "https://dingkang-hub.dingikang.chatgpt.site",
-  "summary": "最近核验运行版本v17：北区理化楼出生点的遮挡建筑半透明，姓名与脚圈清晰，控制台无报错，已返回南区。地图、联机和已列交互均有分项证据；北区精确资料补全暂停，长期稳态并发与近乎一致整体视觉未验收。",
+  "summary": "工作台应用全视口已实测。日新楼按当前参考布局重绘、7门绑定独立OSM入口；v20两会话联机及正门/1号门实测通过，v21室内缩放和图书馆进出实测通过。北区精确资料补全暂停，长期容量与整体视觉近乎一致仍未最终验收。",
   "local": {
     "title": "历史全量回归记录",
     "tests": 95,
@@ -172,11 +172,11 @@
     ]
   },
   "release": {
-    "latestVerifiedRuntimeVersion": 17,
-    "verifiedRuntimeCommit": "6c04bead673c56e2a0a11f345adbb9bf0f36dad5",
-    "verifiedRuntimeDeploymentId": "appgdep_6ade2ca48e18819181026be55373a6bd",
-    "verifiedRuntimeDeployedAt": "2026-10-25T16:22:08.200203Z",
-    "note": "记录最近核验的运行版本；后续文档更新不自动改变运行验收范围。"
+    "latestVerifiedRuntimeVersion": 21,
+    "verifiedRuntimeCommit": "253ac53cb167cf6d8067757aed049b527eee018f",
+    "verifiedRuntimeDeploymentId": "appgdep_6adeb1d7fe588191af6ef51a59ba3304",
+    "verifiedRuntimeDeployedAt": "2026-10-26T01:50:27.685336Z",
+    "note": "v21在v20已验室内/七门网络逻辑上补充镜头缩放；v20网络报告单独保留。后续记录与截图更新不自动扩大验收范围。"
   },
   "campusLatest": {
     "title": "最新校园定向检查",
@@ -379,7 +379,7 @@
     "claimLimit": "只证明两独立测试连接在出生点附近连续120秒的同步和远端存在检查；不证明长时间全校漫游、8人稳态负载或200人容量。指定对端ID的互见由另一次v14双客户端功能检查覆盖。",
     "passed": true
   },
-  "latestVerifiedRuntimeVersion": 17,
+  "latestVerifiedRuntimeVersion": 21,
   "browserV17": {
     "version": 17,
     "source": "刷新已部署v17后真实浏览器检查",
@@ -403,5 +403,252 @@
     ],
     "geometryTestsPassed": 11,
     "note": "这是北区出生点可辨识性分项实测，不代表参考站近乎一致的整体视觉、实体手机或长期负载通过。"
+  },
+  "browserV19": {
+    "version": 19,
+    "sourceCommit": "69dbff4596b1c9e93073de664e96aa3cbb463b06",
+    "deviceScope": "1363×936桌面云浏览器；本轮无受支持的手机视口切换能力",
+    "checks": [
+      {
+        "name": "校园iframe从(0,0)占满1363×936可用窗口，外层常驻顶部栏消失",
+        "status": "passed"
+      },
+      {
+        "name": "经典与夜航主题下应用均占满窗口；外观设置可打开",
+        "status": "passed"
+      },
+      {
+        "name": "菜单展开和收起后，校园地图搜索日新仍保留",
+        "status": "passed"
+      },
+      {
+        "name": "返回工作台后再进入校园，入口与游戏正常加载",
+        "status": "passed"
+      },
+      {
+        "name": "AI研发协作应用同样占满窗口，原登录要求保持",
+        "status": "passed"
+      },
+      {
+        "name": "浏览器原生全屏",
+        "status": "limited",
+        "reason": "当前云浏览器拒绝Fullscreen API；界面显示新窗口打开的回退提示。页面占满视口已经实测。"
+      },
+      {
+        "name": "先标记清湖、再步行前往中心图书馆，目标替换成功；停止步行和清除标记实际生效",
+        "status": "passed"
+      }
+    ]
+  },
+  "immersiveRixinLocal": {
+    "tests": 101,
+    "passed": 101,
+    "failed": 0,
+    "source": "docs/campus/immersive-rixin-tests.tap",
+    "sourceSha256": "3a5f74d5ecf98e0a187df392c5fc89271bea26f4329a70e676e1b8db67062bd9",
+    "scope": "统一工作台菜单/保存流程、地图导航状态、共享室内几何、七门白名单双向进出、版本恢复、服务端权限与网络同步的定向软件回归；不替代线上或实体手机。 室内0.4–2×缩放另覆盖场景/角色同倍缩放与物理坐标不变。"
+  },
+  "rixinOnline": {
+    "schemaVersion": 1,
+    "site": "https://dingkang-hub.dingikang.chatgpt.site",
+    "startedAt": "2026-10-26T01:43:10.162Z",
+    "purpose": "新版日新楼两独立会话 HTTP/WebSocket 室内短程验收，不发送聊天，不作为长期容量证明。",
+    "layoutRevision": "rixin-v2",
+    "checks": [
+      {
+        "name": "已发布共享布局与本地待验布局一致",
+        "status": "passed",
+        "ms": 4567,
+        "revision": "rixin-v2",
+        "width": 66,
+        "height": 91
+      },
+      {
+        "name": "两独立匿名会话只加入同一个临时验收房间",
+        "status": "passed",
+        "ms": 6413,
+        "independentSessions": 2,
+        "roomsCreated": 1
+      },
+      {
+        "name": "HTTP 从受校验入口进入新版日新楼",
+        "status": "passed",
+        "ms": 1386
+      },
+      {
+        "name": "WebSocket 室内合法移动及指定双方互见",
+        "status": "passed",
+        "ms": 1705,
+        "connections": 2,
+        "specificPeerIdentitiesChecked": true
+      },
+      {
+        "name": "退出请求早于门口同步时可恢复室内继续移动",
+        "status": "passed",
+        "ms": 3521
+      },
+      {
+        "name": "WebSocket 拒绝穿入扶梯设施并返回原合法位置",
+        "status": "passed",
+        "ms": 1888
+      },
+      {
+        "name": "主门与1号侧门各自退出到对应OSM门外点",
+        "status": "passed",
+        "ms": 9991,
+        "liveExitIds": [
+          "main",
+          "left-south"
+        ],
+        "allSevenDoorsCoveredByLocalServerTests": true
+      },
+      {
+        "name": "1号侧门原路进入对应室内出生点并再次退出",
+        "status": "passed",
+        "ms": 3038,
+        "liveEntryId": "left-south"
+      }
+    ],
+    "cleanup": {
+      "left": 2,
+      "errors": []
+    },
+    "latency": {
+      "health": {
+        "samples": 1,
+        "p50Ms": 4417.71,
+        "p95Ms": 4417.71
+      },
+      "session": {
+        "samples": 2,
+        "p50Ms": 633.65,
+        "p95Ms": 3560.79
+      },
+      "rooms": {
+        "samples": 1,
+        "p50Ms": 1496.41,
+        "p95Ms": 1496.41
+      },
+      "join": {
+        "samples": 1,
+        "p50Ms": 1352.68,
+        "p95Ms": 1352.68
+      },
+      "teleport": {
+        "samples": 2,
+        "p50Ms": 615.32,
+        "p95Ms": 621.6
+      },
+      "http_enter": {
+        "samples": 2,
+        "p50Ms": 611.03,
+        "p95Ms": 642.37
+      },
+      "ws_initial_snapshot": {
+        "samples": 2,
+        "p50Ms": 371.5,
+        "p95Ms": 376.27
+      },
+      "ws_sync": {
+        "samples": 10,
+        "p50Ms": 203.91,
+        "p95Ms": 416.09
+      },
+      "ws_peer_snapshot": {
+        "samples": 2,
+        "p50Ms": 381.71,
+        "p95Ms": 390.69
+      },
+      "http_early_exit": {
+        "samples": 1,
+        "p50Ms": 3420.22,
+        "p95Ms": 3420.22
+      },
+      "ws_collision_rejected": {
+        "samples": 1,
+        "p50Ms": 564.92,
+        "p95Ms": 564.92
+      },
+      "http_exit": {
+        "samples": 2,
+        "p50Ms": 3696.82,
+        "p95Ms": 3700.9
+      },
+      "http_side_enter": {
+        "samples": 1,
+        "p50Ms": 637.55,
+        "p95Ms": 637.55
+      },
+      "ws_side_reentry_move": {
+        "samples": 1,
+        "p50Ms": 1221.4,
+        "p95Ms": 1221.4
+      },
+      "http_side_exit": {
+        "samples": 1,
+        "p50Ms": 599.54,
+        "p95Ms": 599.54
+      },
+      "leave": {
+        "samples": 2,
+        "p50Ms": 723.09,
+        "p95Ms": 860.85
+      }
+    },
+    "requests": 17,
+    "finishedAt": "2026-10-26T01:43:44.260Z",
+    "passed": true,
+    "version": 20,
+    "sourceCommit": "1804ecd16e292ced0b82ed2bdc4220772d667e7e",
+    "sourceReport": "docs/campus/live-interior-verification.json"
+  },
+  "browserV20": {
+    "version": 20,
+    "deviceScope": "1363×936桌面云浏览器",
+    "checks": [
+      {
+        "name": "工作台刷新后从日新楼正门进入新版室内成功",
+        "status": "passed"
+      },
+      {
+        "name": "中央双扶梯、两侧茶饮/服饰/手机配件、证件照/正装区和正门对应渲染，中文标签可读",
+        "status": "passed"
+      },
+      {
+        "name": "左上角仅悬浮工作台按钮；游戏占满完整视口",
+        "status": "passed"
+      }
+    ],
+    "referenceBoundary": "当前参考站WebGL不能在检查浏览器运行；公开配置已于2026-10-26复核，未将新画面称为与原站逐像素一致。"
+  },
+  "browserV21": {
+    "version": 21,
+    "sourceCommit": "253ac53cb167cf6d8067757aed049b527eee018f",
+    "deviceScope": "1363×936桌面云浏览器",
+    "checks": [
+      {
+        "name": "日新楼0.40×镜头显示完整纵向商业街、两侧商铺、双扶梯和七门标签",
+        "status": "passed"
+      },
+      {
+        "name": "设置从0.40×恢复1.00×生效，人物与场景比例一致",
+        "status": "passed"
+      },
+      {
+        "name": "地图传送中心图书馆，进入原布局并按E退出回室外成功",
+        "status": "passed"
+      },
+      {
+        "name": "应用从(0,0)占满视口，工作台仅保留悬浮菜单按钮",
+        "status": "passed"
+      }
+    ],
+    "screenshot": "docs/screenshots/rixin-layout-v21.jpg",
+    "consoleNote": "检查时捕获到chrome-extension来源的元数据错误；不能称整个浏览器控制台零错误。未观察到游戏页面报错。",
+    "limits": [
+      "本轮未做手机视口与实体手机复测",
+      "不代表与参考站逐像素一致",
+      "七门全覆盖为软件回归；在线双会话实测门为正门和1号门"
+    ]
   }
 }

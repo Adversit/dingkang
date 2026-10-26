@@ -1,0 +1,151 @@
+{
+  "schemaVersion": 1,
+  "site": "https://dingkang-hub.dingikang.chatgpt.site",
+  "startedAt": "2026-10-26T01:43:10.162Z",
+  "purpose": "新版日新楼两独立会话 HTTP/WebSocket 室内短程验收，不发送聊天，不作为长期容量证明。",
+  "layoutRevision": "rixin-v2",
+  "checks": [
+    {
+      "name": "已发布共享布局与本地待验布局一致",
+      "status": "passed",
+      "ms": 4567,
+      "revision": "rixin-v2",
+      "width": 66,
+      "height": 91
+    },
+    {
+      "name": "两独立匿名会话只加入同一个临时验收房间",
+      "status": "passed",
+      "ms": 6413,
+      "independentSessions": 2,
+      "roomsCreated": 1
+    },
+    {
+      "name": "HTTP 从受校验入口进入新版日新楼",
+      "status": "passed",
+      "ms": 1386
+    },
+    {
+      "name": "WebSocket 室内合法移动及指定双方互见",
+      "status": "passed",
+      "ms": 1705,
+      "connections": 2,
+      "specificPeerIdentitiesChecked": true
+    },
+    {
+      "name": "退出请求早于门口同步时可恢复室内继续移动",
+      "status": "passed",
+      "ms": 3521
+    },
+    {
+      "name": "WebSocket 拒绝穿入扶梯设施并返回原合法位置",
+      "status": "passed",
+      "ms": 1888
+    },
+    {
+      "name": "主门与1号侧门各自退出到对应OSM门外点",
+      "status": "passed",
+      "ms": 9991,
+      "liveExitIds": [
+        "main",
+        "left-south"
+      ],
+      "allSevenDoorsCoveredByLocalServerTests": true
+    },
+    {
+      "name": "1号侧门原路进入对应室内出生点并再次退出",
+      "status": "passed",
+      "ms": 3038,
+      "liveEntryId": "left-south"
+    }
+  ],
+  "cleanup": {
+    "left": 2,
+    "errors": []
+  },
+  "latency": {
+    "health": {
+      "samples": 1,
+      "p50Ms": 4417.71,
+      "p95Ms": 4417.71
+    },
+    "session": {
+      "samples": 2,
+      "p50Ms": 633.65,
+      "p95Ms": 3560.79
+    },
+    "rooms": {
+      "samples": 1,
+      "p50Ms": 1496.41,
+      "p95Ms": 1496.41
+    },
+    "join": {
+      "samples": 1,
+      "p50Ms": 1352.68,
+      "p95Ms": 1352.68
+    },
+    "teleport": {
+      "samples": 2,
+      "p50Ms": 615.32,
+      "p95Ms": 621.6
+    },
+    "http_enter": {
+      "samples": 2,
+      "p50Ms": 611.03,
+      "p95Ms": 642.37
+    },
+    "ws_initial_snapshot": {
+      "samples": 2,
+      "p50Ms": 371.5,
+      "p95Ms": 376.27
+    },
+    "ws_sync": {
+      "samples": 10,
+      "p50Ms": 203.91,
+      "p95Ms": 416.09
+    },
+    "ws_peer_snapshot": {
+      "samples": 2,
+      "p50Ms": 381.71,
+      "p95Ms": 390.69
+    },
+    "http_early_exit": {
+      "samples": 1,
+      "p50Ms": 3420.22,
+      "p95Ms": 3420.22
+    },
+    "ws_collision_rejected": {
+      "samples": 1,
+      "p50Ms": 564.92,
+      "p95Ms": 564.92
+    },
+    "http_exit": {
+      "samples": 2,
+      "p50Ms": 3696.82,
+      "p95Ms": 3700.9
+    },
+    "http_side_enter": {
+      "samples": 1,
+      "p50Ms": 637.55,
+      "p95Ms": 637.55
+    },
+    "ws_side_reentry_move": {
+      "samples": 1,
+      "p50Ms": 1221.4,
+      "p95Ms": 1221.4
+    },
+    "http_side_exit": {
+      "samples": 1,
+      "p50Ms": 599.54,
+      "p95Ms": 599.54
+    },
+    "leave": {
+      "samples": 2,
+      "p50Ms": 723.09,
+      "p95Ms": 860.85
+    }
+  },
+  "requests": 17,
+  "finishedAt": "2026-10-26T01:43:44.260Z",
+  "passed": true
+}

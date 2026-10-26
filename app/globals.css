@@ -645,3 +645,38 @@ button,a,input,select{-webkit-tap-highlight-color:transparent}
 @media(max-width:360px){
   .theme-cozy.cozy-space-open .hub-style-switcher>button{padding:7px 6px;gap:5px}
 }
+
+/* Every module shares one uninterrupted viewport; hub controls float above it. */
+.hub-shell.module-open{position:fixed;inset:0;width:100%;height:100dvh;min-height:0;overflow:hidden}
+.hub-shell.module-open>:is(.hub-header,.hub-style-bar,.hub-sidebar,.hub-sidebar-scrim,.hub-kinetic-progress){display:none}
+.hub-shell.module-open>main{width:100%;height:100%;margin:0;min-height:0}
+.hub-shell.module-open .hub-app-stage{position:fixed;inset:0;z-index:80;width:100%;height:100dvh;min-height:0;display:block;overflow:hidden}
+.hub-shell.module-open .hub-frame-wrap{position:absolute;inset:0;width:100%;height:100%;min-height:0;border:0}
+.hub-shell.module-open .hub-frame-wrap iframe{height:100%;min-height:0}
+.hub-module-launcher{position:absolute;z-index:4;left:max(10px,env(safe-area-inset-left));top:max(10px,env(safe-area-inset-top));width:44px;height:44px;display:grid;place-items:center;padding:0;border:1px solid color-mix(in srgb,var(--hub-line) 80%,transparent)!important;border-radius:50%;background:color-mix(in srgb,var(--hub-surface) 88%,transparent)!important;color:var(--hub-muted)!important;box-shadow:0 2px 12px #00000014;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);opacity:.86;touch-action:manipulation}
+.hub-module-launcher:hover,.hub-module-launcher:focus-visible,.hub-module-launcher[aria-expanded="true"]{opacity:1;color:var(--hub-text)!important;background:var(--hub-surface)!important}
+.hub-module-alert-dot{position:absolute;top:7px;right:7px;width:7px;height:7px;border-radius:50%;background:#c68a35;box-shadow:0 0 0 2px var(--hub-surface)}
+.hub-module-tools{position:absolute;z-index:3;left:max(10px,env(safe-area-inset-left));top:calc(max(10px,env(safe-area-inset-top)) + 54px);width:min(390px,calc(100vw - max(10px,env(safe-area-inset-left)) - max(10px,env(safe-area-inset-right))));max-height:calc(100dvh - max(10px,env(safe-area-inset-top)) - max(10px,env(safe-area-inset-bottom)) - 54px);overflow:auto;overscroll-behavior:contain;border:1px solid var(--hub-line);border-radius:16px;background:var(--hub-surface);color:var(--hub-text);box-shadow:0 16px 50px #00000030;padding:18px;scrollbar-width:thin}
+.hub-module-tools[hidden]{display:none}
+.hub-module-tools-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+.hub-module-tools-heading>div{min-width:0}
+.hub-module-tools-heading small{font-size:14px;color:var(--hub-muted)}
+.hub-module-tools-heading h1{font-size:21px;line-height:1.45;font-weight:600;overflow-wrap:anywhere;margin-top:2px}
+.hub-module-tools .hub-icon-button{min-width:44px;min-height:44px}
+.hub-module-return{display:flex;align-items:center;justify-content:center;gap:8px;min-height:46px;width:100%;padding:10px 14px!important;background:var(--hub-raised)!important;border:1px solid var(--hub-line)!important;border-radius:9px;font-size:16px!important}
+.hub-module-return:hover:not(:disabled){border-color:var(--hub-muted)!important}
+.hub-module-controls{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:12px 0 18px}
+.hub-module-controls>button,.hub-module-controls>a{display:flex;align-items:center;gap:9px;min-height:44px;padding:9px 8px;border-radius:8px;font-size:16px;line-height:1.4;text-align:left}
+.hub-module-controls>button:hover:not(:disabled),.hub-module-controls>a:hover{background:var(--hub-raised)}
+.hub-module-preferences{border-top:1px solid var(--hub-line);padding:14px 0 12px}
+.hub-module-preferences .hub-connection{white-space:normal;font-size:14px}
+.hub-module-preferences>small{display:block;padding-left:25px;margin-top:4px;color:var(--hub-muted);font-size:14px}
+.hub-shell .hub-module-tools .hub-module-storage{border-top:1px solid var(--hub-line);border-bottom:0;padding:14px 0 0;background:transparent}
+.hub-shell .hub-module-tools .hub-module-storage button{min-height:44px;padding:8px 10px}
+.hub-shell .hub-module-tools .hub-module-storage p{font-size:16px}
+.hub-shell .hub-module-tools .hub-module-storage dialog{margin:auto}
+.hub-shell .hub-module-tools .hub-module-error{padding:12px;margin:0 0 12px;border:1px solid var(--hub-line);border-radius:8px;flex-wrap:wrap;gap:8px}
+.hub-shell .hub-module-tools .hub-module-error p{min-width:calc(100% - 30px);font-size:16px;line-height:1.6}
+.hub-shell .hub-module-tools .hub-module-error>button{margin-left:28px;min-height:44px}
+.hub-shell .hub-module-tools .hub-module-error>.hub-icon-button{margin-left:auto}
+@media(max-width:380px){.hub-module-tools{padding:15px}.hub-module-controls{gap:5px}.hub-module-controls>button,.hub-module-controls>a{gap:6px;padding-left:5px;padding-right:5px}}

@@ -138,3 +138,67 @@ test('HTTP recovery resets the message cursor and drops obsolete text from the c
   await net.tick();assert.equal(net.failures,1);await net.tick();
   assert.equal(payloads[1].after,0);assert.equal(net.failures,0);assert.deepEqual([...net.messageCache.values()],[fresh]);net.destroy();
 });
+
+test('HTTP movement preserves the interior revision while ordinary acknowledgements keep local progress',async t=>{
+  browser(t);const reconciled=[],sent=[],net=new CampusNetwork({onReconcile:p=>reconciled.push({...p})});
+  const entered=snapshot('room');Object.assign(entered.players[0],{interior:'way/1473779965',interiorRevision:'rixin-v2',interiorX:32.6875,interiorY:83.6875});
+  net.startTransport=()=>{};net.resetRoom(entered);net.schedule=()=>{};net.wsAllowed=false;
+  net.setPosition({...net.position,interiorY:82.5,moving:true});
+  net.request=async(path,options)=>{sent.push(options.body);return entered;};
+  await net.tick();
+  assert.equal(sent[0].interiorRevision,'rixin-v2');assert.equal(sent[0].interiorY,82.5);
+  assert.equal(net.position.interiorY,82.5,'an ordinary older acknowledgement must not rewind local movement');
+  assert.equal(reconciled.length,1);assert.equal(reconciled[0].interiorRevision,'rixin-v2');net.destroy();
+});
+
+test('a changed revision reconciles the same room but delayed interior snapshots cannot undo local exit',t=>{
+  browser(t);const reconciled=[],net=new CampusNetwork({onReconcile:p=>reconciled.push({...p})});
+  net.startTransport=()=>{};const entered=snapshot('room');Object.assign(entered.players[0],{interior:'way/1473779965',interiorRevision:'rixin-v1',interiorX:95,interiorY:123});
+  net.resetRoom(entered);
+  const revised={...entered,players:[{...entered.players[0],interiorRevision:'rixin-v2',interiorX:32.6875,interiorY:83.6875,seq:2}]};
+  net.accept(revised);assert.equal(reconciled.length,2);assert.equal(net.position.interiorRevision,'rixin-v2');assert.equal(net.position.interiorX,32.6875);
+  net.setPosition({...net.position,interior:null,interiorRevision:null,interiorX:null,interiorY:null});
+  net.accept(revised);assert.equal(reconciled.length,2);assert.equal(net.position.interior,null,'a normal acknowledgement from before exit must not pull the actor inside');net.destroy();
+});
+
+test('HTTP exit rejection restores the authoritative interior pose and the next update can recover',async t=>{
+  browser(t);const reconciled=[],sent=[],net=new CampusNetwork({onReconcile:p=>reconciled.push({...p})});
+  const inside=snapshot('room');Object.assign(inside.players[0],{interior:'way/1473779965',interiorRevision:'rixin-v2',interiorX:32.6875,interiorY:82,seq:4});
+  net.room=inside.room;net.position={x:1,y:2,interior:null,interiorRevision:null,interiorX:null,interiorY:null};net.stopped=false;net.wsAllowed=false;net.schedule=()=>{};
+  net.request=async(path,options)=>{sent.push(options.body);if(sent.length===1)throw Object.assign(Error('请走到室内出口后离开。'),{status:409,code:'EXIT_REQUIRED',snapshot:inside});return inside;};
+  await net.tick();assert.equal(net.position.interiorRevision,'rixin-v2');assert.equal(net.position.interiorY,82);assert.equal(reconciled.length,1);
+  await net.tick();assert.equal(sent[1].interior,'way/1473779965');assert.equal(sent[1].interiorRevision,'rixin-v2');assert.equal(net.failures,0);net.destroy();
+});
+
+test('WebSocket carries interior revision and a layout-change error clears retired coordinates',async t=>{
+  browser(t);const oldLocation=Object.getOwnPropertyDescriptor(globalThis,'location');globalThis.location={protocol:'https:',host:'campus.test'};
+  t.after(()=>{if(oldLocation)Object.defineProperty(globalThis,'location',oldLocation);else delete globalThis.location;});
+  class Socket{static OPEN=1;static CONNECTING=0;constructor(){this.readyState=1;this.sent=[];}send(value){this.sent.push(JSON.parse(value));}close(){this.readyState=3;this.onclose?.();}}
+  globalThis.WebSocket=Socket;const reconciled=[],net=new CampusNetwork({onReconcile:p=>reconciled.push({...p})});
+  net.session={id:'visitor',token:'test-only'};net.room={id:'room'};net.position={x:1,y:2,interior:'way/1473779965',interiorRevision:'rixin-v2',interiorX:32.6875,interiorY:83.6875};net.stopped=false;net.schedule=()=>{};
+  net.tryWebSocket();const socket=net.socket;socket.onopen();const inside=snapshot('room');Object.assign(inside.players[0],net.position);socket.onmessage({data:JSON.stringify(inside)});
+  await net.tick();assert.equal(socket.sent.at(-1).interiorRevision,'rixin-v2');assert.equal(socket.sent.at(-1).interiorY,83.6875);
+  const outside=snapshot('room');Object.assign(outside.players[0],{interior:null,interiorRevision:null,interiorX:null,interiorY:null,seq:8});
+  socket.onmessage({data:JSON.stringify({type:'error',code:'INTERIOR_LAYOUT_CHANGED',error:'室内已更新',snapshot:outside})});
+  assert.equal(net.position.interior,null);assert.equal(net.position.interiorRevision,null);assert.equal(net.position.interiorX,null);assert.equal(reconciled.at(-1).interiorY,null);net.destroy();
+});
+
+test('interior revision survives reconciliation and changed coordinates are never silently reused',async t=>{
+  browser(t);const poses=[],net=new CampusNetwork({onReconcile:p=>poses.push(p)}),first=snapshot('room');
+  Object.assign(first.players[0],{interior:'way/1473779965',interiorRevision:'rixin-v1',interiorX:95,interiorY:123});
+  net.accept(first,true);assert.equal(net.position.interiorRevision,'rixin-v1');
+  const next={...first,players:[{...first.players[0],interiorRevision:'rixin-v2',interiorX:33,interiorY:85,seq:2}]};
+  net.accept(next);assert.equal(poses.length,2);assert.equal(net.position.interiorRevision,'rixin-v2');assert.equal(net.position.interiorX,33);
+  // An ordinary delayed exterior snapshot must not cancel local entry before its first sync.
+  net.accept(snapshot('room'));assert.equal(poses.length,2);assert.equal(net.position.interiorRevision,'rixin-v2');net.destroy();
+});
+
+test('a server-confirmed door anchor replaces the nearby entry position once without repeated movement rewinds',t=>{
+  browser(t);const poses=[],net=new CampusNetwork({onReconcile:p=>poses.push({...p})});
+  net.position={x:1000.62,y:756.61,interior:'way/1473779965',interiorRevision:'rixin-v2',interiorX:32.6875,interiorY:83.6875};
+  const entered=snapshot('room');Object.assign(entered.players[0],{...net.position,x:999.59,y:754.44});
+  net.accept(entered);
+  assert.equal(poses.length,1);assert.deepEqual([net.position.x,net.position.y],[999.59,754.44]);assert.equal(net.position.interiorRevision,'rixin-v2');
+  net.setPosition({...net.position,interiorY:82.5,moving:true});net.accept(entered);
+  assert.equal(poses.length,1);assert.equal(net.position.interiorY,82.5,'the same acknowledged door must not keep rewinding local indoor movement');net.destroy();
+});

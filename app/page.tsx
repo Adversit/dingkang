@@ -44,6 +44,7 @@ export default function Hub(){
   const [files,setFiles]=useState<FileItem[]>([]),[filesMore,setFilesMore]=useState(false),[fileError,setFileError]=useState(''),[fileLoading,setFileLoading]=useState(false),[uploading,setUploading]=useState(false);
   const [backup,setBackup]=useState<BackupPreview[]|null>(null),[backupWarnings,setBackupWarnings]=useState<string[]>([]),[legacyGame,setLegacyGame]=useState('auto'),[readingBackup,setReadingBackup]=useState(false),[importing,setImporting]=useState(false);
   const [frameLoading,setFrameLoading]=useState(false),[navigating,setNavigating]=useState(false),[fullscreen,setFullscreen]=useState(false),[canFullscreen,setCanFullscreen]=useState(false);
+  const [moduleToolsOpen,setModuleToolsOpen]=useState(false);
   const readyRef=useRef(false);readyRef.current=ready;
   const explicitTheme=useRef<HubThemeId|null>(null),routeSearch=useRef('');
   const cozyRoom=useRef<ModuleCategory|null>(null),catalogFocusRequested=useRef(false);
@@ -52,7 +53,8 @@ export default function Hub(){
   const queue=useRef(Promise.resolve()),pendingSaves=useRef(0),favRef=useRef<string[]>([]),recentRef=useRef<string[]>([]),appearanceRef=useRef<HubAppearance>(defaultAppearance);
   const openRef=useRef<HubModule|null>(null),navigationLock=useRef(false),acceptedUrl=useRef('/'),initializationId=useRef(0);
   const backupOwner=useRef<string|undefined>(undefined),previewLock=useRef(false),importLock=useRef(false);
-  const frameRef=useRef<HTMLIFrameElement>(null),stageRef=useRef<HTMLDivElement>(null),searchRef=useRef<HTMLInputElement>(null);
+  const frameRef=useRef<HTMLIFrameElement>(null),shellRef=useRef<HTMLDivElement>(null),searchRef=useRef<HTMLInputElement>(null);
+  const moduleToolsRef=useRef<HTMLElement>(null),moduleToolsButtonRef=useRef<HTMLButtonElement>(null),moduleBackRef=useRef<HTMLButtonElement>(null);
   const uploadRef=useRef<HTMLInputElement>(null),importRef=useRef<HTMLInputElement>(null),settingsRef=useRef<HTMLDialogElement>(null),backupDialogRef=useRef<HTMLDialogElement>(null);
   const toastTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
 
@@ -114,6 +116,7 @@ export default function Hub(){
       const previous=openRef.current;
       if(previous&&previous.id!==target?.id)await flushHubModule(frameRef.current?.contentWindow??null,previous.id,window.location.origin);
       openRef.current=target;setOpen(target);setFrameLoading(!!target&&target.id!==previous?.id);
+      if(previous?.id!==target?.id)setModuleToolsOpen(false);
       if(nextSection){setSection(nextSection);setSearch('');}
       const url=moduleUrl(target,nextTheme,nextSearch);
       if(mode==='push')history.pushState({hubSection:nextSection||section},'',url);
@@ -122,14 +125,21 @@ export default function Hub(){
       setAppearance(appearanceForRoute(appearanceRef.current,nextTheme));setSidebarOpen(false);
       if(target&&target.id!==previous?.id)persist({recents:[target.id,...recentRef.current.filter(id=>id!==target.id)].slice(0,8)});
       return true;
-    }catch(cause){setError(friendly(cause));if(mode==='pop')history.replaceState({},'',acceptedUrl.current);return false;}
+    }catch(cause){setError(friendly(cause));if(openRef.current)setModuleToolsOpen(true);if(mode==='pop')history.replaceState({},'',acceptedUrl.current);return false;}
     finally{navigationLock.current=false;setNavigating(false);}
   }
   async function leaveFor(url:string){
     if(navigationLock.current)return;navigationLock.current=true;setNavigating(true);
     try{const current=openRef.current;if(current)await flushHubModule(frameRef.current?.contentWindow??null,current.id,location.origin);await queue.current;if(preferenceSaveError.current)throw Error('偏好尚未保存，暂时无法离开。'+preferenceSaveError.current);location.assign(url);}
-    catch(cause){setError(friendly(cause));navigationLock.current=false;setNavigating(false);}
+    catch(cause){setError(friendly(cause));if(openRef.current)setModuleToolsOpen(true);navigationLock.current=false;setNavigating(false);}
   }
+  function closeModuleTools(){
+    // A native export dialog must remain visible until its own close action runs.
+    const dialog=moduleToolsRef.current?.querySelector<HTMLDialogElement>('dialog[open]');
+    if(dialog){dialog.focus({preventScroll:true});return;}
+    setModuleToolsOpen(false);moduleToolsButtonRef.current?.focus({preventScroll:true});
+  }
+  function toggleModuleTools(){if(moduleToolsOpen)closeModuleTools();else setModuleToolsOpen(true);}
   function changeTheme(id:HubThemeId){
     if(!readyRef.current||navigationLock.current||importLock.current)return;
     explicitTheme.current=id;
@@ -172,6 +182,10 @@ export default function Hub(){
     searchRef.current.focus({preventScroll:true});
   },[catalogRequest,cozyDirectoryOpen,open,section,reducedMotion]);
   useEffect(()=>{if(!sidebarOpen)return;const close=(event:KeyboardEvent)=>{if(event.key==='Escape')setSidebarOpen(false);};addEventListener('keydown',close);return()=>removeEventListener('keydown',close);},[sidebarOpen]);
+  useEffect(()=>{if(moduleToolsOpen)moduleBackRef.current?.focus({preventScroll:true});},[moduleToolsOpen]);
+  useEffect(()=>{
+    if(!open&&document.fullscreenElement===shellRef.current)void document.exitFullscreen().catch(()=>{});
+  },[open]);
   useEffect(()=>{if(backup&&!backupDialogRef.current?.open)backupDialogRef.current?.showModal();else if(!backup)backupDialogRef.current?.close();},[backup]);
 
   async function loadFiles(){
@@ -226,7 +240,7 @@ export default function Hub(){
     }
     finally{importLock.current=false;setImporting(false);}
   }
-  async function toggleFullscreen(){try{if(document.fullscreenElement)await document.exitFullscreen();else await stageRef.current?.requestFullscreen();}catch{setError('当前浏览器无法进入全屏，请使用新窗口打开。');}}
+  async function toggleFullscreen(){try{if(document.fullscreenElement)await document.exitFullscreen();else await shellRef.current?.requestFullscreen();}catch{setError('当前浏览器无法进入全屏，请使用新窗口打开。');setModuleToolsOpen(true);}}
 
   const theme=themeById(appearance.theme),moving=appearance.motion&&!reducedMotion&&pageVisible&&!open&&theme.motion.supported;
   const query=search.trim().toLowerCase(),activeCategory=categories.find(category=>category.id===section);
@@ -239,7 +253,7 @@ export default function Hub(){
   const cozyHome=!open&&theme.id==='cozy'&&section==='all';
   const sceneProps={motion:moving,recentModules,onLaunch:launch,onExplore:exploreCatalog,onSelectCategory:selectSection,onOpenData:()=>selectSection('data'),disabled:controlsDisabled};
 
-  return <div className={'hub-shell theme-'+theme.id+(open?' module-open':'')+(cozyHome?' cozy-space-open':'')+(cozyHome&&cozyDirectoryOpen?' cozy-directory-open':'')} style={themeVariables(theme) as CSSProperties} data-motion={moving?'on':'off'}>
+  return <div ref={shellRef} className={'hub-shell theme-'+theme.id+(open?' module-open':'')+(cozyHome?' cozy-space-open':'')+(cozyHome&&cozyDirectoryOpen?' cozy-directory-open':'')} style={themeVariables(theme) as CSSProperties} data-motion={moving?'on':'off'}>
     <a className="hub-skip" href="#hub-main">跳到主要内容</a>
     {theme.id==='kinetic'&&<><KineticBackdrop motion={moving} view={open?'module':section}/><KineticMotion motion={moving} viewKey={section+'|'+search+'|'+favorites.join(',')+'|'+(open?.id||'')}/><div className="hub-kinetic-progress" aria-hidden="true"/></>}
     {theme.id==='classic'&&<>
@@ -267,16 +281,24 @@ export default function Hub(){
     </header>
     <div className="hub-style-bar"><span>换一种心情</span><div className="hub-style-switcher" role="group" aria-label="选择工作空间风格">{hubThemes.map(item=><button key={item.id} aria-pressed={appearance.theme===item.id} aria-label={'切换为'+item.name} disabled={!ready||navigating||importing||readingBackup} onClick={()=>changeTheme(item.id)}>{item.id==='classic'?<Grid2X2 size={17}/>:item.id==='night-harbor'?<Moon size={17}/>:item.id==='kinetic'?<Sparkles size={17}/>:<House size={17}/>}<span>{{classic:'经典','night-harbor':'夜航',kinetic:'动态',cozy:'基地'}[item.id]}</span></button>)}</div></div>
 
-    {(error||healthError)&&<div className="hub-error" role="alert"><AlertCircle size={21}/><p>{error||healthError}</p><button onClick={()=>void initialize()} disabled={!ready}><RefreshCw size={16}/>重新连接</button>{error&&<button className="hub-icon-button" onClick={()=>setError('')} aria-label="关闭提示"><X size={18}/></button>}</div>}
+    {!open&&(error||healthError)&&<div className="hub-error" role="alert"><AlertCircle size={21}/><p>{error||healthError}</p><button onClick={()=>void initialize()} disabled={!ready}><RefreshCw size={16}/>重新连接</button>{error&&<button className="hub-icon-button" onClick={()=>setError('')} aria-label="关闭提示"><X size={18}/></button>}</div>}
 
     <main id="hub-main">
-      {open?<div className="hub-app-stage" ref={stageRef}>
-        <div className="hub-module-toolbar">
-          <button className="hub-back-button" onClick={()=>void navigateTo(null,'all')} disabled={navigating}>{navigating?<LoaderCircle size={20} className="hub-spin"/>:<ChevronLeft size={21}/>}<span>{theme.id==='cozy'?(cozyRoom.current?'返回房间':'返回基地'):'返回工作台'}</span></button>
-          <div className="hub-module-title"><AppIcon module={open}/><h1>{open.name}</h1></div>
-          <div className="hub-module-actions">{canFullscreen&&<button className="hub-icon-button" onClick={()=>void toggleFullscreen()} aria-label={fullscreen?'退出全屏':'全屏'} title={fullscreen?'退出全屏':'全屏'}>{fullscreen?<Minimize2 size={20}/>:<Maximize2 size={20}/>}</button>}<a className="hub-button" href={moduleUrl(open,appearance.theme,routeSearch.current)} target="_blank" rel="noopener noreferrer">新窗口打开<ExternalLink size={17}/></a></div>
-        </div>
-        <HubStoragePanel key={open.id} moduleId={open.id} iframeRef={frameRef} className="hub-module-storage"/>
+      {open?<div className="hub-app-stage">
+        <button ref={moduleToolsButtonRef} type="button" className={'hub-module-launcher'+(hasIssue?' has-issue':'')} onClick={toggleModuleTools} aria-label={moduleToolsOpen?'收起工作台菜单':hasIssue?'打开工作台菜单，连接需要留意':'打开工作台菜单'} aria-expanded={moduleToolsOpen} aria-controls="hub-module-tools" title="工作台菜单"><Menu size={21}/>{hasIssue&&<span className="hub-module-alert-dot" aria-hidden="true"/>}</button>
+        <section ref={moduleToolsRef} id="hub-module-tools" className="hub-module-tools" hidden={!moduleToolsOpen} aria-label="工作台菜单" onKeyDown={event=>{if(event.key==='Escape'&&!(event.target as HTMLElement).closest('dialog[open]')){event.preventDefault();event.stopPropagation();closeModuleTools();}}}>
+          <div className="hub-module-tools-heading"><div><small>正在使用</small><h1>{open.name}</h1></div><button className="hub-icon-button" onClick={closeModuleTools} aria-label="收起工作台菜单"><X size={21}/></button></div>
+          <button ref={moduleBackRef} className="hub-module-return" onClick={()=>void navigateTo(null,'all')} disabled={navigating}>{navigating?<LoaderCircle size={20} className="hub-spin"/>:<ChevronLeft size={21}/>}<span>{theme.id==='cozy'?(cozyRoom.current?'返回房间':'返回基地'):'返回工作台'}</span></button>
+          <div className="hub-module-controls">
+            <button onClick={()=>settingsRef.current?.showModal()}><SlidersHorizontal size={19}/>外观与账号</button>
+            {canFullscreen&&<button onClick={()=>void toggleFullscreen()}>{fullscreen?<Minimize2 size={19}/>:<Maximize2 size={19}/>}<span>{fullscreen?'退出浏览器全屏':'浏览器全屏'}</span></button>}
+            <a href={moduleUrl(open,appearance.theme,routeSearch.current)} target="_blank" rel="noopener noreferrer"><ExternalLink size={19}/>新窗口打开</a>
+            <button onClick={()=>void navigateTo(null,'data')} disabled={navigating}><FolderOpen size={19}/>文件与存档</button>
+          </div>
+          <div className="hub-module-preferences"><span className={'hub-connection '+(hasIssue?'warning':'')} role="status">{!ready||saving||health==='checking'?<LoaderCircle size={17} className="hub-spin"/>:health==='ready'&&!hasIssue?<CloudCheck size={17}/>:<CloudOff size={17}/>}<span>{status}</span></span><small>工作台偏好与账号</small></div>
+          {(error||healthError)&&<div className="hub-error hub-module-error" role="alert"><AlertCircle size={20}/><p>{error||healthError}</p><button onClick={()=>void initialize()} disabled={!ready}><RefreshCw size={16}/>重新连接</button>{error&&<button className="hub-icon-button" onClick={()=>setError('')} aria-label="关闭提示"><X size={18}/></button>}</div>}
+          <HubStoragePanel key={open.id} moduleId={open.id} iframeRef={frameRef} className="hub-module-storage"/>
+        </section>
         <div className="hub-frame-wrap">{frameLoading&&<div className="hub-frame-loading" role="status"><LoaderCircle size={28} className="hub-spin"/><p>正在打开{open.name}…</p></div>}<iframe key={open.id} ref={frameRef} src={open.path} title={open.name} allow="fullscreen; clipboard-write; autoplay" onLoad={()=>setFrameLoading(false)}/></div>
       </div>:<>
         {showHero&&theme.id==='classic'&&<section className="hub-classic-welcome hub-content"><div><h1>今天，从这里继续。</h1><p>应用、资料和日常，都在手边。</p></div>{recentModules.length>0&&<div className="hub-classic-recents"><h2>最近使用</h2><div>{recentModules.slice(0,3).map(module=><button key={module.id} disabled={controlsDisabled} onClick={()=>launch(module)}><AppIcon module={module}/><span><strong>{module.name}</strong><small>{module.subtitle}</small></span><ArrowUpRight size={20}/></button>)}</div></div>}</section>}

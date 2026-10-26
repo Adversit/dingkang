@@ -7,11 +7,11 @@ import {hubThemes,parseThemeId,parseAppearance,appearanceForRoute,buildHubUrl} f
 
 const source=ts.createSourceFile('page.tsx',fs.readFileSync(new URL('../app/page.tsx',import.meta.url),'utf8'),ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 const hub=source.statements.find(node=>ts.isFunctionDeclaration(node)&&node.name?.text==='Hub');
-const names=['navigateTo','changeTheme','persist','loadPreferences','rememberCozyRoom','exploreCatalog'];
+const names=['navigateTo','changeTheme','persist','loadPreferences','rememberCozyRoom','exploreCatalog','toggleModuleTools','closeModuleTools'];
 const functions=hub.body.statements.filter(node=>ts.isFunctionDeclaration(node)&&names.includes(node.name?.text)).map(node=>node.getText(source)).join('\n');
 const script=ts.transpileModule(functions,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
 function harness(){
-  const state={theme:null,opened:null,openedCalls:0,error:'',saved:[],fetches:[],directoryOpen:false,catalogRequest:0};
+  const state={theme:null,opened:null,openedCalls:0,error:'',saved:[],fetches:[],directoryOpen:false,catalogRequest:0,moduleToolsOpen:false,moduleToolsFocusCalls:0};
   const context={
     URL,URLSearchParams,appearanceForRoute,parseAppearance,parseList:raw=>JSON.parse(raw||'[]'),
     moduleUrl:(module,theme,search)=>buildHubUrl(module?.id||null,theme,search),
@@ -21,6 +21,9 @@ function harness(){
     cozyRoom:{current:null},catalogFocusRequested:{current:false},
     setCozyDirectoryOpen:value=>{state.directoryOpen=typeof value==='function'?value(state.directoryOpen):value;},
     setCatalogRequest:value=>{state.catalogRequest=typeof value==='function'?value(state.catalogRequest):value;},
+    setModuleToolsOpen:value=>{state.moduleToolsOpen=typeof value==='function'?value(state.moduleToolsOpen):value;},
+    moduleToolsButtonRef:{current:{focus:()=>{state.moduleToolsFocusCalls++;}}},
+    moduleToolsRef:{current:{querySelector:()=>null}},
     sessionRef:{current:{authenticated:true,userId:'owner'}},preferencesReady:{current:true},
     preferenceSaveError:{current:null},pendingSaves:{current:0},queue:{current:Promise.resolve()},
     favRef:{current:[]},recentRef:{current:[]},stored:{current:{values:{unrelated:'retained'},revision:4}},
@@ -41,6 +44,7 @@ function harness(){
   };
   context.history.replaceState=(value,_unused,url)=>{context.history.state=value;const parsed=new URL(url,'https://hub.test');context.location.pathname=parsed.pathname;context.location.search=parsed.search;};
   context.history.pushState=context.history.replaceState;
+  Object.defineProperty(context,'moduleToolsOpen',{get:()=>state.moduleToolsOpen});
   vm.createContext(context);vm.runInContext(script,context);
   return {context,state};
 }
@@ -148,4 +152,45 @@ test('cozy integration: list search and style changes preserve the chosen room a
   c.changeTheme('classic');await c.queue.current;assert.equal(c.cozyRoom.current,'product');assert.equal(state.directoryOpen,true);
   c.changeTheme('cozy');await c.queue.current;assert.equal(c.cozyRoom.current,'product');assert.equal(state.directoryOpen,true);
   for(const item of state.saved){assert.equal('room' in item.values,false);assert.equal('cozyRoom' in item.values,false);assert.equal('cozyDirectoryOpen' in item.values,false);}
+});
+
+test('immersive controls toggle without changing the active module, URL or storage bridge',()=>{
+  const {context:c,state}=harness(),module=c.openRef.current,frame=c.frameRef.current,url=c.location.search;
+  c.toggleModuleTools();assert.equal(state.moduleToolsOpen,true);
+  c.toggleModuleTools();assert.equal(state.moduleToolsOpen,false);
+  assert.equal(c.openRef.current,module);assert.equal(c.frameRef.current,frame);assert.equal(c.location.search,url);
+  assert.equal(state.openedCalls,0);assert.equal(state.fetches.length,0);
+});
+
+test('closing immersive controls restores the launcher focus without leaving the app',()=>{
+  const {context:c,state}=harness();state.moduleToolsOpen=true;
+  c.closeModuleTools();
+  assert.equal(state.moduleToolsOpen,false);assert.equal(state.moduleToolsFocusCalls,1);
+  assert.equal(c.openRef.current.id,'game-a');assert.equal(state.openedCalls,0);
+});
+
+test('an open save-export dialog cannot be hidden by closing its controls ancestor',()=>{
+  const {context:c,state}=harness();state.moduleToolsOpen=true;let dialogFocus=0;
+  c.moduleToolsRef.current.querySelector=selector=>{assert.equal(selector,'dialog[open]');return{focus:()=>{dialogFocus++;}};};
+  c.closeModuleTools();
+  assert.equal(state.moduleToolsOpen,true);assert.equal(dialogFocus,1);assert.equal(state.moduleToolsFocusCalls,0);
+  assert.equal(c.openRef.current.id,'game-a');assert.equal(state.openedCalls,0);
+});
+
+test('immersive return keeps controls and module until the actual flush resolves, then closes controls',async()=>{
+  const {context:c,state}=harness();state.moduleToolsOpen=true;let release;const url=c.location.search;
+  c.flushHubModule=()=>new Promise(resolve=>{release=resolve;});
+  const pending=c.navigateTo(null,'all');
+  assert.equal(c.openRef.current.id,'game-a');assert.equal(state.moduleToolsOpen,true);assert.equal(state.openedCalls,0);assert.equal(c.location.search,url);
+  release();assert.equal(await pending,true);
+  assert.equal(c.openRef.current,null);assert.equal(state.moduleToolsOpen,false);assert.equal(state.openedCalls,1);
+});
+
+test('a blocked immersive return reveals recovery controls while preserving the module and URL',async()=>{
+  const {context:c,state}=harness(),url=c.location.search;
+  c.flushHubModule=async()=>{throw Error('请先处理存档冲突');};
+  assert.equal(await c.navigateTo(null,'all'),false);
+  assert.equal(state.moduleToolsOpen,true);assert.equal(state.error,'请先处理存档冲突');
+  assert.equal(c.openRef.current.id,'game-a');assert.equal(state.openedCalls,0);assert.equal(c.location.search,url);
+  assert.equal(c.navigationLock.current,false);
 });

@@ -1,0 +1,616 @@
+TAP version 13
+# Subtest: cancelNavigation invalidates an outstanding worker reply and keeps the player still
+ok 1 - cancelNavigation invalidates an outstanding worker reply and keeps the player still
+  ---
+  duration_ms: 18.322119
+  type: 'test'
+  ...
+# Subtest: navigation replaces an old marker and legacy map settings cannot draw the old target
+ok 2 - navigation replaces an old marker and legacy map settings cannot draw the old target
+  ---
+  duration_ms: 4.212695
+  type: 'test'
+  ...
+# Subtest: entering 日新楼 cancels pending navigation so late replies do not resume after leaving
+ok 3 - entering 日新楼 cancels pending navigation so late replies do not resume after leaving
+  ---
+  duration_ms: 505.76502
+  type: 'test'
+  ...
+# Subtest: maps show only scoped room peers and place indoor peers at the geographic building entrance
+ok 4 - maps show only scoped room peers and place indoor peers at the geographic building entrance
+  ---
+  duration_ms: 2.193764
+  type: 'test'
+  ...
+# Subtest: all seven real outdoor doors enter their own spawn and leave at their corresponding outdoor door
+ok 5 - all seven real outdoor doors enter their own spawn and leave at their corresponding outdoor door
+  ---
+  duration_ms: 280.942622
+  type: 'test'
+  ...
+# Subtest: legacy interior saves return outdoors and fabricated distant door locations cannot enter
+ok 6 - legacy interior saves return outdoors and fabricated distant door locations cannot enter
+  ---
+  duration_ms: 256.080637
+  type: 'test'
+  ...
+# Subtest: interior rendering draws current safe peers and hides legacy or invalid same-room coordinates
+ok 7 - interior rendering draws current safe peers and hides legacy or invalid same-room coordinates
+  ---
+  duration_ms: 222.424034
+  type: 'test'
+  ...
+# Subtest: a peer leaving through another door snaps to that exterior immediately instead of sliding through the building
+ok 8 - a peer leaving through another door snaps to that exterior immediately instead of sliding through the building
+  ---
+  duration_ms: 244.52428
+  type: 'test'
+  ...
+# Subtest: 日新楼 zoom scales the room and peer spacing without moving either coordinate system
+ok 9 - 日新楼 zoom scales the room and peer spacing without moving either coordinate system
+  ---
+  duration_ms: 215.728695
+  type: 'test'
+  ...
+# Subtest: 中心图书馆 zoom scales the room and peer spacing without moving either coordinate system
+ok 10 - 中心图书馆 zoom scales the room and peer spacing without moving either coordinate system
+  ---
+  duration_ms: 187.083858
+  type: 'test'
+  ...
+# Subtest: polygon holes remain walkable while outer walls and water block the foot
+ok 11 - polygon holes remain walkable while outer walls and water block the foot
+  ---
+  duration_ms: 7.477434
+  type: 'test'
+  ...
+# Subtest: 203 degree display transform round-trips independently of world geometry
+ok 12 - 203 degree display transform round-trips independently of world geometry
+  ---
+  duration_ms: 1.902156
+  type: 'test'
+  ...
+# Subtest: spatial index does not duplicate features spanning cells
+ok 13 - spatial index does not duplicate features spanning cells
+  ---
+  duration_ms: 1.654128
+  type: 'test'
+  ...
+# Subtest: entry fallback and spawn choose walkable exterior, never an enclosed courtyard
+ok 14 - entry fallback and spawn choose walkable exterior, never an enclosed courtyard
+  ---
+  duration_ms: 2.148885
+  type: 'test'
+  ...
+# Subtest: A* goes around obstacles and every smoothed segment remains collision-free
+ok 15 - A* goes around obstacles and every smoothed segment remains collision-free
+  ---
+  duration_ms: 125.110191
+  type: 'test'
+  ...
+# Subtest: closed courtyard cannot be reached through its solid surrounding building
+ok 16 - closed courtyard cannot be reached through its solid surrounding building
+  ---
+  duration_ms: 283.50905
+  type: 'test'
+  ...
+# Subtest: real campus fixture has safe spawn and all available building exits are valid
+ok 17 - real campus fixture has safe spawn and all available building exits are valid
+  ---
+  duration_ms: 38.298456
+  type: 'test'
+  ...
+# Subtest: canonical map spawn and landmark entrances are shared with the server, after collision checks
+ok 18 - canonical map spawn and landmark entrances are shared with the server, after collision checks
+  ---
+  duration_ms: 4.167098
+  type: 'test'
+  ...
+# Subtest: real south canonical entrances and spawn match exactly
+ok 19 - real south canonical entrances and spawn match exactly
+  ---
+  duration_ms: 50.637784
+  type: 'test'
+  ...
+# Subtest: real north canonical entrances and spawn match exactly
+ok 20 - real north canonical entrances and spawn match exactly
+  ---
+  duration_ms: 6.78722
+  type: 'test'
+  ...
+# Subtest: the actual Rixin-to-central-library walking route exists and all segments clear obstacles
+ok 21 - the actual Rixin-to-central-library walking route exists and all segments clear obstacles
+  ---
+  duration_ms: 3060.706869
+  type: 'test'
+  ...
+# Subtest: 日新楼 uses its nonrectangular 66×91 layout and a safe vestibule spawn
+ok 22 - 日新楼 uses its nonrectangular 66×91 layout and a safe vestibule spawn
+  ---
+  duration_ms: 7.617471
+  type: 'test'
+  ...
+# Subtest: every interior wall and solid object blocks the foot while all 18 door openings are traversable
+ok 23 - every interior wall and solid object blocks the foot while all 18 door openings are traversable
+  ---
+  duration_ms: 35.745889
+  type: 'test'
+  ...
+# Subtest: all seven exit zones have safe approach points and do not include the central hall
+ok 24 - all seven exit zones have safe approach points and do not include the central hall
+  ---
+  duration_ms: 2.132898
+  type: 'test'
+  ...
+# Subtest: the main entrance connects to every room, every doorway and every exit with foot clearance
+ok 25 - the main entrance connects to every room, every doorway and every exit with foot clearance
+  ---
+  duration_ms: 1632.217604
+  type: 'test'
+  ...
+# Subtest: revision-aware restoration resets old or blocked coordinates and preserves valid current positions
+ok 26 - revision-aware restoration resets old or blocked coordinates and preserves valid current positions
+  ---
+  duration_ms: 0.53221
+  type: 'test'
+  ...
+# Subtest: library keeps the prior 190×140 collision rules and accepts compatible unversioned saves
+ok 27 - library keeps the prior 190×140 collision rules and accepts compatible unversioned saves
+  ---
+  duration_ms: 31.666441
+  type: 'test'
+  ...
+# Subtest: all seven exterior destinations have distinct source nodes and safe points in the real south campus
+ok 28 - all seven exterior destinations have distinct source nodes and safe points in the real south campus
+  ---
+  duration_ms: 17.302697
+  type: 'test'
+  ...
+# Subtest: door selection is bounded to six metres and never accepts a fabricated distant entrance
+ok 29 - door selection is bounded to six metres and never accepts a fabricated distant entrance
+  ---
+  duration_ms: 1.857979
+  type: 'test'
+  ...
+# Subtest: a previous-room HTTP snapshot cannot replace a newly joined room
+ok 30 - a previous-room HTTP snapshot cannot replace a newly joined room
+  ---
+  duration_ms: 3.258304
+  type: 'test'
+  ...
+# Subtest: leaving during an HTTP sync does not resurrect the old room or restart its polling
+ok 31 - leaving during an HTTP sync does not resurrect the old room or restart its polling
+  ---
+  duration_ms: 0.614355
+  type: 'test'
+  ...
+# Subtest: temporary profile lookup failure preserves the saved identity instead of creating another
+ok 32 - temporary profile lookup failure preserves the saved identity instead of creating another
+  ---
+  duration_ms: 5.083945
+  type: 'test'
+  ...
+# Subtest: server-confirmed expired identity is replaced and stored once
+ok 33 - server-confirmed expired identity is replaced and stored once
+  ---
+  duration_ms: 1.491408
+  type: 'test'
+  ...
+# Subtest: switching chat scope ignores an old message response and restarts with the new cursor
+ok 34 - switching chat scope ignores an old message response and restarts with the new cursor
+  ---
+  duration_ms: 1.216288
+  type: 'test'
+  ...
+# Subtest: pending history from another room cannot enter the current chat
+ok 35 - pending history from another room cannot enter the current chat
+  ---
+  duration_ms: 1.255471
+  type: 'test'
+  ...
+# Subtest: deletion finishing after leave cannot issue a new snapshot read
+ok 36 - deletion finishing after leave cannot issue a new snapshot read
+  ---
+  duration_ms: 1.942064
+  type: 'test'
+  ...
+# Subtest: a pending leave response cannot erase a later successfully joined room
+ok 37 - a pending leave response cannot erase a later successfully joined room
+  ---
+  duration_ms: 4.835974
+  type: 'test'
+  ...
+# Subtest: joining another campus waits for its map before reconciling coordinates or syncing
+ok 38 - joining another campus waits for its map before reconciling coordinates or syncing
+  ---
+  duration_ms: 1.347169
+  type: 'test'
+  ...
+# Subtest: a room-scoped join does not skip history because the initial snapshot contains plaza IDs
+ok 39 - a room-scoped join does not skip history because the initial snapshot contains plaza IDs
+  ---
+  duration_ms: 0.920988
+  type: 'test'
+  ...
+# Subtest: resume keeps the selected chat scope and replaces stale cached history
+ok 40 - resume keeps the selected chat scope and replaces stale cached history
+  ---
+  duration_ms: 0.851122
+  type: 'test'
+  ...
+# Subtest: HTTP recovery resets the message cursor and drops obsolete text from the cache
+ok 41 - HTTP recovery resets the message cursor and drops obsolete text from the cache
+  ---
+  duration_ms: 0.60507
+  type: 'test'
+  ...
+# Subtest: HTTP movement preserves the interior revision while ordinary acknowledgements keep local progress
+ok 42 - HTTP movement preserves the interior revision while ordinary acknowledgements keep local progress
+  ---
+  duration_ms: 1.023392
+  type: 'test'
+  ...
+# Subtest: a changed revision reconciles the same room but delayed interior snapshots cannot undo local exit
+ok 43 - a changed revision reconciles the same room but delayed interior snapshots cannot undo local exit
+  ---
+  duration_ms: 0.448805
+  type: 'test'
+  ...
+# Subtest: HTTP exit rejection restores the authoritative interior pose and the next update can recover
+ok 44 - HTTP exit rejection restores the authoritative interior pose and the next update can recover
+  ---
+  duration_ms: 0.795847
+  type: 'test'
+  ...
+# Subtest: WebSocket carries interior revision and a layout-change error clears retired coordinates
+ok 45 - WebSocket carries interior revision and a layout-change error clears retired coordinates
+  ---
+  duration_ms: 1.804224
+  type: 'test'
+  ...
+# Subtest: interior revision survives reconciliation and changed coordinates are never silently reused
+ok 46 - interior revision survives reconciliation and changed coordinates are never silently reused
+  ---
+  duration_ms: 0.443026
+  type: 'test'
+  ...
+# Subtest: a server-confirmed door anchor replaces the nearby entry position once without repeated movement rewinds
+ok 47 - a server-confirmed door anchor replaces the nearby entry position once without repeated movement rewinds
+  ---
+  duration_ms: 0.360962
+  type: 'test'
+  ...
+# Subtest: named lakes, squares, gates, facilities and sports grounds are derived without mutating the OSM snapshot
+ok 48 - named lakes, squares, gates, facilities and sports grounds are derived without mutating the OSM snapshot
+  ---
+  duration_ms: 248.873202
+  type: 'test'
+  ...
+# Subtest: all derived available destinations have foot clearance and water destinations are on external shores
+ok 49 - all derived available destinations have foot clearance and water destinations are on external shores
+  ---
+  duration_ms: 296.646572
+  type: 'test'
+  ...
+# Subtest: locked and permission-only gates remain discoverable but have no travel endpoint
+ok 50 - locked and permission-only gates remain discoverable but have no travel endpoint
+  ---
+  duration_ms: 237.602083
+  type: 'test'
+  ...
+# Subtest: lake arrival avoids a walkable island inside a multipolygon hole
+ok 51 - lake arrival avoids a walkable island inside a multipolygon hole
+  ---
+  duration_ms: 12.019166
+  type: 'test'
+  ...
+# Subtest: indoor facility POIs use the building exterior and repeated layer IDs are deduplicated
+ok 52 - indoor facility POIs use the building exterior and repeated layer IDs are deduplicated
+  ---
+  duration_ms: 16.989959
+  type: 'test'
+  ...
+# Subtest: both real lakes can be reached from spawn with the navigation worker configuration
+ok 53 - both real lakes can be reached from spawn with the navigation worker configuration
+  ---
+  duration_ms: 7451.992239
+  type: 'test'
+  ...
+# Subtest: health honestly distinguishes configured database and WebSocket availability
+ok 54 - health honestly distinguishes configured database and WebSocket availability
+  ---
+  duration_ms: 12.580318
+  type: 'test'
+  ...
+# Subtest: anonymous sessions use hashed random credentials and cannot impersonate another profile
+ok 55 - anonymous sessions use hashed random credentials and cannot impersonate another profile
+  ---
+  duration_ms: 80.898143
+  type: 'test'
+  ...
+# Subtest: all building and public-place entrances and both spawns pass server collision geometry
+ok 56 - all building and public-place entrances and both spawns pass server collision geometry
+  ---
+  duration_ms: 142.612217
+  type: 'test'
+  ...
+# Subtest: atomic joins cap a room at eight and leave frees a slot
+ok 57 - atomic joins cap a room at eight and leave frees a slot
+  ---
+  duration_ms: 50.604376
+  type: 'test'
+  ...
+# Subtest: movement rejects forged targets, replay, excessive speed, flood and stale room packets
+ok 58 - movement rejects forged targets, replay, excessive speed, flood and stale room packets
+  ---
+  duration_ms: 27.641941
+  type: 'test'
+  ...
+# Subtest: teleports resolve server map IDs instead of accepting arbitrary destinations
+ok 59 - teleports resolve server map IDs instead of accepting arbitrary destinations
+  ---
+  duration_ms: 15.555492
+  type: 'test'
+  ...
+# Subtest: public lake destinations land on safe shores and restricted gate IDs cannot teleport
+ok 60 - public lake destinations land on safe shores and restricted gate IDs cannot teleport
+  ---
+  duration_ms: 18.066214
+  type: 'test'
+  ...
+# Subtest: plaza crosses south rooms, room chat and north-campus messages remain isolated
+ok 61 - plaza crosses south rooms, room chat and north-campus messages remain isolated
+  ---
+  duration_ms: 29.842051
+  type: 'test'
+  ...
+# Subtest: history pagination works and 50 deletion tombstones do not starve new messages
+ok 62 - history pagination works and 50 deletion tombstones do not starve new messages
+  ---
+  duration_ms: 11.979899
+  type: 'test'
+  ...
+# Subtest: chat flood, malformed names and untrusted payloads return bounded Chinese errors
+ok 63 - chat flood, malformed names and untrusted payloads return bounded Chinese errors
+  ---
+  duration_ms: 26.683967
+  type: 'test'
+  ...
+# Subtest: indoor coordinates share exact furniture constraints and cannot teleport between interiors
+ok 64 - indoor coordinates share exact furniture constraints and cannot teleport between interiors
+  ---
+  duration_ms: 15.442404
+  type: 'test'
+  ...
+# Subtest: expired presence does not evict sessions or exceed capacity when old clients return
+ok 65 - expired presence does not evict sessions or exceed capacity when old clients return
+  ---
+  duration_ms: 31.441592
+  type: 'test'
+  ...
+# Subtest: steady WebSocket updates use one database round trip without stale-cache authority leaks
+ok 66 - steady WebSocket updates use one database round trip without stale-cache authority leaks
+  ---
+  duration_ms: 20.0422
+  type: 'test'
+  ...
+# Subtest: empty room listings expire after two minutes while their share codes remain usable
+ok 67 - empty room listings expire after two minutes while their share codes remain usable
+  ---
+  duration_ms: 14.379919
+  type: 'test'
+  ...
+# Subtest: HTTP teleport and indoor exit invalidate socket state and do not trap later valid movement
+ok 68 - HTTP teleport and indoor exit invalidate socket state and do not trap later valid movement
+  ---
+  duration_ms: 20.266432
+  type: 'test'
+  ...
+# Subtest: same-room rejoin cannot create an ABA overwrite by an older socket pose
+ok 69 - same-room rejoin cannot create an ABA overwrite by an older socket pose
+  ---
+  duration_ms: 15.194235
+  type: 'test'
+  ...
+# Subtest: Rixin requires the current layout revision and never interprets retired hall coordinates as tiles
+ok 70 - Rixin requires the current layout revision and never interprets retired hall coordinates as tiles
+  ---
+  duration_ms: 15.446466
+  type: 'test'
+  ...
+# Subtest: persisted legacy Rixin occupants are evacuated once and can re-enter the revised shared layout
+ok 71 - persisted legacy Rixin occupants are evacuated once and can re-enter the revised shared layout
+  ---
+  duration_ms: 13.230018
+  type: 'test'
+  ...
+# Subtest: all seven Rixin exits share server geometry, while premature exit returns an authoritative recovery pose
+ok 72 - all seven Rixin exits share server geometry, while premature exit returns an authoritative recovery pose
+  ---
+  duration_ms: 29.411959
+  type: 'test'
+  ...
+# Subtest: Rixin movement checks wall crossings as well as legal endpoints and preserves the outside anchor
+ok 73 - Rixin movement checks wall crossings as well as legal endpoints and preserves the outside anchor
+  ---
+  duration_ms: 11.194682
+  type: 'test'
+  ...
+# Subtest: a cached retired interior cannot evacuate a newer versioned pose or replay over its sequence
+ok 74 - a cached retired interior cannot evacuate a newer versioned pose or replay over its sequence
+  ---
+  duration_ms: 11.390866
+  type: 'test'
+  ...
+# Subtest: all seven verified exterior doors select their own interior spawn and ignore forged door selectors
+ok 75 - all seven verified exterior doors select their own interior spawn and ignore forged door selectors
+  ---
+  duration_ms: 58.432733
+  type: 'test'
+  ...
+# Subtest: four exact URL styles and legacy saved quiet compatibility
+ok 76 - four exact URL styles and legacy saved quiet compatibility
+  ---
+  duration_ms: 3.107673
+  type: 'test'
+  ...
+# Subtest: unknown preferences fall back safely and an explicit false motion preference survives
+ok 77 - unknown preferences fall back safely and an explicit false motion preference survives
+  ---
+  duration_ms: 0.422312
+  type: 'test'
+  ...
+# Subtest: URL appearance takes precedence without mutating the saved preference
+ok 78 - URL appearance takes precedence without mutating the saved preference
+  ---
+  duration_ms: 0.618216
+  type: 'test'
+  ...
+# Subtest: route construction preserves unrelated query parameters and only changes app/style
+ok 79 - route construction preserves unrelated query parameters and only changes app/style
+  ---
+  duration_ms: 0.536608
+  type: 'test'
+  ...
+# Subtest: a late preference load preserves a URL style while retaining cloud motion and revision
+ok 80 - a late preference load preserves a URL style while retaining cloud motion and revision
+  ---
+  duration_ms: 9.282758
+  type: 'test'
+  ...
+# Subtest: switching style inside an application preserves its frame and URL app
+ok 81 - switching style inside an application preserves its frame and URL app
+  ---
+  duration_ms: 2.650315
+  type: 'test'
+  ...
+# Subtest: navigation materializes the current style and preserves the save owner/version protocol
+ok 82 - navigation materializes the current style and preserves the save owner/version protocol
+  ---
+  duration_ms: 3.484433
+  type: 'test'
+  ...
+# Subtest: failed history flush preserves both the existing frame and the accepted style URL
+ok 83 - failed history flush preserves both the existing frame and the accepted style URL
+  ---
+  duration_ms: 1.781296
+  type: 'test'
+  ...
+# Subtest: overlapping history events keep frame, style and URL aligned after a delayed flush
+ok 84 - overlapping history events keep frame, style and URL aligned after a delayed flush
+  ---
+  duration_ms: 3.394191
+  type: 'test'
+  ...
+# Subtest: style changes and favorites share CAS without dropping unrelated preference fields
+ok 85 - style changes and favorites share CAS without dropping unrelated preference fields
+  ---
+  duration_ms: 2.985757
+  type: 'test'
+  ...
+# Subtest: a preference conflict leaves the route style visible and does not invent a new revision
+ok 86 - a preference conflict leaves the route style visible and does not invent a new revision
+  ---
+  duration_ms: 2.808066
+  type: 'test'
+  ...
+# Subtest: cozy integration: selecting a room changes only temporary view memory
+ok 87 - cozy integration: selecting a room changes only temporary view memory
+  ---
+  duration_ms: 1.149086
+  type: 'test'
+  ...
+# Subtest: cozy integration: returning from an application waits for its save and retains the room
+ok 88 - cozy integration: returning from an application waits for its save and retains the room
+  ---
+  duration_ms: 2.256514
+  type: 'test'
+  ...
+# Subtest: cozy integration: a failed application save preserves its iframe and room
+ok 89 - cozy integration: a failed application save preserves its iframe and room
+  ---
+  duration_ms: 1.967985
+  type: 'test'
+  ...
+# Subtest: cozy integration: list search and style changes preserve the chosen room and list intent
+ok 90 - cozy integration: list search and style changes preserve the chosen room and list intent
+  ---
+  duration_ms: 1.861126
+  type: 'test'
+  ...
+# Subtest: immersive controls toggle without changing the active module, URL or storage bridge
+ok 91 - immersive controls toggle without changing the active module, URL or storage bridge
+  ---
+  duration_ms: 1.157848
+  type: 'test'
+  ...
+# Subtest: closing immersive controls restores the launcher focus without leaving the app
+ok 92 - closing immersive controls restores the launcher focus without leaving the app
+  ---
+  duration_ms: 1.166176
+  type: 'test'
+  ...
+# Subtest: an open save-export dialog cannot be hidden by closing its controls ancestor
+ok 93 - an open save-export dialog cannot be hidden by closing its controls ancestor
+  ---
+  duration_ms: 0.878052
+  type: 'test'
+  ...
+# Subtest: immersive return keeps controls and module until the actual flush resolves, then closes controls
+ok 94 - immersive return keeps controls and module until the actual flush resolves, then closes controls
+  ---
+  duration_ms: 0.868654
+  type: 'test'
+  ...
+# Subtest: a blocked immersive return reveals recovery controls while preserving the module and URL
+ok 95 - a blocked immersive return reveals recovery controls while preserving the module and URL
+  ---
+  duration_ms: 0.792717
+  type: 'test'
+  ...
+# Subtest: nested same-origin modules are found without adopting another module or cross-origin iframe
+ok 96 - nested same-origin modules are found without adopting another module or cross-origin iframe
+  ---
+  duration_ms: 1.019191
+  type: 'test'
+  ...
+# Subtest: leaving a pending module waits for the real flush before resolving
+ok 97 - leaving a pending module waits for the real flush before resolving
+  ---
+  duration_ms: 7.424395
+  type: 'test'
+  ...
+# Subtest: navigation while readiness is pending cannot flush an obsolete document and permit leaving
+ok 98 - navigation while readiness is pending cannot flush an obsolete document and permit leaving
+  ---
+  duration_ms: 0.970331
+  type: 'test'
+  ...
+# Subtest: Moonlit inner navigation during flush keeps the replacement document open and untouched
+ok 99 - Moonlit inner navigation during flush keeps the replacement document open and untouched
+  ---
+  duration_ms: 2.431142
+  type: 'test'
+  ...
+# Subtest: conflict or failed save stops the leave flow without choosing a copy or resetting data
+ok 100 - conflict or failed save stops the leave flow without choosing a copy or resetting data
+  ---
+  duration_ms: 0.535297
+  type: 'test'
+  ...
+# Subtest: native business modules never report a bridge flush as proof their records were saved
+ok 101 - native business modules never report a bridge flush as proof their records were saved
+  ---
+  duration_ms: 1.002966
+  type: 'test'
+  ...
+1..101
+# tests 101
+# suites 0
+# pass 101
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 8487.174404

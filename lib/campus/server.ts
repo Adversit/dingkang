@@ -1,5 +1,6 @@
 import collisionData from './collision-data.json';
 import type { CampusId, CampusPlayer, CampusSnapshot, CampusRoom, CampusMessage } from './protocol';
+import { getInteriorLayout, interiorSegmentClear, interiorExitAt, nearestInteriorEntrance } from '../../public/apps/jlu-campus/interior-layout.js';
 
 /** D1 is the shared authority. Module memory contains immutable geometry only, never room state. */
 const MAX_PLAYERS = 8;
@@ -147,7 +148,7 @@ async function roomSnapshot(db:D1Database,session:Session,room:RoomRow,after:unk
   const batch=await db.batch<Record<string,unknown>>([...(update?[update]:[]),peerQuery,...parts.queries]);
   const changes=update?batch.shift()!.meta.changes:undefined;
   const peers=batch.shift()! as unknown as D1Result<PlayerRow & {nickname:string;appearance:string}>;
-  const players:CampusPlayer[]=peers.results.map(p=>({id:p.session_id,nickname:p.nickname,appearance:JSON.parse(p.appearance),x:p.x,y:p.y,direction:p.direction as CampusPlayer['direction'],moving:!!p.moving,interior:p.interior,interiorX:p.interior_x,interiorY:p.interior_y,seq:p.seq,updatedAt:p.updated_at}));
+  const players:CampusPlayer[]=peers.results.map(p=>({id:p.session_id,nickname:p.nickname,appearance:JSON.parse(p.appearance),x:p.x,y:p.y,direction:p.direction as CampusPlayer['direction'],moving:!!p.moving,interior:interiorScene(p.interior).id,interiorRevision:interiorScene(p.interior).revision,interiorX:p.interior_x,interiorY:p.interior_y,seq:p.seq,updatedAt:p.updated_at}));
   const value:CampusSnapshot={type:'snapshot',protocol:1,serverTime:now,selfId:session.id,room:roomView(room),players,...messageResult(batch,parts.cursor,parts.before)};
   return {value,changes};
 }
@@ -189,17 +190,24 @@ function sequence(value:unknown) {
   if(!Number.isSafeInteger(value)||Number(value)<1||Number(value)>2_000_000_000) fail(400,'INVALID_SEQUENCE','移动序号不正确。');
   return Number(value);
 }
-const INTERIORS=new Set(['way/1473651054','way/1473779965']);
-function interiorWalkable(id:string,x:number,y:number) {
-  if(!Number.isFinite(x)||!Number.isFinite(y)||x<7||x>183||y<8||y>133) return false;
-  const height=id==='way/1473651054'?9:15;
-  for(const fy of [20,48,76])for(const fx of [15,55,95,135])if(x>fx-2&&x<fx+27&&y>fy-2&&y<fy+height+2)return false;
-  return true;
+const RIXIN_ID='way/1473779965';
+/** Version the stored scene key, not the public OSM identity. Bare Rixin keys
+ * unambiguously identify the retired 190x140 layout without a D1 schema change. */
+function interiorScene(stored:string|null) {
+  if(!stored)return {id:null,revision:null};
+  const [id,revision]=stored.split('@');
+  return {id,revision:revision||(id===RIXIN_ID?'rixin-v1':getInteriorLayout(id)?.revision||null)};
 }
-function interiorClear(id:string,a:Point,b:Point) {
-  const count=Math.max(1,Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])/0.8));
-  for(let i=1;i<=count;i++)if(!interiorWalkable(id,a[0]+(b[0]-a[0])*i/count,a[1]+(b[1]-a[1])*i/count))return false;
-  return true;
+function interiorStorage(id:string,revision:string) {return id===RIXIN_ID?`${id}@${revision}`:id;}
+async function resetChangedInterior(db:D1Database,session:Session,context:RoomContext,input:Payload,now:number,connection?:ConnectionState):Promise<never> {
+  const {player,room}=context;
+  // Only the exact pose inspected above may be evacuated. Never erase a newer
+  // teleport, room change, or another request's versioned interior position.
+  if(player.interior)await db.prepare(`UPDATE campus_players SET interior=NULL,interior_x=NULL,interior_y=NULL,moving=0,seq=?,updated_at=?
+    WHERE session_id=? AND room_id=? AND seq=? AND updated_at=? AND x=? AND y=? AND interior IS ? AND interior_x IS ? AND interior_y IS ?`)
+    .bind(Math.max(player.seq,Number(input.seq)),now,session.id,room.id,player.seq,player.updated_at,player.x,player.y,player.interior,player.interior_x,player.interior_y).run();
+  const value=await snapshot(db,session,input.after,now,input.scope,connection);
+  throw new CampusError(409,'INTERIOR_LAYOUT_CHANGED','日新楼室内布局已更新，已返回校园入口。请刷新旧页面后重新进入。',value);
 }
 async function move(db:D1Database,session:Session,input:Payload,now:number,teleport=false,connection?:ConnectionState):Promise<CampusSnapshot> {
   const previous=connection?.context;
@@ -223,7 +231,10 @@ async function applyMove(db:D1Database,session:Session,input:Payload,now:number,
   if(!context||input.roomId!==context.room.id)context=await currentRoom(db,session);
   const {player,room}=context,seq=sequence(input.seq);
   if(input.roomId!==room.id) fail(409,'ROOM_CHANGED','房间已经切换，请使用新房间继续同步。');
+  const scene=interiorScene(player.interior),rixin=getInteriorLayout(RIXIN_ID);
   if(seq<=player.seq) return snapshot(db,session,input.after,now,input.scope,connection);
+  if(!teleport && scene.id===RIXIN_ID && (scene.revision!==rixin?.revision || (input.interior!==null && input.interior!=='' && input.interiorRevision!==rixin?.revision)))
+    return resetChangedInterior(db,session,context,input,now,connection);
   if(now-player.last_seen<65 && !teleport) fail(429,'SYNC_RATE','同步过快，请降低到每秒 10 次以内。');
   let x=Number(input.x),y=Number(input.y),direction=String(input.direction||player.direction),moving=input.moving===true,interior:string|null=player.interior;
   let ix=player.interior_x,iy=player.interior_y;
@@ -239,26 +250,41 @@ async function applyMove(db:D1Database,session:Session,input:Payload,now:number,
     if(typeof input.x!=='number'||typeof input.y!=='number'||!Number.isFinite(x)||!Number.isFinite(y)) fail(400,'INVALID_POSITION','人物位置不正确。');
     if(!['up','down','left','right'].includes(direction)) fail(400,'INVALID_DIRECTION','人物方向不正确。');
     const elapsed=Math.min(2,Math.max(0,(now-player.updated_at)/1000));
-    // 0.8 m jitter allowance accommodates independent client/server ticks; no teleport-sized budget.
-    if(Math.hypot(x-player.x,y-player.y)>MAX_SPEED*elapsed+0.8) throw new CampusError(409,'MOVE_TOO_FAST','移动距离超出允许范围，已同步回服务器位置。',await snapshot(db,session,input.after,now,input.scope));
-    if(!clearSegment(room.campus,[player.x,player.y],[x,y])) throw new CampusError(409,'COLLISION','前方是建筑、水面或校园边界，已恢复安全位置。',await snapshot(db,session,input.after,now,input.scope));
-    if(input.interior!==undefined) {
-      if(input.interior===null || input.interior==='') {
-        if(player.interior && !((player.interior_y||0)>116 && Math.abs((player.interior_x||0)-95)<20)) fail(409,'EXIT_REQUIRED','请走到室内出口后离开。');
-        interior=null;ix=null;iy=null;
-      }
-      else {
+    const wantsExit=input.interior===null || input.interior==='';
+    if(player.interior && wantsExit) {
+      const layout=scene.id?getInteriorLayout(scene.id):null;
+      const exit=layout?interiorExitAt(layout,player.interior_x??NaN,player.interior_y??NaN):null;
+      if(!exit) throw new CampusError(409,'EXIT_REQUIRED','请走到室内出口后离开。',await snapshot(db,session,input.after,now,input.scope));
+      // A confirmed interior door is the sole authority for the transition.
+      // Client world coordinates and door IDs cannot choose a destination.
+      [x,y]=exit.exterior||[player.x,player.y];
+      if(!isCampusWalkable(room.campus,x,y)) throw new CampusError(409,'DESTINATION_BLOCKED','该出口暂不可用，请选择其他出口。',await snapshot(db,session,input.after,now,input.scope));
+      interior=null;ix=null;iy=null;moving=false;
+    } else {
+      if(player.interior && Math.hypot(x-player.x,y-player.y)>0.1) throw new CampusError(409,'INTERIOR_ANCHOR','室内漫游不能改变校园入口位置。',await snapshot(db,session,input.after,now,input.scope));
+      // 0.8 m jitter allowance accommodates independent client/server ticks; no teleport-sized budget.
+      if(Math.hypot(x-player.x,y-player.y)>MAX_SPEED*elapsed+0.8) throw new CampusError(409,'MOVE_TOO_FAST','移动距离超出允许范围，已同步回服务器位置。',await snapshot(db,session,input.after,now,input.scope));
+      if(!clearSegment(room.campus,[player.x,player.y],[x,y])) throw new CampusError(409,'COLLISION','前方是建筑、水面或校园边界，已恢复安全位置。',await snapshot(db,session,input.after,now,input.scope));
+      if(wantsExit){interior=null;ix=null;iy=null;}
+      else if(input.interior!==undefined) {
         const landmark=world.landmarks.find(poi=>poi.id===input.interior);
-        if(!landmark || room.campus!=='south' || !INTERIORS.has(landmark.id) || Math.hypot(x-landmark.entrance[0],y-landmark.entrance[1])>12) fail(400,'INVALID_INTERIOR','请从日新楼或中心图书馆的入口进入室内。');
-        if(player.interior && player.interior!==landmark.id) fail(409,'EXIT_REQUIRED','请先离开当前室内。');
-        if(player.interior===landmark.id) {
+        const layout=landmark?getInteriorLayout(landmark.id):null;
+        if(!landmark || !layout || room.campus!=='south') fail(400,'INVALID_INTERIOR','请从日新楼或中心图书馆的入口进入室内。');
+        const entrance=landmark.id===RIXIN_ID?nearestInteriorEntrance(layout,x,y):null;
+        if(landmark.id===RIXIN_ID?!entrance:Math.hypot(x-landmark.entrance[0],y-landmark.entrance[1])>12) fail(400,'INVALID_INTERIOR','请靠近日新楼已标记的楼门或中心图书馆入口。');
+        if(player.interior && scene.id!==landmark.id) throw new CampusError(409,'EXIT_REQUIRED','请先离开当前室内。',await snapshot(db,session,input.after,now,input.scope));
+        if(landmark.id===RIXIN_ID && input.interiorRevision!==layout.revision) return resetChangedInterior(db,session,context,input,now,connection);
+        if(scene.id===landmark.id) {
           if(typeof input.interiorX!=='number'||typeof input.interiorY!=='number') fail(400,'INTERIOR_POSITION','室内坐标不正确。');
           const nx=input.interiorX,ny=input.interiorY;
-          if(Math.hypot(x-player.x,y-player.y)>0.1) fail(409,'INTERIOR_ANCHOR','室内漫游不能改变校园入口位置。');
-          if(Math.hypot(nx-(ix??95),ny-(iy??123))>20.4*elapsed+0.8 || !interiorClear(landmark.id,[ix??95,iy??123],[nx,ny])) throw new CampusError(409,'INTERIOR_COLLISION','室内移动超出范围或遇到家具，已恢复服务器位置。',await snapshot(db,session,input.after,now,input.scope));
+          const jitter=landmark.id===RIXIN_ID?0.2:0.8;
+          if(Math.hypot(nx-(ix??layout.spawn.x),ny-(iy??layout.spawn.y))>layout.maxSpeed*elapsed+jitter || !interiorSegmentClear(layout,[ix??layout.spawn.x,iy??layout.spawn.y],[nx,ny])) throw new CampusError(409,'INTERIOR_COLLISION','室内移动超出范围或遇到设施，已恢复服务器位置。',await snapshot(db,session,input.after,now,input.scope));
           ix=nx;iy=ny;
-        } else {ix=95;iy=123;}
-        interior=landmark.id;
+        } else {
+          ix=(entrance?.spawn||layout.spawn).x;iy=(entrance?.spawn||layout.spawn).y;
+          if(entrance){[x,y]=entrance.exterior;if(!isCampusWalkable(room.campus,x,y))fail(409,'DESTINATION_BLOCKED','该入口暂不可用，请选择其他入口。');}
+        }
+        interior=interiorStorage(landmark.id,layout.revision);
       }
     }
   }
