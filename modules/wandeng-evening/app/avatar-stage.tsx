@@ -65,7 +65,7 @@ export default function AvatarStage({busy,partial,typing,mode,reply,quiet,onQuie
  return <section className={'avatar-stage '+(quiet?'quiet':'')} aria-label="晚灯数字角色" data-expression={EXPRESSION_LABELS[frame]} data-motion={motion&&!reduced?'on':'off'} onPointerMove={e=>{if(e.pointerType==='touch')return;const r=e.currentTarget.getBoundingClientRect();pointer.current={x:Math.max(-1,Math.min(1,(e.clientX-r.left)/r.width*2-1)),y:Math.max(-1,Math.min(1,(e.clientY-r.top)/r.height*2-1))};}} onPointerLeave={()=>{pointer.current={x:0,y:0};}}>
   <div className="room-art"/>
   <div className="room-shade"/>
-  <div className="stage-heading"><span className="scene-index">01 / THE EVENING ROOM</span><h1>今晚，坐一会儿。</h1><p>说点什么，或者只是歇一歇。</p></div>
+  <div className="stage-heading"><span className="scene-index">01 / THE EVENING ROOM</span><h1>今晚，坐一会儿。</h1></div>
   <button className="stage-expand" onClick={onQuiet} aria-label={quiet?'展开对话':'收起对话，专注陪伴'} title={quiet?'展开对话':'收起对话'}>{quiet?<Minimize2 size={17}/>:<Maximize2 size={17}/>}</button>
   <button className="character-touch" aria-label="向晚灯打招呼" onClick={()=>react(9)} disabled={!ready||busy}>
    <canvas ref={canvas} className={'character-canvas '+(ready?'loaded':'')} role="img" aria-label={'晚灯的原创角色，当前表情：'+EXPRESSION_LABELS[frame]} />

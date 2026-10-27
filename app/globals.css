@@ -109,9 +109,9 @@ button,a,input,select{-webkit-tap-highlight-color:transparent}
 .hub-app-launch:disabled{opacity:1!important;cursor:wait}
 .hub-app-copy{display:flex;gap:16px;align-items:flex-start;padding:25px 3px}
 .hub-app-copy>div{min-width:0;flex:1}
-.hub-app-copy h4{font-size:22px;line-height:1.45;letter-spacing:-.025em;font-weight:600;margin-bottom:7px}
+.hub-app-copy h4{font-size:22px;line-height:1.45;letter-spacing:-.025em;font-weight:600;margin-bottom:0}
 .hub-app-copy p{font-size:16px;color:var(--hub-muted);line-height:1.7;max-width:27em}
-.hub-editorial-grid .hub-app-copy{padding-right:45px;min-height:148px;position:relative}
+.hub-editorial-grid .hub-app-copy{padding-right:45px;min-height:88px;position:relative}
 .hub-app-icon{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;width:34px;height:34px;color:var(--hub-muted)}
 .hub-editorial-grid .hub-app-icon{margin-top:3px}
 .hub-editorial-arrow{position:absolute;right:12px;bottom:28px;color:var(--hub-muted)}
@@ -333,9 +333,9 @@ button,a,input,select{-webkit-tap-highlight-color:transparent}
   .hub-collection-heading>div{display:block}
   .hub-collection-heading p{font-size:14px;margin-bottom:5px}
   .hub-collection-heading h3{font-size:25px;line-height:1.5}
-  .hub-editorial-grid .hub-app-copy{min-height:122px;padding:22px 42px 22px 0;gap:14px}
+  .hub-editorial-grid .hub-app-copy{min-height:88px;padding:22px 42px 22px 0;gap:14px}
   .hub-editorial-grid .hub-app-copy>div{display:block}
-  .hub-editorial-grid .hub-app-copy h4{min-width:0;margin-bottom:5px}
+  .hub-editorial-grid .hub-app-copy h4{min-width:0;margin-bottom:0}
   .hub-editorial-grid .hub-app-icon{width:31px}
   .hub-app-copy h4{font-size:22px;line-height:1.4}
   .hub-app-copy p{font-size:16px;line-height:1.65}
@@ -492,11 +492,11 @@ button,a,input,select{-webkit-tap-highlight-color:transparent}
 .theme-classic .hub-collection{margin-top:28px}
 .theme-classic .hub-collection-heading{padding-bottom:15px;border-bottom:1px solid var(--hub-line);margin-bottom:0}
 .theme-classic .hub-collection-heading p{font-size:21px;font-weight:600;color:var(--hub-text);margin:0}
-.theme-classic .hub-collection-heading h3{display:none}
+.theme-classic .hub-collection-heading h3{font-size:21px;font-weight:600;display:block}
 .theme-classic .hub-collection-heading>span{font-size:14px}
 .theme-classic .hub-editorial-grid{column-gap:26px;row-gap:0}
 .theme-classic .hub-editorial-grid .hub-application{border-bottom:1px solid var(--hub-line)}
-.theme-classic .hub-editorial-grid .hub-app-copy{padding:24px 39px 24px 0;min-height:118px;align-items:center;gap:14px}
+.theme-classic .hub-editorial-grid .hub-app-copy{padding:24px 39px 24px 0;min-height:88px;align-items:center;gap:14px}
 .theme-classic .hub-app-copy h4{font-size:22px;font-weight:550}
 .theme-classic .hub-app-copy p{font-size:16px;margin-top:5px;line-height:1.5}
 .theme-classic .hub-editorial-arrow{display:none}
@@ -585,7 +585,7 @@ button,a,input,select{-webkit-tap-highlight-color:transparent}
   .theme-classic .hub-editorial-grid .hub-app-copy h4{min-width:0}
   .theme-classic .hub-editorial-grid .hub-app-icon{width:44px}
   .theme-kinetic .hub-editorial-grid .hub-favorite,.theme-cozy .hub-editorial-grid .hub-favorite{top:50%;transform:translateY(-50%)}
-  .theme-kinetic .hub-editorial-grid .hub-app-copy,.theme-cozy .hub-editorial-grid .hub-app-copy{padding:20px 55px 20px 20px;min-height:110px}
+  .theme-kinetic .hub-editorial-grid .hub-app-copy,.theme-cozy .hub-editorial-grid .hub-app-copy{padding:20px 55px 20px 20px;min-height:88px}
 }
 @media(max-width:620px){
   .hub-style-bar{justify-content:center;width:calc(100% - 28px);gap:0}
@@ -605,7 +605,7 @@ button,a,input,select{-webkit-tap-highlight-color:transparent}
   .hub-classic-recents small{font-size:14px}
   .theme-classic .hub-collection-heading p{font-size:22px}
   .theme-classic .hub-app-copy p{font-size:16px}
-  .theme-classic .hub-editorial-grid .hub-app-copy{padding-top:21px;padding-bottom:21px;min-height:108px}
+  .theme-classic .hub-editorial-grid .hub-app-copy{padding-top:21px;padding-bottom:21px;min-height:88px}
   .theme-classic .hub-classic-recents button>svg{display:block}
   .theme-cozy .hub-collection-heading h3{font-size:25px}
   .theme-kinetic .hub-editorial-grid .hub-app-copy,.theme-cozy .hub-editorial-grid .hub-app-copy{padding-left:17px;gap:13px}

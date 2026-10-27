@@ -37,7 +37,7 @@
 .objectList{position:absolute;z-index:6;top:200px;right:4%;bottom:145px;width:330px;padding:17px 13px 12px;border:1px solid #dfcda4;border-radius:8px;background:#fff8e8f5;box-shadow:0 12px 40px #203c3c36;overflow:auto;scrollbar-width:thin;backdrop-filter:blur(15px);}
 .listHeading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 5px 10px;}
 .scene .listHeading h2{margin:0;font-family:'Noto Serif SC','Songti SC',serif;font-size:20px;font-weight:600;line-height:1.4;color:#40513c;}
-.scene .objectButton{display:flex;align-items:center;gap:12px;width:100%;min-height:73px;padding:12px 9px;border:1px solid transparent;border-top-color:#e7d9ba;border-radius:3px;background:transparent;color:#40513c;text-align:left;font:inherit;cursor:pointer;}
+.scene .objectButton{display:flex;align-items:center;gap:12px;width:100%;min-height:56px;padding:12px 9px;border:1px solid transparent;border-top-color:#e7d9ba;border-radius:3px;background:transparent;color:#40513c;text-align:left;font:inherit;cursor:pointer;}
 .scene .objectButton:hover:not(:disabled),.scene .objectButton[data-selected='true']{border-color:#d3c498;background:#f0e9d3;}
 .objectMark{flex-shrink:0;width:9px;height:9px;transform:rotate(45deg);border:1px solid #9f915a;background:#d4c38f;box-shadow:0 0 0 3px #f6ecd7;}
 .objectButton>span:nth-child(2){display:grid;flex:1;gap:4px;}

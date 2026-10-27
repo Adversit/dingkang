@@ -82,7 +82,6 @@ export default function CozyBaseScene(props:CozyBaseSceneProps) {
   const current=buildings.find(b=>b.category===room),selected=buildings.find(b=>b.category===selectedRoom),hoveredBuilding=buildings.find(b=>b.category===hovered);
   const roomModules=room?modules.filter(m=>m.category===room):[],shownModule=hoveredModule||selectedModule;
   const showList=Boolean(room&&(listOpen||status==='fallback')),blocked=disabled||transitioning;
-  const itemLabel=(module:HubModule)=>cozyRoomArt[module.category].hotspots[module.id]?.label||module.subtitle;
   function highlightModule(module:HubModule|null,commit=false){
     if(blocked)return;setHoveredModule(module);
     if(commit){selectedModuleRef.current=module;setSelectedModule(module);}
@@ -141,11 +140,11 @@ export default function CozyBaseScene(props:CozyBaseSceneProps) {
     <div className={styles.bottomHud}>
       {!room&&selected?<div className={styles.nameplate} data-selected="true">
         <span className={styles.seal}><selected.icon size={23} strokeWidth={1.6}/></span>
-        <div className={styles.plateText}><strong>{selected.name}</strong><span>{categories.find(category=>category.id===selected.category)?.name}</span></div>
+        <div className={styles.plateText}><strong>{selected.name}</strong></div>
         <button className={styles.enterButton} type="button" disabled={blocked} onClick={()=>chooseRoom(selected.category)}><span>{transitioning?'正在进屋':'进入小屋'}</span><ChevronRight size={18}/></button>
       </div>:room&&shownModule?<div className={styles.nameplate} data-selected="true">
         <span className={styles.seal}><DoorOpen size={22} strokeWidth={1.6}/></span>
-        <div className={styles.plateText}><small>{itemLabel(shownModule)}</small><strong>{shownModule.name}</strong><span>{shownModule.subtitle}</span></div>
+        <div className={styles.plateText}><strong>{shownModule.name}</strong></div>
         <button className={styles.enterButton} type="button" disabled={blocked} onClick={()=>launchModule(shownModule)}><span>打开</span><ArrowUpRight size={18}/></button>
       </div>:<div className={styles.hint}>{transitioning?'正在推开小屋的门…':room?'轻触物件，打开它的世界。':hoveredBuilding?`${hoveredBuilding.name} · 点击选中`:'选一座小屋，走进去看看。'}</div>}
       {!room&&<nav className={styles.rooms} aria-label="选择小屋，方向键移动，Enter进入">
@@ -154,7 +153,7 @@ export default function CozyBaseScene(props:CozyBaseSceneProps) {
     </div>
     {showList&&<aside id="cozy-room-items" className={styles.objectList} aria-label={`${current?.name}里的物件`}>
       <div className={styles.listHeading}><h2>房间里的物件</h2>{status!=='fallback'&&<button className={styles.iconButton} type="button" disabled={disabled} aria-label="收起物件清单" onClick={()=>setListOpen(false)}><X size={19}/></button>}</div>
-      <div className={styles.objectItems}>{roomModules.map(module=><button key={module.id} type="button" className={styles.objectButton} data-selected={selectedModule?.id===module.id?'true':'false'} disabled={blocked} onMouseEnter={()=>highlightModule(module)} onMouseLeave={()=>highlightModule(null)} onFocus={()=>highlightModule(module,true)} onBlur={()=>highlightModule(null)} onClick={()=>launchModule(module)}><span className={styles.objectMark} aria-hidden="true"/><span><small>{itemLabel(module)}</small><strong>{module.name}</strong></span><ArrowUpRight size={18}/></button>)}</div>
+      <div className={styles.objectItems}>{roomModules.map(module=><button key={module.id} type="button" className={styles.objectButton} data-selected={selectedModule?.id===module.id?'true':'false'} disabled={blocked} onMouseEnter={()=>highlightModule(module)} onMouseLeave={()=>highlightModule(null)} onFocus={()=>highlightModule(module,true)} onBlur={()=>highlightModule(null)} onClick={()=>launchModule(module)}><span className={styles.objectMark} aria-hidden="true"/><span><strong>{module.name}</strong></span><ArrowUpRight size={18}/></button>)}</div>
     </aside>}
     <span className={styles.srOnly} role="status">{room?`位于${current?.name}`:selected?`已选中${selected.name}，可进入小屋。`:'可选择四座小屋。'}</span>
   </section>;

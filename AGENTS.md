@@ -12,6 +12,11 @@ Keep subsequent feature changes here. Preserve the existing Site identity and au
 - Opening or changing a theme must preserve the active module and its progress. Flush pending storage before leaving a module.
 - Keep Chinese body text at least 16px and supporting text at least 14px. Respect reduced motion and stop background rendering when hidden.
 
+## Interface copy
+
+- Keep the hub themes and application screens free of decorative small copy: no slogan subtitles, duplicate category eyebrows, English kickers, or routine card descriptions. Use names, headings and controls directly.
+- Preserve actual content, instructions needed to act, live status, errors, data limits and required attribution. Do not blanket-hide small tags or muted text. Close spacing left by removed captions.
+
 ## Data and deployment
 
 - Server identity is authoritative. Never trust a client-supplied user ID for ownership.

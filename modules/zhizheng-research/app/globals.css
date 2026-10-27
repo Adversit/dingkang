@@ -25,3 +25,8 @@
 .study-fieldset{display:block;border:0;padding:0;margin:0;min-width:0}.study-fieldset:disabled{opacity:.83}.study-fieldset:disabled input,.study-fieldset:disabled textarea{cursor:wait}
 
 .evidence-form.study-fieldset{padding:18px}
+
+/* Compact headings after removing decorative captions. */
+.page-heading h1,.desk-title h1,.study-page-heading h1{margin-bottom:0}
+
+.desk-path>button{align-items:center;padding:15px 0}.desk-path>button>svg:first-child{margin-top:0}

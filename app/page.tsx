@@ -259,10 +259,10 @@ export default function Hub(){
     {theme.id==='classic'&&<>
       {sidebarOpen&&<button className="hub-sidebar-scrim" aria-label="关闭导航" onClick={()=>setSidebarOpen(false)}/>}
       <aside className={'hub-sidebar '+(sidebarOpen?'is-open':'')} aria-label="工作空间导航">
-        <button className="hub-sidebar-brand" onClick={()=>selectSection('all')} disabled={navigating}><span className="hub-classic-mark" aria-hidden="true"><i/><i/><i/><i/></span><span>丁康的工作空间<small>让日常有条不紊</small></span></button>
+        <button className="hub-sidebar-brand" onClick={()=>selectSection('all')} disabled={navigating}><span className="hub-classic-mark" aria-hidden="true"><i/><i/><i/><i/></span><span>丁康的工作空间</span></button>
         <nav><button className={section==='all'&&!open?'active':''} onClick={()=>selectSection('all')} disabled={navigating}><Grid2X2 size={21}/>全部应用<span>{modules.length}</span></button><button className={section==='favorites'&&!open?'active':''} onClick={()=>selectSection('favorites')} disabled={navigating}><Star size={21}/>我的收藏</button>{categories.map(category=>{const Icon=icons[category.icon];return <button key={category.id} className={section===category.id&&!open?'active':''} onClick={()=>selectSection(category.id)} disabled={navigating}><Icon size={21}/>{category.name}</button>;})}</nav>
         <div className="hub-sidebar-rule"/><button className={'hub-sidebar-data '+(section==='data'&&!open?'active':'')} onClick={()=>selectSection('data')} disabled={navigating}><FolderOpen size={21}/>数据中心</button>
-        <div className="hub-sidebar-bottom"><ShieldCheck size={21}/><div><strong>{session?.displayName||'私人空间'}</strong><p>{session?.authenticated?'你的应用与日常':'登录后保存个人偏好'}</p></div></div>
+        <div className="hub-sidebar-bottom"><ShieldCheck size={21}/><div><strong>{session?.displayName||'私人空间'}</strong>{!session?.authenticated&&<p>登录后保存个人偏好</p>}</div></div>
       </aside>
     </>}
     <header className="hub-header">
@@ -279,7 +279,7 @@ export default function Hub(){
         <button className="hub-icon-button" onClick={()=>settingsRef.current?.showModal()} aria-label="外观与账号" title="外观与账号"><SlidersHorizontal size={21}/></button>
       </div>
     </header>
-    <div className="hub-style-bar"><span>换一种心情</span><div className="hub-style-switcher" role="group" aria-label="选择工作空间风格">{hubThemes.map(item=><button key={item.id} aria-pressed={appearance.theme===item.id} aria-label={'切换为'+item.name} disabled={!ready||navigating||importing||readingBackup} onClick={()=>changeTheme(item.id)}>{item.id==='classic'?<Grid2X2 size={17}/>:item.id==='night-harbor'?<Moon size={17}/>:item.id==='kinetic'?<Sparkles size={17}/>:<House size={17}/>}<span>{{classic:'经典','night-harbor':'夜航',kinetic:'动态',cozy:'基地'}[item.id]}</span></button>)}</div></div>
+    <div className="hub-style-bar"><div className="hub-style-switcher" role="group" aria-label="选择工作空间风格">{hubThemes.map(item=><button key={item.id} aria-pressed={appearance.theme===item.id} aria-label={'切换为'+item.name} disabled={!ready||navigating||importing||readingBackup} onClick={()=>changeTheme(item.id)}>{item.id==='classic'?<Grid2X2 size={17}/>:item.id==='night-harbor'?<Moon size={17}/>:item.id==='kinetic'?<Sparkles size={17}/>:<House size={17}/>}<span>{{classic:'经典','night-harbor':'夜航',kinetic:'动态',cozy:'基地'}[item.id]}</span></button>)}</div></div>
 
     {!open&&(error||healthError)&&<div className="hub-error" role="alert"><AlertCircle size={21}/><p>{error||healthError}</p><button onClick={()=>void initialize()} disabled={!ready}><RefreshCw size={16}/>重新连接</button>{error&&<button className="hub-icon-button" onClick={()=>setError('')} aria-label="关闭提示"><X size={18}/></button>}</div>}
 
@@ -287,7 +287,7 @@ export default function Hub(){
       {open?<div className="hub-app-stage">
         <button ref={moduleToolsButtonRef} type="button" className={'hub-module-launcher'+(hasIssue?' has-issue':'')} onClick={toggleModuleTools} aria-label={moduleToolsOpen?'收起工作台菜单':hasIssue?'打开工作台菜单，连接需要留意':'打开工作台菜单'} aria-expanded={moduleToolsOpen} aria-controls="hub-module-tools" title="工作台菜单"><Menu size={21}/>{hasIssue&&<span className="hub-module-alert-dot" aria-hidden="true"/>}</button>
         <section ref={moduleToolsRef} id="hub-module-tools" className="hub-module-tools" hidden={!moduleToolsOpen} aria-label="工作台菜单" onKeyDown={event=>{if(event.key==='Escape'&&!(event.target as HTMLElement).closest('dialog[open]')){event.preventDefault();event.stopPropagation();closeModuleTools();}}}>
-          <div className="hub-module-tools-heading"><div><small>正在使用</small><h1>{open.name}</h1></div><button className="hub-icon-button" onClick={closeModuleTools} aria-label="收起工作台菜单"><X size={21}/></button></div>
+          <div className="hub-module-tools-heading"><div><h1>{open.name}</h1></div><button className="hub-icon-button" onClick={closeModuleTools} aria-label="收起工作台菜单"><X size={21}/></button></div>
           <button ref={moduleBackRef} className="hub-module-return" onClick={()=>void navigateTo(null,'all')} disabled={navigating}>{navigating?<LoaderCircle size={20} className="hub-spin"/>:<ChevronLeft size={21}/>}<span>{theme.id==='cozy'?(cozyRoom.current?'返回房间':'返回基地'):'返回工作台'}</span></button>
           <div className="hub-module-controls">
             <button onClick={()=>settingsRef.current?.showModal()}><SlidersHorizontal size={19}/>外观与账号</button>
@@ -295,23 +295,23 @@ export default function Hub(){
             <a href={moduleUrl(open,appearance.theme,routeSearch.current)} target="_blank" rel="noopener noreferrer"><ExternalLink size={19}/>新窗口打开</a>
             <button onClick={()=>void navigateTo(null,'data')} disabled={navigating}><FolderOpen size={19}/>文件与存档</button>
           </div>
-          <div className="hub-module-preferences"><span className={'hub-connection '+(hasIssue?'warning':'')} role="status">{!ready||saving||health==='checking'?<LoaderCircle size={17} className="hub-spin"/>:health==='ready'&&!hasIssue?<CloudCheck size={17}/>:<CloudOff size={17}/>}<span>{status}</span></span><small>工作台偏好与账号</small></div>
+          <div className="hub-module-preferences"><span className={'hub-connection '+(hasIssue?'warning':'')} role="status">{!ready||saving||health==='checking'?<LoaderCircle size={17} className="hub-spin"/>:health==='ready'&&!hasIssue?<CloudCheck size={17}/>:<CloudOff size={17}/>}<span>{status}</span></span></div>
           {(error||healthError)&&<div className="hub-error hub-module-error" role="alert"><AlertCircle size={20}/><p>{error||healthError}</p><button onClick={()=>void initialize()} disabled={!ready}><RefreshCw size={16}/>重新连接</button>{error&&<button className="hub-icon-button" onClick={()=>setError('')} aria-label="关闭提示"><X size={18}/></button>}</div>}
           <HubStoragePanel key={open.id} moduleId={open.id} iframeRef={frameRef} className="hub-module-storage"/>
         </section>
         <div className="hub-frame-wrap">{frameLoading&&<div className="hub-frame-loading" role="status"><LoaderCircle size={28} className="hub-spin"/><p>正在打开{open.name}…</p></div>}<iframe key={open.id} ref={frameRef} src={open.path} title={open.name} allow="fullscreen; clipboard-write; autoplay" onLoad={()=>setFrameLoading(false)}/></div>
       </div>:<>
-        {showHero&&theme.id==='classic'&&<section className="hub-classic-welcome hub-content"><div><h1>今天，从这里继续。</h1><p>应用、资料和日常，都在手边。</p></div>{recentModules.length>0&&<div className="hub-classic-recents"><h2>最近使用</h2><div>{recentModules.slice(0,3).map(module=><button key={module.id} disabled={controlsDisabled} onClick={()=>launch(module)}><AppIcon module={module}/><span><strong>{module.name}</strong><small>{module.subtitle}</small></span><ArrowUpRight size={20}/></button>)}</div></div>}</section>}
+        {showHero&&theme.id==='classic'&&<section className="hub-classic-welcome hub-content"><div><h1>今天，从这里继续。</h1></div>{recentModules.length>0&&<div className="hub-classic-recents"><h2>最近使用</h2><div>{recentModules.slice(0,3).map(module=><button key={module.id} disabled={controlsDisabled} onClick={()=>launch(module)}><AppIcon module={module}/><span><strong>{module.name}</strong></span><ArrowUpRight size={20}/></button>)}</div></div>}</section>}
         {showHero&&theme.id==='kinetic'&&<KineticScene {...sceneProps} motionEnabled={appearance.motion} reducedMotion={reducedMotion} onToggleMotion={()=>persist({appearance:{...appearanceRef.current,motion:!appearanceRef.current.motion}})}/>}
         {cozyHome&&<div className="hub-cozy-space"><CozyBaseScene {...sceneProps} initialRoom={cozyRoom.current} onRoomChange={rememberCozyRoom}/></div>}
         {showHero&&theme.id==='night-harbor'&&<section className="hub-hero" aria-labelledby="hero-title">
           {theme.scene.src&&<div className="hub-scene" aria-hidden="true"><img src={theme.scene.src} alt="" style={{objectPosition:theme.scene.position}} fetchPriority="high"/><div className="hub-scene-shade"/></div>}
-          <div className="hub-hero-copy"><h1 id="hero-title">好奇不熄，<br/>继续创造。</h1><p>研究、生活，或者开一局。<br/>你的每一段进度，都从这里继续。</p><button className="hub-hero-link" onClick={exploreCatalog}>打开应用目录<ArrowRight size={21}/></button></div>
-          {recentModules.length>0?<div className="hub-continue"><h2><Clock3 size={18}/>接着上次</h2>{recentModules.slice(0,3).map(module=><button key={module.id} onClick={()=>launch(module)} disabled={controlsDisabled}><AppIcon module={module} size={21}/><span>{module.name}</span><ArrowUpRight size={21}/></button>)}</div>:<div className="hub-hero-caption"><span className="hub-small-mark"/><p>一处自己的空间，<br/>容得下许多种热爱。</p></div>}
+          <div className="hub-hero-copy"><h1 id="hero-title">好奇不熄，<br/>继续创造。</h1><button className="hub-hero-link" onClick={exploreCatalog}>打开应用目录<ArrowRight size={21}/></button></div>
+          {recentModules.length>0?<div className="hub-continue"><h2><Clock3 size={18}/>接着上次</h2>{recentModules.slice(0,3).map(module=><button key={module.id} onClick={()=>launch(module)} disabled={controlsDisabled}><AppIcon module={module} size={21}/><span>{module.name}</span><ArrowUpRight size={21}/></button>)}</div>:null}
         </section>}
 
         {section==='data'?<div className="hub-content hub-data-content">
-          <div className="hub-page-heading"><div><h1>数据中心</h1><p>收好文件，也带得走自己的进度。</p></div><button className="hub-button" onClick={()=>void refreshData()} disabled={fileLoading||!session?.authenticated}><RefreshCw size={18} className={fileLoading?'hub-spin':''}/>刷新</button></div>
+          <div className="hub-page-heading"><div><h1>数据中心</h1></div><button className="hub-button" onClick={()=>void refreshData()} disabled={fileLoading||!session?.authenticated}><RefreshCw size={18} className={fileLoading?'hub-spin':''}/>刷新</button></div>
           {!session?.authenticated&&<div className="hub-signin-callout"><ShieldCheck size={26}/><div><h2>登录你的私人空间</h2><p>文件和应用存档会归属于你的账号。</p></div><button className="hub-button primary" onClick={()=>void leaveFor('/signin-with-chatgpt?return_to=/')}>登录</button></div>}
           <section className="hub-files" aria-labelledby="files-title">
             <div className="hub-section-heading"><div><h2 id="files-title">我的文件 <span className="hub-count">{files.length}{filesMore?'+':''}</span></h2><p>每个文件最多 25 MB。知证中的论文附件仍在知证内管理。</p></div><button className="hub-button primary" onClick={()=>uploadRef.current?.click()} disabled={!session?.authenticated||uploading}>{uploading?<LoaderCircle size={18} className="hub-spin"/>:<Upload size={18}/>} {uploading?'正在上传':'上传文件'}</button><input type="file" hidden ref={uploadRef} onChange={upload}/></div>
@@ -326,19 +326,19 @@ export default function Hub(){
         </div>:<>
           {cozyHome&&cozyDirectoryOpen&&<div className="hub-cozy-directory-toggle hub-content"><button className="hub-button" aria-expanded={cozyDirectoryOpen} aria-controls="hub-catalog" onClick={()=>setCozyDirectoryOpen(false)}><Search size={19}/>收起列表</button><span>全部 {modules.length} 个应用</span></div>}
           <div className="hub-content hub-catalog" id="hub-catalog" hidden={cozyHome&&!cozyDirectoryOpen}>
-          <div className="hub-catalog-heading"><div><h2>{section==='favorites'?'我的收藏':activeCategory?.name||'应用目录'}</h2><span>{section==='favorites'?'把常用的留在手边。':visible.length+' 个应用，随时出发。'}</span></div><label className="hub-search"><Search size={21}/><input ref={searchRef} aria-label="搜索应用" placeholder="找一个应用" value={search} onChange={event=>setSearch(event.target.value)}/>{search?<button onClick={()=>setSearch('')} aria-label="清除搜索"><X size={19}/></button>:<kbd>/</kbd>}</label></div>
+          <div className="hub-catalog-heading"><div><h2>{section==='favorites'?'我的收藏':activeCategory?.name||'应用目录'}</h2></div><label className="hub-search"><Search size={21}/><input ref={searchRef} aria-label="搜索应用" placeholder="找一个应用" value={search} onChange={event=>setSearch(event.target.value)}/>{search?<button onClick={()=>setSearch('')} aria-label="清除搜索"><X size={19}/></button>:<kbd>/</kbd>}</label></div>
           {section!=='favorites'&&<nav className="hub-category-filter" aria-label="应用分类"><button className={section==='all'?'active':''} onClick={()=>selectSection('all')}>全部</button>{categories.map(category=><button key={category.id} className={section===category.id?'active':''} onClick={()=>selectSection(category.id)}>{category.name}</button>)}</nav>}
           {visible.length===0?<div className="hub-empty hub-no-apps">{section==='favorites'?<Star size={38}/>:<Search size={38}/>}<h3>{query?'没有找到这个应用':'还没有收藏应用'}</h3><p>{query?'试试名称，例如“知证”或“三国”。':'应用旁的星标，会把它留在这里。'}</p><button className="hub-button" onClick={()=>selectSection('all')}>查看全部应用</button></div>:categories.filter(category=>visible.some(module=>module.category===category.id)).map(category=>{
             const presentation=categoryPresentation[category.id],scenic=theme.id!=='classic'&&(category.id==='games'||category.id==='life');
             return <section className={'hub-collection '+(scenic?'scenic':'editorial')} data-category={category.id} key={category.id} aria-labelledby={'category-'+category.id}>
-              <div className="hub-collection-heading"><div><p>{category.name}</p><h3 id={'category-'+category.id}>{presentation.title}</h3></div><span>{presentation.description}</span></div>
+              <div className="hub-collection-heading"><h3 id={'category-'+category.id}>{theme.id==='classic'?category.name:presentation.title}</h3></div>
               <div className={scenic?'hub-art-grid':'hub-editorial-grid'}>{visible.filter(module=>module.category===category.id).map(module=>{
                 const art=moduleArtwork[module.id];
                 return <article className={'hub-application '+(art?'has-art':'type-art')} key={module.id}>
                   <button className="hub-app-launch" onClick={()=>launch(module)} disabled={controlsDisabled}>
                     {theme.id==='kinetic'&&!scenic&&<div className={'hub-kinetic-glyph glyph-'+module.category} aria-hidden="true"><i/><i/><i/><i/><span><AppIcon module={module} size={35}/></span></div>}
                     {scenic&&<div className="hub-artwork">{art?<img src={art.src} alt={art.label} loading="lazy" style={{objectPosition:art.position}}/>:<div className={'hub-art-type art-'+module.id}><AppIcon module={module} size={48}/><span>{module.id==='yourwar-battle-forge'?'YourWar':module.name}</span></div>}<span className="hub-open-mark" aria-hidden="true"><ArrowUpRight size={26}/></span></div>}
-                    <div className="hub-app-copy">{!scenic&&<AppIcon module={module} size={27}/>}<div><h4>{module.name}</h4><p>{module.description}</p></div>{!scenic&&<ArrowUpRight className="hub-editorial-arrow" size={23}/>}</div>
+                    <div className="hub-app-copy">{!scenic&&<AppIcon module={module} size={27}/>}<div><h4>{module.name}</h4></div></div>
                   </button>
                   <button className={'hub-favorite '+(favorites.includes(module.id)?'selected':'')} onClick={()=>toggleFavorite(module.id)} disabled={!ready||importing} aria-label={(favorites.includes(module.id)?'取消收藏':'收藏')+module.name} title={favorites.includes(module.id)?'取消收藏':'收藏'} aria-pressed={favorites.includes(module.id)}><Star size={20} fill={favorites.includes(module.id)?'currentColor':'none'}/></button>
                 </article>;
@@ -347,16 +347,16 @@ export default function Hub(){
           })}
           </div>
         </>}
-        <footer className="hub-footer"><span className="hub-footer-name">丁康 · {theme.identity}</span><span><ShieldCheck size={16}/>自己的空间，自己的节奏。</span><button onClick={()=>selectSection('data')}>管理文件与存档<ArrowUpRight size={18}/></button></footer>
+        <footer className="hub-footer"><span className="hub-footer-name">丁康 · {theme.identity}</span><button onClick={()=>selectSection('data')}>管理文件与存档<ArrowUpRight size={18}/></button></footer>
       </>}
     </main>
 
     {toast&&<div className="hub-toast" role="status"><Check size={20}/>{toast}</div>}
 
     <dialog ref={settingsRef} className="hub-dialog hub-settings" aria-labelledby="appearance-title">
-      <div className="hub-dialog-heading"><h2 id="appearance-title">让这里，更像你。</h2><button className="hub-icon-button" onClick={()=>settingsRef.current?.close()} aria-label="关闭外观设置"><X size={22}/></button></div>
-      <div className="hub-theme-options" role="group" aria-label="工作空间外观">{hubThemes.map(item=><div className="hub-theme-option" key={item.id}><button className={appearance.theme===item.id?'selected':''} aria-pressed={appearance.theme===item.id} disabled={!ready||importing||readingBackup||navigating} onClick={()=>changeTheme(item.id)}><span className={'hub-theme-preview preview-'+item.id}>{item.scene.src&&<img src={item.scene.src} alt=""/>}<span/><span/></span><strong>{item.name}{appearance.theme===item.id&&<Check size={18}/>}</strong><span>{item.description}</span></button><a className="hub-style-link" href={buildHubUrl(null,item.id,routeSearch.current)} target="_blank" rel="noopener noreferrer">独立打开<ArrowUpRight size={15}/></a></div>)}</div>
-      <div className="hub-motion-control"><div><h3>场景动效</h3><p>{reducedMotion?'已遵循系统的减少动效设置。':theme.motion.supported?'让场景缓缓流动，打开应用时暂停。':'经典工作台保持静止，方便专注。'}</p></div><button className="hub-switch" role="switch" aria-checked={appearance.motion&&!reducedMotion&&theme.motion.supported} aria-label="场景动效" disabled={!ready||reducedMotion||!theme.motion.supported||importing||navigating} onClick={()=>persist({appearance:{...appearanceRef.current,motion:!appearanceRef.current.motion}})}><span/></button></div>
+      <div className="hub-dialog-heading"><h2 id="appearance-title">外观与账号</h2><button className="hub-icon-button" onClick={()=>settingsRef.current?.close()} aria-label="关闭外观设置"><X size={22}/></button></div>
+      <div className="hub-theme-options" role="group" aria-label="工作空间外观">{hubThemes.map(item=><div className="hub-theme-option" key={item.id}><button className={appearance.theme===item.id?'selected':''} aria-pressed={appearance.theme===item.id} disabled={!ready||importing||readingBackup||navigating} onClick={()=>changeTheme(item.id)}><span className={'hub-theme-preview preview-'+item.id}>{item.scene.src&&<img src={item.scene.src} alt=""/>}<span/><span/></span><strong>{item.name}{appearance.theme===item.id&&<Check size={18}/>}</strong></button><a className="hub-style-link" href={buildHubUrl(null,item.id,routeSearch.current)} target="_blank" rel="noopener noreferrer">独立打开<ArrowUpRight size={15}/></a></div>)}</div>
+      <div className="hub-motion-control"><div><h3>场景动效</h3>{(reducedMotion||!theme.motion.supported)&&<p>{reducedMotion?'已遵循系统的减少动效设置。':'经典工作台不使用场景动效。'}</p>}</div><button className="hub-switch" role="switch" aria-checked={appearance.motion&&!reducedMotion&&theme.motion.supported} aria-label="场景动效" disabled={!ready||reducedMotion||!theme.motion.supported||importing||navigating} onClick={()=>persist({appearance:{...appearanceRef.current,motion:!appearanceRef.current.motion}})}><span/></button></div>
       <div className="hub-settings-account"><div><ShieldCheck size={21}/><span><strong>{session?.displayName||'私人空间'}</strong><small>{session?.authenticated?'外观随账号保存':'登录后保存外观与应用偏好'}</small></span></div><button className="hub-button" disabled={navigating} onClick={()=>{settingsRef.current?.close();void leaveFor(session?.authenticated?'/signout-with-chatgpt?return_to=/':'/signin-with-chatgpt?return_to=/');}}>{session?.authenticated?<LogOut size={18}/>:<ArrowUpRight size={18}/>} {session?.authenticated?'退出':'登录'}</button></div>
     </dialog>
 
