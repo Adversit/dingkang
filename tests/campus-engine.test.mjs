@@ -17,15 +17,16 @@ function fixture(){
   return{meta:{id:'qianwei-south',name:'测试校园',width:100,height:100,spawn:[20,32]},boundary:[],buildings:[rixin,wall],water:[],surfaces:[],roads:[],pois:[],landmarks:[{id:rixin.id,entrance:[20,32]},{id:wall.id,entrance:[39,40]}]};
 }
 function mockContext(){
-  const commands=[],state={fillStyle:'#000',strokeStyle:'#000',lineWidth:1},stack=[];let arcs=[];
+  const commands=[],state={fillStyle:'#000',strokeStyle:'#000',lineWidth:1,tx:0,ty:0},stack=[];let arcs=[];
   const methods={
     beginPath(){arcs=[];},arc(x,y,r){arcs.push({x,y,r});},
     fill(){for(const arc of arcs)commands.push({operation:'fill',...arc,color:state.fillStyle});},
     stroke(){for(const arc of arcs)commands.push({operation:'stroke',...arc,color:state.strokeStyle});},
     save(){stack.push({...state});},restore(){Object.assign(state,stack.pop()||{});},
     measureText(text){return{width:String(text).length*12};},
-    fillRect(x,y,w,h){commands.push({operation:'fillRect',x,y,w,h,color:state.fillStyle});},
+    fillRect(x,y,w,h){commands.push({operation:'fillRect',x,y,w,h,color:state.fillStyle,tx:state.tx,ty:state.ty});},
     fillText(text,x,y){commands.push({operation:'fillText',text:String(text),x,y,color:state.fillStyle});},
+    translate(x,y){state.tx+=x;state.ty+=y;},
     scale(x,y){commands.push({operation:'scale',x,y});},
     drawImage(image,...args){commands.push({operation:'drawImage',image,args});},
     createLinearGradient(){return{addColorStop(){}};},createRadialGradient(){return{addColorStop(){}};},
@@ -243,5 +244,40 @@ for(const id of [RIXIN_ID,LIBRARY_ID])test(`${id} furniture and players reverse 
       assert.equal(actor<furniture,behind,'a player behind furniture must be drawn first, and a player in front last');
       const label=commands.findIndex(c=>c.operation==='fillText'&&c.text==='我 · 访客');assert.ok(label>actor&&label>furniture,'the name remains readable above furniture');
     }
+  }finally{h.dispose();}
+});
+
+
+test('low zoom camera scrolling keeps actors and ground at fractional positions without stationary pixel plateaus',()=>{
+  const data={meta:{id:'qianwei-south',name:'空地',width:2000,height:2000,spawn:[1000,1000]},boundary:[],buildings:[],water:[],surfaces:[],roads:[],pois:[],landmarks:[]};
+  const h=harness(data);try{
+    h.engine.setOptions({zoom:.4,timeOfDay:'day',weather:'clear',reducedMotion:true});
+    h.engine.setRemotePlayers([{id:'fixed',name:'固定参照',x:1005,y:1000,roomId:'r1',campus:'south',moving:false}],{roomId:'r1',campus:'south'});
+    h.engine.setJoystick(0,1);h.tick(100);
+    const initial=h.engine.getPosition(),ys=[],groundYs=[];
+    for(let n=1;n<=600;n++){
+      h.canvas.context.commands.length=0;h.tick(100+n*1000/60);
+      if(n>60){
+        const actors=h.canvas.context.commands.filter(c=>c.operation==='fillRect'&&c.color==='#28473b38');
+        // Remote actor's feet keep scrolling after the local camera catches up.
+        assert.equal(actors.length,2);ys.push(actors.find(c=>c.tx<299).ty);
+        groundYs.push(h.canvas.context.commands.find(c=>c.operation==='drawImage'&&c.image.width===512).args[1]);
+      }
+    }
+    for(let i=1;i<ys.length;i++)assert.ok(ys[i]<ys[i-1],'fixed actor must move every frame under camera scroll');
+    assert.ok(ys.some(y=>!Number.isInteger(y)),'actor keeps fractional screen placement');
+    assert.ok(groundYs.some(y=>!Number.isInteger(y)),'ground uses the same continuous camera placement');
+    const final=h.engine.getPosition();assert.ok(Math.abs(Math.hypot(final.x-initial.x,final.y-initial.y)-34)<.002,'visual fix preserves 3.4 m/s speed');
+  }finally{h.dispose();}
+});
+
+test('automatic walking consumes a reached intermediate waypoint without inserting an idle frame',()=>{
+  const h=harness();try{
+    h.engine.setTarget({x:80,y:32,name:'目的地'});const{worker,request}=pendingRequest(h);
+    // First waypoint is within the existing arrival tolerance; the next is safe.
+    worker.deliver({id:request.id,path:[[20,32.1],[20,85],[80,85],[80,32]]});
+    const before=h.engine.getPosition();h.tick(100);h.tick(100+1000/60);
+    const next=h.engine.getPosition();assert.equal(next.moving,true);assert.ok(next.y>before.y);
+    assert.equal(h.engine.getNavigationState().status,'walking');
   }finally{h.dispose();}
 });

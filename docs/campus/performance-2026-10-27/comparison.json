@@ -1,0 +1,176 @@
+{
+  "date": "2026-10-27",
+  "scope": "Stationary-camera map drawing only; actual south campus data, no rAF rendering.",
+  "method": "Actual drawMap on native @napi-rs/canvas, real south campus data. No rAF rendering. Cold single call; then 20 warmup + 60 measured calls at stationary camera. Context reset and 1px readback per call avoid native state retention. DPR1. This compares CPU software drawing costs, NOT browser FPS or the user device performance.",
+  "limitations": [
+    "Native software Canvas CPU timing is not browser FPS or user-device performance.",
+    "Cold timings are single samples, not statistically stable distributions.",
+    "Results vary with environment load; this recorded run accompanied the PNG pixel comparison.",
+    "Walking, cache invalidation and dynamic peers are covered separately by the engine regression tests."
+  ],
+  "inputs": {
+    "before": "Site version 24 engine before map cache optimization",
+    "after": "Working implementation with cached map base and visible-area spatial queries",
+    "dataSha256": "13d9c752fec800d3e3064d8e05d222d516408a1b3b86a9d2b3fd9b50f2a27688"
+  },
+  "results": [
+    {
+      "name": "mobile-mini",
+      "width": 100,
+      "height": 100,
+      "full": false,
+      "before": {
+        "coldMs": 13.398,
+        "hot": {
+          "samples": 60,
+          "medianMs": 7.506,
+          "p95Ms": 13.815,
+          "maxMs": 19.179
+        }
+      },
+      "after": {
+        "coldMs": 25.38,
+        "hot": {
+          "samples": 60,
+          "medianMs": 0.056,
+          "p95Ms": 0.505,
+          "maxMs": 1.363
+        },
+        "coldMapBaseBuilds": 1,
+        "mapBaseBuildsAfter81Calls": 1
+      }
+    },
+    {
+      "name": "desktop-mini",
+      "width": 168,
+      "height": 168,
+      "full": false,
+      "before": {
+        "coldMs": 11.779,
+        "hot": {
+          "samples": 60,
+          "medianMs": 9.039,
+          "p95Ms": 15.499,
+          "maxMs": 18.658
+        }
+      },
+      "after": {
+        "coldMs": 15.84,
+        "hot": {
+          "samples": 60,
+          "medianMs": 0.093,
+          "p95Ms": 0.917,
+          "maxMs": 1.779
+        },
+        "coldMapBaseBuilds": 1,
+        "mapBaseBuildsAfter81Calls": 1
+      }
+    },
+    {
+      "name": "mini-180",
+      "width": 180,
+      "height": 180,
+      "full": false,
+      "before": {
+        "coldMs": 13.153,
+        "hot": {
+          "samples": 60,
+          "medianMs": 11.898,
+          "p95Ms": 22.153,
+          "maxMs": 29.004
+        }
+      },
+      "after": {
+        "coldMs": 9.986,
+        "hot": {
+          "samples": 60,
+          "medianMs": 0.183,
+          "p95Ms": 1.056,
+          "maxMs": 1.876
+        },
+        "coldMapBaseBuilds": 1,
+        "mapBaseBuildsAfter81Calls": 1
+      }
+    },
+    {
+      "name": "mini-240",
+      "width": 240,
+      "height": 240,
+      "full": false,
+      "before": {
+        "coldMs": 11.744,
+        "hot": {
+          "samples": 60,
+          "medianMs": 9.103,
+          "p95Ms": 13.345,
+          "maxMs": 14.141
+        }
+      },
+      "after": {
+        "coldMs": 8.129,
+        "hot": {
+          "samples": 60,
+          "medianMs": 0.215,
+          "p95Ms": 0.886,
+          "maxMs": 1.786
+        },
+        "coldMapBaseBuilds": 1,
+        "mapBaseBuildsAfter81Calls": 1
+      }
+    },
+    {
+      "name": "full-map",
+      "width": 800,
+      "height": 600,
+      "full": true,
+      "before": {
+        "coldMs": 27.427,
+        "hot": {
+          "samples": 60,
+          "medianMs": 19.692,
+          "p95Ms": 26.832,
+          "maxMs": 42.373
+        }
+      },
+      "after": {
+        "coldMs": 40.391,
+        "hot": {
+          "samples": 60,
+          "medianMs": 1.575,
+          "p95Ms": 3.445,
+          "maxMs": 4.234
+        },
+        "coldMapBaseBuilds": 1,
+        "mapBaseBuildsAfter81Calls": 1
+      }
+    }
+  ],
+  "pixelComparison": {
+    "method": "RGBA pixels from same source data, spawn camera, canvas dimensions and DPR1; no peers or changing markers; first draw snapshots.",
+    "results": [
+      {
+        "name": "desktop-mini",
+        "width": 168,
+        "height": 168,
+        "differingPixels": 1152,
+        "totalPixels": 28224,
+        "differingPixelPercent": 4.0816,
+        "meanAbsoluteChannelDifference": 0.0455,
+        "maxChannelDifference": 9,
+        "rmsChannelDifference": 0.3728
+      },
+      {
+        "name": "full-map",
+        "width": 800,
+        "height": 600,
+        "differingPixels": 0,
+        "totalPixels": 480000,
+        "differingPixelPercent": 0.0,
+        "meanAbsoluteChannelDifference": 0.0,
+        "maxChannelDifference": 0,
+        "rmsChannelDifference": 0.0
+      }
+    ],
+    "interpretation": "Full map is pixel-identical. Minimap has small edge-channel differences after buffered drawing; map geometry and feature ordering were preserved. Visual inspection is separate."
+  }
+}
