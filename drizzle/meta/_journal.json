@@ -29,6 +29,13 @@
       "when": 1792941944903,
       "tag": "0003_white_silver_sable",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1793239869880,
+      "tag": "0004_mean_wrecking_crew",
+      "breakpoints": true
     }
   ]
 }
