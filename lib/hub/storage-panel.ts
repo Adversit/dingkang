@@ -4,7 +4,7 @@ export type HubStorageMode = 'bridge' | 'native';
 export type ModuleStorageBinding = {window: Window; bridge: StorageBridge};
 
 const bridgeModules = new Set([
-  'agent-architecture-journey', 'aipm-studio-dk', 'wandeng-evening',
+  'agent-architecture-journey', 'aipm-studio-dk', 'wandeng-evening', 'novel-studio',
   'cloudrush-runner', 'starfall-creature-isles', 'pocket-arcade-ten',
   'yourwar-battle-forge', 'mistbound-letters', 'moonlit-immortal-chronicle', 'yunque-sanguo',
 ]);
@@ -42,7 +42,12 @@ export async function flushHubModule(root: Window | null, moduleId: string, orig
       throw new Error('应用页面已变化，请等待当前存档重新连接后再离开。');
     }
   };
-  await binding.bridge.ready;
+  try { await binding.bridge.ready; }
+  catch (error) {
+    requireCurrentDocument();
+    if (binding.bridge.canLeaveWithoutSaving === true) return;
+    throw error;
+  }
   requireCurrentDocument();
   if (binding.bridge.status.state === 'conflict') throw new Error('请先选择保留本机或云端存档，再离开此应用。');
   await binding.bridge.flush();

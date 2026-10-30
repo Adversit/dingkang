@@ -1,0 +1,20 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { runInNewContext } from 'node:vm';
+import { webcrypto } from 'node:crypto';
+import { initialState, applyCommand } from '../modules/novel-studio/server/domain.mjs';
+
+async function boot(){
+  const code=await readFile(new URL('../public/apps/novel-studio/consistency.js',import.meta.url),'utf8');
+  let db=initialState(),version=0,lose=false;const receipts=new Map(),calls=[],handlers={},fields=new Map(),session=new Map();
+  const root={innerHTML:'',addEventListener:(name,fn)=>{handlers[name]=fn}};
+  const nodes=new Map();const document={querySelector(sel){if(sel==='#root')return root;if(sel==='.toast')return null;if(sel==='.top .actions')return {prepend(){}};if(sel==='[data-action=retry-pending]')return null;return fields.get(sel.replace(/^#/,''))||null},querySelectorAll:()=>[],getElementById:id=>fields.get(id)||null,createElement:()=>({dataset:{},setAttribute(){},remove(){},click(){}}),body:{append(){}}};
+  const response=(value,status=200)=>({ok:status<400,status,json:async()=>value});
+  async function fetch(url,options={}){if(url==='/api/hub/session')return response({authenticated:true,userId:'user-1'});if(url.endsWith('/canon')&&!options.method)return response({state:db,version});if(url.endsWith('/canon')){const req=JSON.parse(options.body);calls.push(req);if(receipts.has(req.commandId))return response({state:db,version,receipt:receipts.get(req.commandId)});if(req.expectedVersion!==version)return response({error:'版本冲突'},409);try{let v=applyCommand(db,req.command,'2026-10-30T00:00:00Z');db=v.state;version++;receipts.set(req.commandId,v.receipt);if(lose){lose=false;throw Error('connection lost after commit')}return response({state:db,version,receipt:v.receipt})}catch(e){if(e.message==='connection lost after commit')throw e;return response({error:e.message},e.status||500)}}throw Error('unexpected '+url)}
+  const window={addEventListener(){},HubStorage:{ready:Promise.resolve()}},sessionStorage={getItem:k=>session.get(k)||null,setItem:(k,v)=>session.set(k,v),removeItem:k=>session.delete(k)};
+  const ctx={document,window,fetch,crypto:webcrypto,sessionStorage,confirm:()=>true,Blob,URL,TextEncoder,Date,console,setTimeout:()=>0,clearTimeout};runInNewContext(code,ctx);await new Promise(setImmediate);
+  return {root,fields,handlers,calls,session,db:()=>db,version:()=>version,lose(){lose=true},set:(id,value)=>fields.set(id,{value}),click:async(action,dataset={})=>{let button={dataset:{action,...dataset},disabled:false};await handlers.click({target:{closest:()=>button}})}};
+}
+test('服务端工作流保存草稿、版本、提案和人工确认',async()=>{const h=await boot();await h.click('new-project');h.set('project-name','测试作品');h.set('project-desc','');await h.click('submit-project');await h.click('new-scene');h.set('new-title','雨夜');await h.click('submit-scene');h.set('draft-title','雨夜');h.set('draft-body','梅箬拿到铜钥匙。');await h.click('save-revision');let p=h.db().projects[0];assert.equal(p.scenes[0].revisions[0].body,'梅箬拿到铜钥匙。');await h.click('new-fact');h.set('fact-statement','梅箬持有铜钥匙');h.set('fact-evidence','梅箬拿到铜钥匙');h.set('fact-kind','物件');h.set('fact-layer','world');h.set('fact-subject','梅箬');h.set('fact-time','1');await h.click('submit-fact');p=h.db().projects[0];assert.equal(p.proposals.length,1);assert.equal(p.facts.length,0);await h.click('commit-fact',{id:p.proposals[0].id});assert.equal(h.db().projects[0].facts.length,1)});
+test('响应丢失时保留同一命令并安全重试，不重复写入',async()=>{const h=await boot();await h.click('new-project');h.set('project-name','重试作品');h.set('project-desc','');h.lose();await h.click('submit-project');assert.equal(h.db().projects.length,1);assert.equal(h.session.size,1);await h.click('retry-pending');assert.equal(h.db().projects.length,1);assert.equal(h.calls[0].commandId,h.calls[1].commandId);assert.deepEqual(h.calls[0],h.calls[1]);assert.equal(h.session.size,0)});

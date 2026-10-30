@@ -1,0 +1,5 @@
+import { json,HubError } from '@/lib/hub/server';
+import { compileContext,generateFromPreview } from '@/modules/novel-ai/context.mjs';
+import { archiveFor,config,inputFor,problem } from '@/modules/novel-ai/route-support';
+export const dynamic='force-dynamic';
+export async function POST(req:Request){try{const {owner,input}=await inputFor(req);if(!input||typeof input!=='object'||Array.isArray(input)||typeof (input as Record<string,unknown>).previewHash!=='string')throw new HubError('请先预览实际输入。',400);const request=input as Record<string,unknown>,archive=await archiveFor(owner),model=config('OPENAI_MODEL'),baseUrl=config('OPENAI_BASE_URL')||'https://api.openai.com/v1';const preview=await compileContext(request,archive,model,baseUrl);if(preview.previewHash!==request.previewHash)throw new HubError('作品、版本或上下文已变化，请重新预览。',409);const result=await generateFromPreview(preview,{key:config('OPENAI_API_KEY'),model,baseUrl});const latest=await archiveFor(owner);if(latest.version!==preview.stateVersion)throw new HubError('生成期间作品档案发生变化，请重新预览和生成。',409);return json(result)}catch(error){return problem(error)}}

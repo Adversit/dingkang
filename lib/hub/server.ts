@@ -5,7 +5,7 @@ export const HUB_MODULES = [
   'aipm-studio-dk', 'cloudrush-runner', 'starfall-creature-isles',
   'roommate-housekeeper', 'pocket-arcade-ten', 'yourwar-battle-forge',
   'mistbound-letters', 'moonlit-immortal-chronicle', 'yunque-sanguo',
-  'agent-architecture-journey', 'ai-dev-collaboration-workbench', 'hub-preferences',
+  'agent-architecture-journey', 'ai-dev-collaboration-workbench', 'novel-studio', 'hub-preferences',
 ] as const;
 const allowedModules = new Set<string>(HUB_MODULES);
 export const MAX_STATE_BYTES = 2 * 1024 * 1024;

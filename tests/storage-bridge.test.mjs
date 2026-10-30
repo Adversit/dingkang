@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import {flushHubModule} from '../lib/hub/storage-panel.ts';
 
 const source = fs.readFileSync(new URL('../public/hub-storage.js', import.meta.url), 'utf8');
 const plain = value => JSON.parse(JSON.stringify(value));
@@ -28,9 +29,10 @@ function environment(s = server(), { module = 'aipm-studio-dk', raw = new Map(),
   }
   const events = [], reloads = [], listeners = new Map(), timers = new Map();
   let timerId = 0;
+  const document = {currentScript: {getAttribute: name => name === 'data-module' ? module : null}};
   const window = {
     localStorage: new FakeStorage(raw), sessionStorage: new FakeStorage(),
-    location: { reload: () => { reloads.push(true); } },
+    document, frames: [], location: {origin: 'https://example.test', reload: () => { reloads.push(true); }},
     dispatchEvent(event) { events.push(event); return true; },
     addEventListener(name, fn) { listeners.set(name, fn); }
   };
@@ -42,6 +44,8 @@ function environment(s = server(), { module = 'aipm-studio-dk', raw = new Map(),
     }
     assert.equal(url, `/api/hub/state/${module}`);
     if (options.method === 'PUT') {
+      // Model the browser Fetch keepalive budget, not the larger server limit.
+      if (options.keepalive && Buffer.byteLength(options.body, 'utf8') > 64 * 1024) throw new TypeError('keepalive body exceeds browser quota');
       s.puts += 1;
       if (s.beforePut) await s.beforePut();
     } else if (s.gateGet) await s.gateGet;
@@ -60,14 +64,14 @@ function environment(s = server(), { module = 'aipm-studio-dk', raw = new Map(),
     return response(200, item);
   };
   const context = vm.createContext({
-    window, document: { currentScript: { getAttribute: name => name === 'data-module' ? module : null } },
-    Storage: FakeStorage, fetch,
+    window, document,
+    Storage: FakeStorage, fetch, TextEncoder,
     CustomEvent: class { constructor(type, { detail }) { this.type = type; this.detail = detail; } },
     setTimeout: (fn, delay) => { timers.set(++timerId, { fn, delay }); return timerId; },
     clearTimeout: id => timers.delete(id)
   });
   vm.runInContext(source, context);
-  return { bridge: window.HubStorage, local: window.localStorage, session: window.sessionStorage, raw, events, reloads, listeners, timers, context };
+  return { window, bridge: window.HubStorage, local: window.localStorage, session: window.sessionStorage, raw, events, reloads, listeners, timers, context };
 }
 function cache(raw, user, module, values, revision, pending = false) {
   raw.set(cacheKey(user, module), JSON.stringify({ version: 1, userId: user, moduleId: module, initialized: true, values, revision, updatedAt: `t${revision}`, pending }));
@@ -142,6 +146,31 @@ test('same-value writes and removing missing keys do not create cloud writes', a
   assert.equal(s.puts, 0);
 });
 
+test('large UTF-8 saves use the normal request path and survive an offline retry', async () => {
+  const s = server(), e = environment(s); await e.bridge.ready;
+  const saved = '校园笔记'.repeat(18000);
+  assert.ok(Buffer.byteLength(saved, 'utf8') > 64 * 1024);
+  e.local.setItem('notes', saved); s.failPut = true;
+  await assert.rejects(e.bridge.flush(), /offline/);
+  assert.ok(JSON.parse(e.raw.get(cacheKey('alice', 'aipm-studio-dk'))).values.notes === saved);
+  s.failPut = false; await e.bridge.flush();
+  assert.ok(record(s).values.notes === saved);
+  assert.equal(e.bridge.status.state, 'saved');
+  assert.ok(s.requests.filter(item => item.options.method === 'PUT').every(item => !item.options.keepalive));
+});
+
+test('pagehide uses keepalive only for a body that fits the browser byte budget', async () => {
+  for (const [value, keepalive] of [['small', true], ['汉'.repeat(24000), false]]) {
+    const s = server(), e = environment(s); await e.bridge.ready;
+    e.local.setItem('save', value);
+    e.listeners.get('pagehide')();
+    await new Promise(setImmediate);
+    assert.ok(record(s).values.save === value);
+    assert.equal(s.requests.find(item => item.options.method === 'PUT').options.keepalive, keepalive);
+    assert.equal(e.bridge.status.state, 'saved');
+  }
+});
+
 test('a failed initial cloud restore cannot upload an empty or default object', async () => {
   const s = server(); s.failGet = true;
   const e = environment(s);
@@ -150,6 +179,62 @@ test('a failed initial cloud restore cannot upload an empty or default object', 
   await assert.rejects(e.bridge.flush());
   assert.equal(s.puts, 0);
   assert.equal(e.raw.size, 0);
+});
+
+test('a guest or empty initialization failure can return to the hub without saving defaults', async () => {
+  for (const mode of ['guest', 'session-offline', 'state-offline']) {
+    const s = server();
+    if (mode === 'guest') s.authenticated = false;
+    if (mode === 'session-offline') s.failSession = true;
+    if (mode === 'state-offline') s.failGet = true;
+    const e = environment(s);
+    assert.equal(e.bridge.canLeaveWithoutSaving, false, 'loading alone is not proof of a failed empty initialization');
+    await assert.rejects(e.bridge.ready);
+    assert.equal(e.bridge.canLeaveWithoutSaving, true);
+    assert.throws(() => e.local.setItem('save', 'defaults'), {name: 'InvalidStateError'});
+    await flushHubModule(e.window, 'aipm-studio-dk', 'https://example.test');
+    assert.equal(s.puts, 0); assert.equal(e.raw.size, 0);
+  }
+});
+
+test('hydrated state, queued edits, conflicts and expired accounts cannot use the empty-failure exit', async () => {
+  const s = server(), e = environment(s); await e.bridge.ready;
+  assert.equal(e.bridge.canLeaveWithoutSaving, false);
+  e.local.setItem('save', 'keep-local'); s.failPut = true;
+  await assert.rejects(flushHubModule(e.window, 'aipm-studio-dk', 'https://example.test'), /offline/);
+  assert.equal(e.bridge.canLeaveWithoutSaving, false);
+  s.failPut = false; record(s).values = {save: 'remote'}; record(s).revision = 1;
+  await assert.rejects(flushHubModule(e.window, 'aipm-studio-dk', 'https://example.test'), {name: 'ConflictError'});
+  assert.equal(e.bridge.canLeaveWithoutSaving, false);
+  await e.bridge.resolveConflict('local');
+  e.local.setItem('save', 'new-local'); s.authenticated = false;
+  await assert.rejects(flushHubModule(e.window, 'aipm-studio-dk', 'https://example.test'), {name: 'SecurityError'});
+  assert.equal(e.bridge.canLeaveWithoutSaving, false);
+  assert.equal(JSON.parse(e.raw.get(cacheKey('alice', 'aipm-studio-dk'))).values.save, 'new-local');
+});
+
+test('a pending account cache cannot be treated as an empty initialization after access fails', async () => {
+  const s = server(), raw = new Map();
+  cache(raw, 'alice', 'aipm-studio-dk', {save: 'pending-device-copy'}, 3, true);
+  let release; s.gateGet = new Promise(resolve => {release = resolve;});
+  const e = environment(s, {raw});
+  await new Promise(setImmediate);
+  s.authenticated = false; release();
+  await assert.rejects(e.bridge.ready, {name: 'SecurityError'});
+  assert.equal(e.bridge.canLeaveWithoutSaving, false);
+  await assert.rejects(flushHubModule(e.window, 'aipm-studio-dk', 'https://example.test'), {name: 'SecurityError'});
+  assert.equal(JSON.parse(raw.get(cacheKey('alice', 'aipm-studio-dk'))).values.save, 'pending-device-copy');
+  assert.equal(s.puts, 0);
+});
+
+test('an account restored from an offline cache must still reconnect or save before leaving', async () => {
+  const s = server(), raw = new Map(); s.failGet = true;
+  cache(raw, 'alice', 'aipm-studio-dk', {save: 'loaded-cache'}, 3, false);
+  const e = environment(s, {raw}); await e.bridge.ready;
+  assert.equal(e.local.getItem('save'), 'loaded-cache');
+  assert.equal(e.bridge.canLeaveWithoutSaving, false);
+  await assert.rejects(flushHubModule(e.window, 'aipm-studio-dk', 'https://example.test'), /尚未同步/);
+  assert.equal(e.local.getItem('save'), 'loaded-cache');
 });
 
 test('an offline authenticated account can use only its initialized cache and queue edits', async () => {
@@ -269,9 +354,16 @@ test('edits made during a cloud write remain pending and save with the next revi
   assert.equal(record(s).revision, 2);
 });
 
-test('import/export retain arbitrary legacy string keys without prototype pollution', async () => {
+test('import/export retain valid legacy string keys and reject values the server cannot accept', async () => {
   const s = server(), e = environment(s); await e.bridge.ready;
-  const imported = JSON.parse('{"__proto__":"legacy","save":"json-string","":"empty-key"}');
+  const imported = {toString: 'legacy', save: 'json-string'};
+  for (const input of [JSON.parse('{"__proto__":"legacy"}'), {'': 'empty'}, {constructor: 'invalid'}, {['k'.repeat(201)]: 'long'}]) {
+    await assert.rejects(e.bridge.importData(input), /存档键/);
+  }
+  await assert.rejects(e.bridge.importData({save: '汉'.repeat(180000)}), /512 KiB/);
+  await assert.rejects(e.bridge.importData(Object.fromEntries(Array.from({length:201},(_,i)=>['key'+i,'save']))), /200/);
+  assert.deepEqual(plain(e.bridge.exportData().values), {});
+  assert.equal(s.puts, 0);
   await e.bridge.importData(imported);
   const exported = plain(e.bridge.exportData());
   assert.deepEqual(exported.values, imported);
@@ -280,6 +372,37 @@ test('import/export retain arbitrary legacy string keys without prototype pollut
   exported.values.save = 'outside-mutation';
   assert.equal(e.local.getItem('save'), 'json-string');
   await assert.rejects(e.bridge.importData({ bad: 42 }), /string/);
+});
+
+test('running module autosaves cannot replace an import while it is saving or reloading', async () => {
+  const s = server(), e = environment(s); await e.bridge.ready;
+  e.local.setItem('save', 'old-running-game'); await e.bridge.flush();
+  let release;
+  const entered = new Promise(resolve => {
+    s.beforePut = async () => { resolve(); await new Promise(r => {release = r;}); };
+  });
+  const imported = e.bridge.importData({save: 'imported-game'}); await entered;
+  assert.throws(() => e.local.setItem('save', 'old-running-game'), {name: 'InvalidStateError'});
+  assert.throws(() => e.local.removeItem('save'), {name: 'InvalidStateError'});
+  assert.throws(() => e.local.clear(), {name: 'InvalidStateError'});
+  await assert.rejects(e.bridge.importData({save: 'racing-import'}), {name: 'InvalidStateError'});
+  s.beforePut = null; release(); await imported;
+  assert.equal(record(s).values.save, 'imported-game');
+  assert.equal(e.reloads.length, 1);
+  assert.throws(() => e.local.setItem('save', 'old-unload-handler'), {name: 'InvalidStateError'});
+  const reloaded = environment(s, {raw: e.raw}); await reloaded.bridge.ready;
+  assert.equal(reloaded.local.getItem('save'), 'imported-game');
+  reloaded.local.setItem('save', 'new-game-progress'); await reloaded.bridge.flush();
+  assert.equal(record(s).values.save, 'new-game-progress');
+});
+
+test('an unresolved cloud conflict prevents import from replacing the local recovery candidate', async () => {
+  const s = server(), e = environment(s); await e.bridge.ready;
+  e.local.setItem('save', 'pending-local'); record(s).values = {save: 'new-cloud'}; record(s).revision = 1;
+  await assert.rejects(e.bridge.flush(), {name: 'ConflictError'});
+  await assert.rejects(e.bridge.importData({save: 'imported'}), {name: 'ConflictError'});
+  assert.equal(e.local.getItem('save'), 'pending-local');
+  assert.equal(record(s).values.save, 'new-cloud');
 });
 
 
@@ -308,6 +431,9 @@ test('local conflict resolution and failed imports do not reload the running mod
   s.failPut = true;
   await assert.rejects(e.bridge.importData({ save: 'not-synced' }), /offline/);
   assert.equal(e.reloads.length, 0);
+  e.local.setItem('save', 'continued-after-failed-import');
+  s.failPut = false; await e.bridge.flush();
+  assert.equal(record(s).values.save, 'continued-after-failed-import');
 });
 
 
@@ -402,4 +528,32 @@ test('later conflicts retain the most recent discarded local snapshot', async ()
     assert.equal(e.bridge.exportRecoveryData().values.save, local);
   }
   assert.equal([...e.raw.keys()].filter(key => key.endsWith(':recovery')).length, 1);
+});
+
+test('course and review keys hydrate together, preserve other notes and stay isolated after an account switch', async () => {
+  const module = 'agent-architecture-journey', s = server(), raw = new Map();
+  const course = JSON.stringify({version: 1, progress: {'week-1': true}, notes: {'week-1': '已完成阅读'}});
+  const review = JSON.stringify({version: 1, reviewed: ['agent-tools']});
+  const initial = {'cs146s.learning-lab.v1': course, 'agent-learning-review-v1': review, 'agent-reading-position': 'chapter-3'};
+  Object.assign(record(s, module), {values: initial, revision: 5, updatedAt: 't5'});
+  let release; s.gateGet = new Promise(resolve => {release = resolve;});
+  const e = environment(s, {module, raw});
+  assert.throws(() => e.local.getItem('cs146s.learning-lab.v1'), {name: 'InvalidStateError'});
+  assert.throws(() => e.local.setItem('agent-learning-review-v1', '{}'), {name: 'InvalidStateError'});
+  release(); await e.bridge.ready;
+  assert.equal(e.local.getItem('cs146s.learning-lab.v1'), course);
+  assert.equal(e.local.getItem('agent-learning-review-v1'), review);
+  assert.equal(s.puts, 0, 'hydration must not replace restored progress with defaults');
+  const revised = JSON.stringify({version: 1, reviewed: ['agent-tools', 'agent-memory']});
+  e.local.setItem('agent-learning-review-v1', revised); await e.bridge.flush();
+  assert.deepEqual(record(s, module).values, {...initial, 'agent-learning-review-v1': revised});
+  assert.deepEqual(plain(e.bridge.exportData().values), record(s, module).values);
+  s.user = 'bob';
+  const bob = environment(s, {module, raw}); await bob.bridge.ready;
+  assert.equal(bob.local.getItem('cs146s.learning-lab.v1'), null);
+  assert.equal(bob.local.getItem('agent-learning-review-v1'), null);
+  bob.local.setItem('cs146s.learning-lab.v1', '{"version":1,"progress":{}}'); await bob.bridge.flush();
+  assert.equal(record(s, module, 'alice').values['cs146s.learning-lab.v1'], course);
+  assert.equal(record(s, module, 'alice').values['agent-learning-review-v1'], revised);
+  assert.notEqual(record(s, module, 'bob').values['cs146s.learning-lab.v1'], course);
 });

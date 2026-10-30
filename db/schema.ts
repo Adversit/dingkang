@@ -28,3 +28,11 @@ export const hubFiles = sqliteTable('hub_files', {
   size: integer('size').notNull(),
   createdAt: text('created_at').notNull(),
 }, table => [index('hub_files_owner_module_created').on(table.ownerId, table.moduleId, table.createdAt), uniqueIndex('hub_files_object_key_unique').on(table.objectKey)]);
+
+/** Novel Studio is isolated by authenticated owner; CAS is performed on this single aggregate row. */
+export const novelCanonStates = sqliteTable('novel_canon_states', {
+  ownerId: text('owner_id').primaryKey(),
+  stateJson: text('state_json').notNull(),
+  version: integer('version').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});

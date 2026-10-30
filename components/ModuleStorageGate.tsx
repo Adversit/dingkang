@@ -16,6 +16,7 @@ export type StorageBridge = {
   userId: string | null;
   ready: Promise<unknown>;
   readonly status: HubStorageStatus;
+  readonly canLeaveWithoutSaving?: boolean;
   flush(): Promise<HubStorageData>;
   exportData(): HubStorageData;
   exportRecoveryData(): HubStorageData | null;

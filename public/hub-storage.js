@@ -16,7 +16,8 @@
   };
   var values = Object.create(null);
   var userId = null, cacheKey = null, revision = 0, updatedAt = null;
-  var initialized = false, dirty = false, disabled = false, mutationVersion = 0;
+  var initialized = false, dirty = false, disabled = false, replacing = false, mutationVersion = 0;
+  var initializationFailed = false, pendingCache = false;
   var conflict = null, inFlight = null, timer = null, retryTimer = null, retryDelay = 5000;
   var status = { state: 'loading', revision: 0, updatedAt: null };
   var api = '/api/hub/state/' + encodeURIComponent(moduleId);
@@ -36,6 +37,16 @@
     });
     return out;
   }
+  function checkedImportValues(input) {
+    var out = checkedValues(input), keys = Object.keys(out), encoder = new TextEncoder();
+    if (keys.length > 200) throw fault('每个应用最多导入 200 项存档。');
+    keys.forEach(function (key) {
+      if (!key || key.length > 200 || ['__proto__', 'constructor', 'prototype'].indexOf(key) !== -1) throw fault('备份含不支持的存档键。');
+      if (encoder.encode(out[key]).byteLength > 512 * 1024) throw fault('单项存档超过 512 KiB。');
+    });
+    if (encoder.encode(JSON.stringify(out)).byteLength > 2 * 1024 * 1024) throw fault('此应用存档超过 2 MiB。');
+    return out;
+  }
   function same(a, b) {
     var keys = Object.keys(a);
     return keys.length === Object.keys(b).length && keys.every(function (key) { return hasOwn(b, key) && a[key] === b[key]; });
@@ -53,6 +64,10 @@
   function requireReady() {
     if (disabled) throw fault('Account changed or access ended. Reload before continuing.', 'SecurityError');
     if (!initialized) throw fault('Await window.HubStorage.ready before using module storage.', 'InvalidStateError');
+  }
+  function requireWritable() {
+    requireReady();
+    if (replacing) throw fault('正在载入导入的存档，请稍后再保存。', 'InvalidStateError');
   }
   function persist() {
     if (!cacheKey || !initialized) return;
@@ -167,19 +182,19 @@
     queueSave();
   }
   function setValue(key, value) {
-    requireReady();
+    requireWritable();
     key = String(key); value = String(value);
     if (hasOwn(values, key) && values[key] === value) return;
     values[key] = value;
     changed();
   }
   function removeValue(key) {
-    requireReady(); key = String(key);
+    requireWritable(); key = String(key);
     if (!hasOwn(values, key)) return;
     delete values[key]; changed();
   }
   function clearValues() {
-    requireReady();
+    requireWritable();
     if (!Object.keys(values).length) return;
     values = Object.create(null); changed();
   }
@@ -219,7 +234,7 @@
     }
   });
 
-  async function writeOnce() {
+  async function writeOnce(keepalive) {
     requireReady();
     if (conflict) throw fault('Choose local or cloud data before continuing.', 'ConflictError');
     if (!dirty) return exportData();
@@ -228,9 +243,12 @@
     var snapshot = copy(values), version = mutationVersion, expected = revision;
     try {
       await assertSession();
+      var body = JSON.stringify({ values: snapshot, expectedRevision: expected });
       var response = await fetch(api, {
         method: 'PUT', credentials: 'same-origin', headers: headers(true),
-        body: JSON.stringify({ values: snapshot, expectedRevision: expected }), keepalive: true
+        // Fetch limits keepalive bodies to 64 KiB, while the state API accepts
+        // 2 MiB. Ordinary saves must not consume the browser's unload budget.
+        body: body, keepalive: keepalive === true && new TextEncoder().encode(body).byteLength <= 64 * 1024
       });
       if (response.status === 401 || response.status === 403) {
         disabled = true;
@@ -265,12 +283,12 @@
       throw error;
     }
   }
-  async function flush() {
+  async function flush(keepalive) {
     await bridge.ready;
     // Drain changes that arrive during an in-flight save before reporting completion.
     // This also makes importData safe when another autosave was already running.
     for (;;) {
-      if (!inFlight) inFlight = writeOnce();
+      if (!inFlight) inFlight = writeOnce(keepalive);
       var current = inFlight;
       try { await current; }
       finally { if (inFlight === current) inFlight = null; }
@@ -288,12 +306,18 @@
     if (window.location && typeof window.location.reload === 'function') window.location.reload();
   }
   async function importData(input) {
-    var imported = checkedValues(input);
-    await bridge.ready; requireReady();
-    if (!same(values, imported)) { values = imported; changed(); }
-    var result = await flush();
-    reloadModule('import');
-    return result;
+    var imported = checkedImportValues(input);
+    await bridge.ready; requireWritable();
+    if (conflict) throw fault('请先处理本机与云端的存档冲突，再导入。', 'ConflictError');
+    // The running game still holds its old in-memory state. Reject its autosaves
+    // until the replacement document has hydrated the imported snapshot.
+    replacing = true;
+    try {
+      if (!same(values, imported)) { values = imported; changed(); }
+      var result = await flush();
+      reloadModule('import');
+      return result;
+    } catch (error) { replacing = false; throw error; }
   }
   async function resolveConflict(choice) {
     await bridge.ready; requireReady();
@@ -325,6 +349,13 @@
   };
   Object.defineProperty(bridge, 'status', { enumerable: true, get: function () { return Object.assign({}, status); } });
   Object.defineProperty(bridge, 'userId', { enumerable: true, get: function () { return userId; } });
+  Object.defineProperty(bridge, 'canLeaveWithoutSaving', { enumerable: true, get: function () {
+    // Before hydration all logical reads/writes are blocked. Only a failed,
+    // untouched initialization can leave without flush; never infer this from
+    // an offline/error label after an account or its device cache was loaded.
+    return initializationFailed && !initialized && !dirty && !pendingCache &&
+      mutationVersion === 0 && !conflict && !inFlight;
+  } });
   window.HubStorage = bridge;
   bridge.ready = (async function () {
     try {
@@ -332,6 +363,7 @@
       userId = account.userId;
       cacheKey = 'hub.storage.v1:' + encodeURIComponent(userId) + ':' + encodeURIComponent(moduleId);
       var cached = readCache(), remote;
+      pendingCache = !!(cached && cached.pending);
       try { remote = await getCloud(); }
       catch (error) {
         if (!cached || error.name === 'SecurityError') throw error;
@@ -355,6 +387,7 @@
       persist();
       return bridge;
     } catch (error) {
+      initializationFailed = true;
       publish(error.name === 'SecurityError' ? 'error' : 'offline', error.message || 'Saved data could not be restored.');
       throw error;
     }
@@ -362,5 +395,5 @@
   // Gate/loaders handle the rejection. Avoid an unhandled rejection before they attach.
   bridge.ready.catch(function () {});
   window.addEventListener('online', function () { if (initialized && dirty && !conflict && !disabled) flush().catch(function () {}); });
-  window.addEventListener('pagehide', function () { if (initialized && dirty && !conflict && !disabled) flush().catch(function () {}); });
+  window.addEventListener('pagehide', function () { if (initialized && dirty && !conflict && !disabled) flush(true).catch(function () {}); });
 }());
