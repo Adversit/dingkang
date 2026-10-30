@@ -43,6 +43,13 @@
       "when": 1793341994521,
       "tag": "0005_useful_salo",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1793343579808,
+      "tag": "0006_glorious_karen_page",
+      "breakpoints": true
     }
   ]
 }

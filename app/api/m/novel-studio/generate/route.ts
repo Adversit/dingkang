@@ -42,14 +42,14 @@ export async function POST(req: Request) {
     if (!data || typeof data !== 'object' || Array.isArray(data)) throw new HubError('请求格式错误。', 400);
     const { instruction, scene, facts } = data as Record<string, unknown>;
     if (typeof instruction !== 'string' || !instruction.trim() || instruction.length > 2000 || typeof scene !== 'string' || scene.length > 12000 || !Array.isArray(facts) || facts.length > 40 || !facts.every(f => typeof f === 'string' && f.length <= 500)) throw new HubError('请检查指令、场景和事实的长度。', 400);
-    const key = config('OPENAI_API_KEY'), model = config('OPENAI_MODEL');
+    const key = config('NOVEL_OPENAI_API_KEY'), model = config('NOVEL_OPENAI_MODEL');
     if (!key || !model) throw new HubError('站点尚未配置模型，请先配置服务端模型后再使用 AI 起草。', 503);
-    const target = endpoint(config('OPENAI_BASE_URL') || 'https://api.openai.com/v1');
+    const target = endpoint(config('NOVEL_OPENAI_BASE_URL') || 'https://api.openai.com/v1');
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 30000);
     let response: Response;
     try {
-      response = await fetch(target, {method:'POST', redirect:'error', signal:controller.signal, headers:{'content-type':'application/json', authorization:`Bearer ${key}`}, body:JSON.stringify({model, temperature:0.7, max_tokens:2000, messages:[{role:'system',content:SYSTEM},{role:'user',content:JSON.stringify({ instruction, scene, facts })}]})});
+      response = await fetch(target, {method:'POST', redirect:'error', signal:controller.signal, headers:{'content-type':'application/json', authorization:`Bearer ${key}`}, body:JSON.stringify({model, max_completion_tokens:3000, messages:[{role:'system',content:SYSTEM},{role:'user',content:JSON.stringify({ instruction, scene, facts })}]})});
       if (!response.ok) throw new HubError(`模型服务请求失败（HTTP ${response.status}）；请检查服务端配置和额度。`, 502);
       const result = await boundedResponse(response) as { model?: unknown; choices?: Array<{ message?: { content?: unknown } }> };
       const text = result?.choices?.[0]?.message?.content;

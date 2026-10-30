@@ -36,3 +36,19 @@ export const novelCanonStates = sqliteTable('novel_canon_states', {
   version: integer('version').notNull(),
   updatedAt: text('updated_at').notNull(),
 });
+
+/** A generation-gated, owner-scoped archive split into bounded D1 rows. */
+export const novelArchiveHeads = sqliteTable('novel_archive_heads', {
+  ownerId: text('owner_id').primaryKey(),
+  version: integer('version').notNull(),
+  writeToken: text('write_token').notNull(),
+  chunkCount: integer('chunk_count').notNull(),
+  stateHash: text('state_hash').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  legacyVersion: integer('legacy_version').notNull(),
+});
+export const novelArchiveChunks = sqliteTable('novel_archive_chunks', {
+  ownerId: text('owner_id').notNull(),
+  chunkIndex: integer('chunk_index').notNull(),
+  data: text('data').notNull(),
+}, table => [primaryKey({columns:[table.ownerId, table.chunkIndex]})]);

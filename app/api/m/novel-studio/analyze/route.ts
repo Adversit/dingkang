@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     const bytes = await readBoundedBody(req, 64 * 1024);
     let data: unknown;
     try { data = JSON.parse(new TextDecoder().decode(bytes)); } catch { throw new HubError('请求 JSON 格式错误。', 400); }
-    const result = await analyze(data, { key:config('OPENAI_API_KEY'), model:config('OPENAI_MODEL'), baseUrl:config('OPENAI_BASE_URL') });
+    const result = await analyze(data, { key:config('NOVEL_OPENAI_API_KEY'), model:config('NOVEL_OPENAI_MODEL'), baseUrl:config('NOVEL_OPENAI_BASE_URL') });
     return json(result);
   } catch (error) {
     if (error instanceof HubError || error instanceof AnalysisError) return json({status:'ERROR', error:error.message}, error.status);
