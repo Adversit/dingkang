@@ -55,7 +55,7 @@ export async function POST(req: Request) {
     const timer = setTimeout(() => controller.abort(), 30000);
     let response: Response;
     try {
-      response = await fetch(target, {method:'POST', redirect:'error', signal:controller.signal, headers:{'content-type':'application/json', authorization:`Bearer ${key}`}, body:JSON.stringify({model, max_completion_tokens:3000, messages:[{role:'system',content:SYSTEM},{role:'user',content:JSON.stringify({ instruction, scene, facts })}]})});
+      response = await fetch(target, {method:'POST', redirect:'manual', signal:controller.signal, headers:{'content-type':'application/json', authorization:`Bearer ${key}`}, body:JSON.stringify({model, max_completion_tokens:3000, messages:[{role:'system',content:SYSTEM},{role:'user',content:JSON.stringify({ instruction, scene, facts })}]})});
       if (!response.ok) throw new HubError(`模型服务请求失败（HTTP ${response.status}）；请检查服务端配置和额度。`, 502);
       const result = await boundedResponse(response) as { model?: unknown; choices?: Array<{ message?: { content?: unknown } }> };
       const text = result?.choices?.[0]?.message?.content;

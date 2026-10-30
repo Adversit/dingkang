@@ -57,7 +57,7 @@ test('a concurrent server-side edit rejects candidate application without claimi
 test('session expiry after submitting the draft retains the same recovery command',async()=>{
  const h=await boot({draft:async()=>response({status:'REVIEW',previewHash:'hash123',stateVersion:1,revisionId:'r',model:'model',text:'候选段落'}),canonPost:async()=>response({error:'请先登录'},401)});
  await prepare(h);await h.click('draft');await h.click('apply');
- assert.match(h.root.innerHTML,/结果尚未确认/);assert.equal(h.store.size,1);
+ assert.match(h.root.innerHTML,/结果尚未确认/);assert.ok(h.store.has('novel-canon-pending:u')||h.store.has('novel-canvas-pending:u'));
  const first=h.calls.filter(c=>c.url.endsWith('/canon')&&c.body)[0].body;await h.click('retry');
  const second=h.calls.filter(c=>c.url.endsWith('/canon')&&c.body)[1].body;assert.deepEqual(second,first);
 });

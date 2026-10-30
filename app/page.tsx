@@ -7,7 +7,10 @@ import {hubThemes,defaultAppearance,parseAppearance,themeById,themeVariables,mod
 import {GAME_IMPORT_METADATA} from '@/lib/hub/legacy-import';
 import {parseBackup,prepareBackupPreview,type BackupPreview} from '@/lib/hub/backup-preview';
 import HubStoragePanel,{flushHubModule} from '@/components/HubStoragePanel';
-import {findModuleStorage,hubStorageMode} from '@/lib/hub/storage-panel';
+import {findModuleStorage,hubStorageMode,cancelHubModuleLeave} from '@/lib/hub/storage-panel';
+import {installNavigationModal} from '@/lib/hub/navigation-focus';
+import {moduleNavigationAction} from '@/lib/hub/module-navigation';
+import {canFocusHubSearch,installImmersiveViewport} from '@/components/hub-viewport';
 import BackupPasteInput from '@/components/BackupPasteInput';
 import KineticScene from '@/components/KineticScene';
 import KineticBackdrop from '@/components/KineticBackdrop';
@@ -19,6 +22,7 @@ type Stored={values:Record<string,string>;revision:number;updatedAt?:string};
 type FileItem={id:string;name:string;size:number;mimeType:string;createdAt:string};
 type PreferencePatch={favorites?:string[];recents?:string[];appearance?:HubAppearance};
 type Health='checking'|'ready'|'unavailable'|'signed-out';
+type CatalogView={section:string;search:string;scrollY:number};
 const icons:Record<string,typeof BookOpen>={book:BookOpen,layers:Layers,heart:Heart,game:Gamepad2,radar:Radar,research:Microscope,idea:Lightbulb,evolve:ChartNoAxesCombined,code:Code2,lamp:LampDesk,home:House,wind:Wind,sparkles:Sparkles,swords:Swords,mail:Mail,moon:Moon,flag:Flag};
 const parseList=(raw?:string):string[]=>{try{const value:unknown=JSON.parse(raw||'[]');return Array.isArray(value)?[...new Set(value.filter((item):item is string=>typeof item==='string'&&!!moduleById(item)))]:[];}catch{return [];}};
 const sizeLabel=(size=0)=>size<1024?size+' B':size<1024*1024?(size/1024).toFixed(1)+' KB':(size/1024/1024).toFixed(1)+' MB';
@@ -35,7 +39,7 @@ function AppIcon({module,size=23}:{module:HubModule;size?:number}){
 }
 
 export default function Hub(){
-  const [section,setSection]=useState('all'),[search,setSearch]=useState(''),[open,setOpen]=useState<HubModule|null>(null),[sidebarOpen,setSidebarOpen]=useState(false);
+  const [section,setSection]=useState('all'),[search,setSearch]=useState(''),[open,setOpen]=useState<HubModule|null>(null),[sidebarOpen,setSidebarOpen]=useState(false),[mobileNavigation,setMobileNavigation]=useState(false);
   const [cozyDirectoryOpen,setCozyDirectoryOpen]=useState(false),[catalogRequest,setCatalogRequest]=useState(0);
   const [session,setSession]=useState<Session|null>(null),[favorites,setFavorites]=useState<string[]>([]),[recents,setRecents]=useState<string[]>([]);
   const [appearance,setAppearance]=useState<HubAppearance>(defaultAppearance),[reducedMotion,setReducedMotion]=useState(true),[pageVisible,setPageVisible]=useState(true);
@@ -45,15 +49,19 @@ export default function Hub(){
   const [backup,setBackup]=useState<BackupPreview[]|null>(null),[backupWarnings,setBackupWarnings]=useState<string[]>([]),[legacyGame,setLegacyGame]=useState('auto'),[readingBackup,setReadingBackup]=useState(false),[importing,setImporting]=useState(false);
   const [frameLoading,setFrameLoading]=useState(false),[navigating,setNavigating]=useState(false),[fullscreen,setFullscreen]=useState(false),[canFullscreen,setCanFullscreen]=useState(false);
   const [moduleToolsOpen,setModuleToolsOpen]=useState(false);
+  const [legacyNovelPage,setLegacyNovelPage]=useState(false);
   const readyRef=useRef(false);readyRef.current=ready;
   const explicitTheme=useRef<HubThemeId|null>(null),routeSearch=useRef('');
   const cozyRoom=useRef<ModuleCategory|null>(null),catalogFocusRequested=useRef(false);
+  const catalogViewRef=useRef({section,search});catalogViewRef.current={section,search};
+  const catalogReturn=useRef<CatalogView|null>(null),pendingCatalogScroll=useRef<number|null>(null);
   const stored=useRef<Stored>({values:{},revision:0}),sessionRef=useRef<Session|null>(null),preferencesReady=useRef(false);
   const preferenceSaveError=useRef<string|null>(null);
   const queue=useRef(Promise.resolve()),pendingSaves=useRef(0),favRef=useRef<string[]>([]),recentRef=useRef<string[]>([]),appearanceRef=useRef<HubAppearance>(defaultAppearance);
   const openRef=useRef<HubModule|null>(null),navigationLock=useRef(false),acceptedUrl=useRef('/'),initializationId=useRef(0);
   const backupOwner=useRef<string|undefined>(undefined),previewLock=useRef(false),importLock=useRef(false);
   const frameRef=useRef<HTMLIFrameElement>(null),shellRef=useRef<HTMLDivElement>(null),searchRef=useRef<HTMLInputElement>(null);
+  const sidebarRef=useRef<HTMLElement>(null),sidebarTriggerRef=useRef<HTMLButtonElement>(null);
   const moduleToolsRef=useRef<HTMLElement>(null),moduleToolsButtonRef=useRef<HTMLButtonElement>(null),moduleBackRef=useRef<HTMLButtonElement>(null);
   const uploadRef=useRef<HTMLInputElement>(null),importRef=useRef<HTMLInputElement>(null),settingsRef=useRef<HTMLDialogElement>(null),backupDialogRef=useRef<HTMLDialogElement>(null);
   const toastTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
@@ -115,29 +123,41 @@ export default function Hub(){
     try{
       const previous=openRef.current;
       if(previous&&previous.id!==target?.id)await flushHubModule(frameRef.current?.contentWindow??null,previous.id,window.location.origin);
+      if(target&&!previous){catalogReturn.current={...catalogViewRef.current,scrollY:pendingCatalogScroll.current??Math.max(0,window.scrollY)};pendingCatalogScroll.current=null;}
+      const returning=!target&&previous&&catalogReturn.current&&(!nextSection||(mode==='pop'&&nextSection===catalogReturn.current.section))?catalogReturn.current:null;
       openRef.current=target;setOpen(target);setFrameLoading(!!target&&target.id!==previous?.id);
       if(previous?.id!==target?.id)setModuleToolsOpen(false);
-      if(nextSection){setSection(nextSection);setSearch('');}
+      if(returning){setSection(returning.section);setSearch(returning.search);pendingCatalogScroll.current=returning.scrollY;}
+      else if(nextSection){setSection(nextSection);setSearch('');pendingCatalogScroll.current=null;}
       const url=moduleUrl(target,nextTheme,nextSearch);
-      if(mode==='push')history.pushState({hubSection:nextSection||section},'',url);
-      else if(location.pathname+location.search!==url)history.replaceState({hubSection:nextSection||'all'},'',url);
+      const destinationSection=returning?.section||nextSection||catalogViewRef.current.section;
+      if(mode==='push')history.pushState({hubSection:destinationSection},'',url);
+      else if(location.pathname+location.search!==url)history.replaceState({hubSection:destinationSection},'',url);
       acceptedUrl.current=url;routeSearch.current=new URL(url,location.origin).search;explicitTheme.current=nextTheme;
       setAppearance(appearanceForRoute(appearanceRef.current,nextTheme));setSidebarOpen(false);
       if(target&&target.id!==previous?.id)persist({recents:[target.id,...recentRef.current.filter(id=>id!==target.id)].slice(0,8)});
       return true;
-    }catch(cause){setError(friendly(cause));if(openRef.current)setModuleToolsOpen(true);if(mode==='pop')history.replaceState({},'',acceptedUrl.current);return false;}
+    }catch(cause){cancelHubModuleLeave(frameRef.current?.contentWindow??null,window.location.origin);if((cause as {name?:string})?.name!=='AbortError'){setError(friendly(cause));if(openRef.current)setModuleToolsOpen(true);}if(mode==='pop')history.replaceState({},'',acceptedUrl.current);return false;}
     finally{navigationLock.current=false;setNavigating(false);}
   }
   async function leaveFor(url:string){
     if(navigationLock.current)return;navigationLock.current=true;setNavigating(true);
     try{const current=openRef.current;if(current)await flushHubModule(frameRef.current?.contentWindow??null,current.id,location.origin);await queue.current;if(preferenceSaveError.current)throw Error('偏好尚未保存，暂时无法离开。'+preferenceSaveError.current);location.assign(url);}
-    catch(cause){setError(friendly(cause));if(openRef.current)setModuleToolsOpen(true);navigationLock.current=false;setNavigating(false);}
+    catch(cause){cancelHubModuleLeave(frameRef.current?.contentWindow??null,window.location.origin);if((cause as {name?:string})?.name!=='AbortError'){setError(friendly(cause));if(openRef.current)setModuleToolsOpen(true);}}
+    // Cancelling a browser beforeunload prompt leaves this document alive;
+    // location.assign does not reject or throw to tell us it was cancelled.
+    finally{navigationLock.current=false;setNavigating(false);}
   }
   function closeModuleTools(){
     // A native export dialog must remain visible until its own close action runs.
     const dialog=moduleToolsRef.current?.querySelector<HTMLDialogElement>('dialog[open]');
     if(dialog){dialog.focus({preventScroll:true});return;}
-    setModuleToolsOpen(false);moduleToolsButtonRef.current?.focus({preventScroll:true});
+    setModuleToolsOpen(false);
+    if(moduleToolsButtonRef.current)moduleToolsButtonRef.current.focus({preventScroll:true});
+    else if(openRef.current?.id==='novel-studio'){
+      try{const control=frameRef.current?.contentDocument?.querySelector<HTMLElement>('[data-studio-action="hub"]');if(control){control.focus({preventScroll:true});return;}}catch{}
+      frameRef.current?.focus({preventScroll:true});
+    }
   }
   function toggleModuleTools(){if(moduleToolsOpen)closeModuleTools();else setModuleToolsOpen(true);}
   function changeTheme(id:HubThemeId){
@@ -164,7 +184,7 @@ export default function Hub(){
     openRef.current=selected;setOpen(selected);setFrameLoading(!!selected);acceptedUrl.current=location.pathname+location.search;
     void initialize();
     const pop=(event:PopStateEvent)=>{const url=new URL(location.href),id=url.searchParams.get('app');void navigateTo(id?moduleById(id)||null:null,event.state?.hubSection||'all','pop',parseThemeId(url.searchParams.get('style')),url.search);};
-    const unload=(event:BeforeUnloadEvent)=>{if(pendingSaves.current||preferenceSaveError.current){event.preventDefault();event.returnValue='';return;}const current=openRef.current;if(!current||hubStorageMode(current.id)==='native')return;const found=findModuleStorage(frameRef.current?.contentWindow??null,current.id,location.origin);if(found&&found.bridge.status.state!=='saved'){event.preventDefault();event.returnValue='';}};
+    const unload=(event:BeforeUnloadEvent)=>{if(pendingSaves.current||preferenceSaveError.current){event.preventDefault();event.returnValue='';return;}const current=openRef.current;if(!current||hubStorageMode(current.id,frameRef.current?.contentWindow)==='native')return;const found=findModuleStorage(frameRef.current?.contentWindow??null,current.id,location.origin);if(found&&found.bridge.status.state!=='saved'){event.preventDefault();event.returnValue='';}};
     const motion=matchMedia('(prefers-reduced-motion: reduce)'),syncMotion=()=>setReducedMotion(motion.matches),visibility=()=>setPageVisible(!document.hidden),syncFullscreen=()=>setFullscreen(!!document.fullscreenElement);
     syncMotion();visibility();setCanFullscreen(!!document.fullscreenEnabled);
     addEventListener('popstate',pop);addEventListener('beforeunload',unload);motion.addEventListener('change',syncMotion);
@@ -172,7 +192,7 @@ export default function Hub(){
     return()=>{removeEventListener('popstate',pop);removeEventListener('beforeunload',unload);motion.removeEventListener('change',syncMotion);document.removeEventListener('visibilitychange',visibility);document.removeEventListener('fullscreenchange',syncFullscreen);if(toastTimer.current)clearTimeout(toastTimer.current);};
   },[]);
   useEffect(()=>{
-    const shortcut=(event:KeyboardEvent)=>{if(event.key==='/'&&!open&&section!=='data'&&!['INPUT','TEXTAREA','SELECT'].includes((event.target as HTMLElement)?.tagName)){event.preventDefault();exploreCatalog();}};
+    const shortcut=(event:KeyboardEvent)=>{if(!open&&section!=='data'&&canFocusHubSearch(event)){event.preventDefault();exploreCatalog();}};
     addEventListener('keydown',shortcut);return()=>removeEventListener('keydown',shortcut);
   },[open,section]);
   useEffect(()=>{
@@ -181,8 +201,31 @@ export default function Hub(){
     document.getElementById('hub-catalog')?.scrollIntoView({behavior:reducedMotion?'instant':'smooth',block:'start'});
     searchRef.current.focus({preventScroll:true});
   },[catalogRequest,cozyDirectoryOpen,open,section,reducedMotion]);
-  useEffect(()=>{if(!sidebarOpen)return;const close=(event:KeyboardEvent)=>{if(event.key==='Escape')setSidebarOpen(false);};addEventListener('keydown',close);return()=>removeEventListener('keydown',close);},[sidebarOpen]);
+  useEffect(()=>{
+    if(open||pendingCatalogScroll.current===null)return;
+    const top=pendingCatalogScroll.current,frame=requestAnimationFrame(()=>{if(!openRef.current){window.scrollTo({top,behavior:'instant'});pendingCatalogScroll.current=null;}});
+    return()=>cancelAnimationFrame(frame);
+  },[open,section,search]);
+  useEffect(()=>{
+    const media=matchMedia('(max-width: 900px)'),sync=()=>{setMobileNavigation(media.matches);if(!media.matches)setSidebarOpen(false);};
+    sync();media.addEventListener('change',sync);return()=>media.removeEventListener('change',sync);
+  },[]);
+  useEffect(()=>{
+    if(!sidebarOpen||!mobileNavigation||appearance.theme!=='classic'||open||!sidebarRef.current)return;
+    return installNavigationModal(sidebarRef.current,sidebarTriggerRef.current,()=>setSidebarOpen(false));
+  },[sidebarOpen,mobileNavigation,appearance.theme,open]);
   useEffect(()=>{if(moduleToolsOpen)moduleBackRef.current?.focus({preventScroll:true});},[moduleToolsOpen]);
+  useEffect(()=>{
+    const message=(event:MessageEvent)=>{
+      const action=moduleNavigationAction(event,frameRef.current?.contentWindow??null,window.location.origin,openRef.current?.id??null);
+      if(action==='hub:open-menu')setModuleToolsOpen(true);
+      else if(action==='hub:return')void navigateTo(null);
+    };
+    addEventListener('message',message);return()=>removeEventListener('message',message);
+  },[]);
+  useEffect(()=>{
+    if(open&&shellRef.current)return installImmersiveViewport(shellRef.current);
+  },[Boolean(open)]);
   useEffect(()=>{
     if(!open&&document.fullscreenElement===shellRef.current)void document.exitFullscreen().catch(()=>{});
   },[open]);
@@ -253,12 +296,13 @@ export default function Hub(){
   const cozyHome=!open&&theme.id==='cozy'&&section==='all';
   const sceneProps={motion:moving,recentModules,onLaunch:launch,onExplore:exploreCatalog,onSelectCategory:selectSection,onOpenData:()=>selectSection('data'),disabled:controlsDisabled};
 
-  return <div ref={shellRef} className={'hub-shell theme-'+theme.id+(open?' module-open':'')+(cozyHome?' cozy-space-open':'')+(cozyHome&&cozyDirectoryOpen?' cozy-directory-open':'')} style={themeVariables(theme) as CSSProperties} data-motion={moving?'on':'off'}>
+  return <div ref={shellRef} className={'hub-shell theme-'+theme.id+(open?' module-open':'')+(open?.id==='novel-studio'&&!legacyNovelPage?' module-native-navigation':'')+(cozyHome?' cozy-space-open':'')+(cozyHome&&cozyDirectoryOpen?' cozy-directory-open':'')} style={themeVariables(theme) as CSSProperties} data-motion={moving?'on':'off'}>
     <a className="hub-skip" href="#hub-main">跳到主要内容</a>
-    {theme.id==='kinetic'&&<><KineticBackdrop motion={moving} view={open?'module':section}/><KineticMotion motion={moving} viewKey={section+'|'+search+'|'+favorites.join(',')+'|'+(open?.id||'')}/><div className="hub-kinetic-progress" aria-hidden="true"/></>}
+    {theme.id==='kinetic'&&!open&&<><KineticBackdrop motion={moving} view={section}/><KineticMotion motion={moving} viewKey={section+'|'+search+'|'+favorites.join(',')}/><div className="hub-kinetic-progress" aria-hidden="true"/></>}
     {theme.id==='classic'&&<>
       {sidebarOpen&&<button className="hub-sidebar-scrim" aria-label="关闭导航" onClick={()=>setSidebarOpen(false)}/>}
-      <aside className={'hub-sidebar '+(sidebarOpen?'is-open':'')} aria-label="工作空间导航">
+      <aside ref={sidebarRef} id="hub-sidebar" className={'hub-sidebar '+(sidebarOpen?'is-open':'')} aria-label="工作空间导航" role={mobileNavigation&&sidebarOpen?'dialog':undefined} aria-modal={mobileNavigation&&sidebarOpen?true:undefined} tabIndex={-1}>
+        <button className="hub-sidebar-close hub-icon-button" onClick={()=>setSidebarOpen(false)} aria-label="关闭导航"><X size={22}/></button>
         <button className="hub-sidebar-brand" onClick={()=>selectSection('all')} disabled={navigating}><span className="hub-classic-mark" aria-hidden="true"><i/><i/><i/><i/></span><span>丁康的工作空间</span></button>
         <nav><button className={section==='all'&&!open?'active':''} onClick={()=>selectSection('all')} disabled={navigating}><Grid2X2 size={21}/>全部应用<span>{modules.length}</span></button><button className={section==='favorites'&&!open?'active':''} onClick={()=>selectSection('favorites')} disabled={navigating}><Star size={21}/>我的收藏</button>{categories.map(category=>{const Icon=icons[category.icon];return <button key={category.id} className={section===category.id&&!open?'active':''} onClick={()=>selectSection(category.id)} disabled={navigating}><Icon size={21}/>{category.name}</button>;})}</nav>
         <div className="hub-sidebar-rule"/><button className={'hub-sidebar-data '+(section==='data'&&!open?'active':'')} onClick={()=>selectSection('data')} disabled={navigating}><FolderOpen size={21}/>数据中心</button>
@@ -266,7 +310,7 @@ export default function Hub(){
       </aside>
     </>}
     <header className="hub-header">
-      {theme.id==='classic'&&<button className="hub-classic-menu hub-icon-button" onClick={()=>setSidebarOpen(!sidebarOpen)} aria-label={sidebarOpen?'关闭导航':'打开导航'} aria-expanded={sidebarOpen}><Menu size={23}/></button>}
+      {theme.id==='classic'&&<button ref={sidebarTriggerRef} className="hub-classic-menu hub-icon-button" onClick={()=>setSidebarOpen(!sidebarOpen)} aria-label={sidebarOpen?'关闭导航':'打开导航'} aria-expanded={sidebarOpen} aria-controls="hub-sidebar"><Menu size={23}/></button>}
       {theme.id==='classic'&&<div className="hub-classic-breadcrumb"><span>工作空间</span><span>/</span><strong>{open?.name|| (section==='data'?'数据中心':section==='favorites'?'我的收藏':activeCategory?.name||'全部应用')}</strong></div>}
       <button className="hub-brand" onClick={()=>selectSection('all')} disabled={navigating} aria-label="丁康的工作空间，返回工作台"><span className="hub-brand-sign" aria-hidden="true"/><span>丁康<span className="hub-brand-divider">/</span><span className="hub-brand-name">{theme.identity}</span></span></button>
       <nav className="hub-primary-nav" aria-label="主导航">
@@ -285,10 +329,10 @@ export default function Hub(){
 
     <main id="hub-main">
       {open?<div className="hub-app-stage">
-        <button ref={moduleToolsButtonRef} type="button" className={'hub-module-launcher'+(hasIssue?' has-issue':'')} onClick={toggleModuleTools} aria-label={moduleToolsOpen?'收起工作台菜单':hasIssue?'打开工作台菜单，连接需要留意':'打开工作台菜单'} aria-expanded={moduleToolsOpen} aria-controls="hub-module-tools" title="工作台菜单"><Menu size={21}/>{hasIssue&&<span className="hub-module-alert-dot" aria-hidden="true"/>}</button>
+        {(open.id!=='novel-studio'||legacyNovelPage)&&<button ref={moduleToolsButtonRef} type="button" className={'hub-module-launcher'+(hasIssue?' has-issue':'')} onClick={toggleModuleTools} aria-label={moduleToolsOpen?'收起工作台菜单':hasIssue?'打开工作台菜单，连接需要留意':'打开工作台菜单'} aria-expanded={moduleToolsOpen} aria-controls="hub-module-tools" title="工作台菜单"><Menu size={21}/>{hasIssue&&<span className="hub-module-alert-dot" aria-hidden="true"/>}</button>}
         <section ref={moduleToolsRef} id="hub-module-tools" className="hub-module-tools" hidden={!moduleToolsOpen} aria-label="工作台菜单" onKeyDown={event=>{if(event.key==='Escape'&&!(event.target as HTMLElement).closest('dialog[open]')){event.preventDefault();event.stopPropagation();closeModuleTools();}}}>
-          <div className="hub-module-tools-heading"><div><h1>{open.name}</h1></div><button className="hub-icon-button" onClick={closeModuleTools} aria-label="收起工作台菜单"><X size={21}/></button></div>
-          <button ref={moduleBackRef} className="hub-module-return" onClick={()=>void navigateTo(null,'all')} disabled={navigating}>{navigating?<LoaderCircle size={20} className="hub-spin"/>:<ChevronLeft size={21}/>}<span>{theme.id==='cozy'?(cozyRoom.current?'返回房间':'返回基地'):'返回工作台'}</span></button>
+          <div className="hub-module-tools-heading"><div><h1>{open.id==='novel-studio'?'工作空间':open.name}</h1></div><button className="hub-icon-button" onClick={closeModuleTools} aria-label="收起工作台菜单"><X size={21}/></button></div>
+          <button ref={moduleBackRef} className="hub-module-return" onClick={()=>void navigateTo(null)} disabled={navigating}>{navigating?<LoaderCircle size={20} className="hub-spin"/>:<ChevronLeft size={21}/>}<span>{theme.id==='cozy'?(cozyRoom.current?'返回房间':'返回基地'):'返回工作台'}</span></button>
           <div className="hub-module-controls">
             <button onClick={()=>settingsRef.current?.showModal()}><SlidersHorizontal size={19}/>外观与账号</button>
             {canFullscreen&&<button onClick={()=>void toggleFullscreen()}>{fullscreen?<Minimize2 size={19}/>:<Maximize2 size={19}/>}<span>{fullscreen?'退出浏览器全屏':'浏览器全屏'}</span></button>}
@@ -299,7 +343,7 @@ export default function Hub(){
           {(error||healthError)&&<div className="hub-error hub-module-error" role="alert"><AlertCircle size={20}/><p>{error||healthError}</p><button onClick={()=>void initialize()} disabled={!ready}><RefreshCw size={16}/>重新连接</button>{error&&<button className="hub-icon-button" onClick={()=>setError('')} aria-label="关闭提示"><X size={18}/></button>}</div>}
           <HubStoragePanel key={open.id} moduleId={open.id} iframeRef={frameRef} className="hub-module-storage"/>
         </section>
-        <div className="hub-frame-wrap">{frameLoading&&<div className="hub-frame-loading" role="status"><LoaderCircle size={28} className="hub-spin"/><p>正在打开{open.name}…</p></div>}<iframe key={open.id} ref={frameRef} src={open.path} title={open.name} allow="fullscreen; clipboard-write; autoplay" onLoad={()=>setFrameLoading(false)}/></div>
+        <div className="hub-frame-wrap">{frameLoading&&<div className="hub-frame-loading" role="status"><LoaderCircle size={28} className="hub-spin"/><p>正在打开{open.name}…</p></div>}<iframe key={open.id} ref={frameRef} src={open.path} title={open.name} allow="fullscreen; clipboard-write; autoplay" onLoad={()=>{setFrameLoading(false);setLegacyNovelPage(openRef.current?.id==='novel-studio'&&hubStorageMode('novel-studio',frameRef.current?.contentWindow)==='bridge');}}/></div>
       </div>:<>
         {showHero&&theme.id==='classic'&&<section className="hub-classic-welcome hub-content"><div><h1>今天，从这里继续。</h1></div>{recentModules.length>0&&<div className="hub-classic-recents"><h2>最近使用</h2><div>{recentModules.slice(0,3).map(module=><button key={module.id} disabled={controlsDisabled} onClick={()=>launch(module)}><AppIcon module={module}/><span><strong>{module.name}</strong></span><ArrowUpRight size={20}/></button>)}</div></div>}</section>}
         {showHero&&theme.id==='kinetic'&&<KineticScene {...sceneProps} motionEnabled={appearance.motion} reducedMotion={reducedMotion} onToggleMotion={()=>persist({appearance:{...appearanceRef.current,motion:!appearanceRef.current.motion}})}/>}

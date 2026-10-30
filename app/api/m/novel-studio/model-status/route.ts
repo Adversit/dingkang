@@ -22,7 +22,7 @@ export async function GET(req: Request) {
     const status=await novelKeyStatus(owner(req));
     const model=config('NOVEL_OPENAI_MODEL');
     const safe=/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,100}$/.test(model) && !/^(sk-|sess-)/i.test(model);
-    return json({keyConfigured:status.available[status.source],sources:status.available,selectedSource:status.source,preferenceRevision:status.revision,modelConfigured:!!model,model:safe?model:null,verified:false});
+    return json({keyConfigured:!!status.available[status.source],sources:status.available,environmentVariables:status.environmentVariables,selectedSource:status.source,preferenceRevision:status.revision,modelConfigured:!!model,model:safe?model:null,verified:false});
   } catch(error){return problem(error)}
 }
 /** Only changes an allowlisted reference; no secret values accepted. */
@@ -34,7 +34,7 @@ export async function POST(req: Request){
     try{parsed=JSON.parse(new TextDecoder().decode(await readBoundedBody(req,4096)))}catch{throw new HubError('请求格式不正确。',400)}
     if(!parsed || typeof parsed!=='object'||Array.isArray(parsed))throw new HubError('请求格式不正确。',400);
     const body=parsed as Record<string,unknown>;
-    if(Object.keys(body).some(key=>!['source','expectedRevision'].includes(key)))throw new HubError('只能选择预设密钥引用。',400);
+    if(Object.keys(body).some(key=>!['source','expectedRevision'].includes(key)))throw new HubError('只能选择站点已配置的环境变量。',400);
     return json(await saveNovelKeyPreference(user,body.source,body.expectedRevision));
   }catch(error){return problem(error)}
 }

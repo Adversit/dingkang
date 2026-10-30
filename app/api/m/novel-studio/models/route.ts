@@ -11,7 +11,7 @@ export async function GET(req:Request){
     const before=await getNovelKeyBinding(user.userId);
     const list=await listProviderModels(before.key);
     const after=await getNovelKeyBinding(user.userId);
-    if(before.source!==after.source||before.revision!==after.revision)throw new HubError('连接已更改，请重新刷新模型列表。',409);
+    if(before.source!==after.source||before.revision!==after.revision||before.key!==after.key)throw new HubError('连接已更改，请重新刷新模型列表。',409);
     return json({...list,sourceRevision:before.revision,fetchedAt:new Date().toISOString()});
   } catch(error) {if(error instanceof ModelListError)return json({error:error.message},error.status);return problem(error)}
 }

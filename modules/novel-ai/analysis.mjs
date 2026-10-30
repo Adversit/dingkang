@@ -72,7 +72,7 @@ export async function analyze(inputRaw, options) {
   const url=endpoint(options.baseUrl || 'https://api.openai.com/v1');
   const controller=new AbortController(); const timer=setTimeout(()=>controller.abort(),30000);
   try {
-    const response=await (options.fetchImpl || fetch)(url,{method:'POST',redirect:'error',signal:controller.signal,headers:{'content-type':'application/json',authorization:`Bearer ${options.key}`},body:JSON.stringify({model:options.model,max_completion_tokens:3000,response_format:{type:'json_object'},messages:buildAnalysisMessages(input)})});
+    const response=await (options.fetchImpl || fetch)(url,{method:'POST',redirect:'manual',signal:controller.signal,headers:{'content-type':'application/json',authorization:`Bearer ${options.key}`},body:JSON.stringify({model:options.model,max_completion_tokens:3000,response_format:{type:'json_object'},messages:buildAnalysisMessages(input)})});
     if(!response.ok)throw new AnalysisError(`模型服务请求失败（HTTP ${response.status}）。`,502);
     const result=await jsonBounded(response); const choice=result?.choices?.[0];
     if (!choice || choice.finish_reason !== 'stop' || choice.message?.refusal || typeof choice.message?.content!=='string' || !choice.message.content.trim()) throw new AnalysisError('模型未返回完整有效的分析结果，未完成检查。',502);

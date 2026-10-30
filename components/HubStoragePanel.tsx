@@ -2,7 +2,7 @@
 
 import {useEffect, useRef, useState, type RefObject} from 'react';
 import type {HubStorageData, HubStorageStatus} from './ModuleStorageGate';
-import {findModuleStorage, hubStorageMode, type HubStorageMode, type ModuleStorageBinding} from '@/lib/hub/storage-panel';
+import {findModuleStorage, hubStorageMode, storageErrorMessage, isSignedOutStorageFailure, type HubStorageMode, type ModuleStorageBinding} from '@/lib/hub/storage-panel';
 import styles from './HubStoragePanel.module.css';
 
 export {flushHubModule, hubStorageMode} from '@/lib/hub/storage-panel';
@@ -20,10 +20,10 @@ const labels: Record<HubStorageStatus['state'], string> = {
   loading: '正在连接存档', saved: '云端已同步', pending: '有待同步的修改',
   offline: '云端暂不可用', conflict: '两份存档待选择', error: '存档连接异常',
 };
-const errorText = (error: unknown) => error instanceof Error ? error.message : '操作未完成，请保留当前页面后重试。';
+const errorText = storageErrorMessage;
 
 /** One toolbar for bridge-backed saves. Native business data stays in its own UI. */
-export default function HubStoragePanel({moduleId, iframeRef, mode = hubStorageMode(moduleId), className = ''}: HubStoragePanelProps) {
+export default function HubStoragePanel({moduleId, iframeRef, mode, className = ''}: HubStoragePanelProps) {
   // Evening stores conversations, memories and journal pages through its native
   // API. The state bridge covers only the avatar's interface preference.
   const preferencesOnly = moduleId === 'wandeng-evening';
@@ -31,9 +31,11 @@ export default function HubStoragePanel({moduleId, iframeRef, mode = hubStorageM
   const generation = useRef(0);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [binding, setBinding] = useState<ModuleStorageBinding | null>(null);
+  const [storageMode, setStorageMode] = useState<HubStorageMode>(mode ?? hubStorageMode(moduleId));
   const [status, setStatus] = useState<HubStorageStatus>(loading);
   const [hydrated, setHydrated] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [signedOut, setSignedOut] = useState(false);
   const [localCount, setLocalCount] = useState<number | null>(null);
   const [hasRecovery, setHasRecovery] = useState(false);
   const [cacheWarning, setCacheWarning] = useState('');
@@ -48,9 +50,8 @@ export default function HubStoragePanel({moduleId, iframeRef, mode = hubStorageM
     const current = ++generation.current;
     let active = true, unbind = () => {};
     bindingRef.current = null;
-    setBinding(null); setStatus(loading); setHydrated(false); setLoadFailed(false);
+    setBinding(null); setStatus(loading); setHydrated(false); setLoadFailed(false); setSignedOut(false);
     setLocalCount(null); setHasRecovery(false); setCacheWarning(''); setError(''); setBusy(false); setExported(null);
-    if (mode === 'native') return () => { active = false; generation.current++; };
     const sync = () => {
       if (!active || generation.current !== current) return;
       const found = bindingRef.current;
@@ -64,10 +65,16 @@ export default function HubStoragePanel({moduleId, iframeRef, mode = hubStorageM
     const connect = () => {
       if (!active) return;
       const root = iframeRef ? iframeRef.current?.contentWindow ?? null : window;
+      const nextMode = mode ?? hubStorageMode(moduleId, root);
+      setStorageMode(nextMode);
+      if (nextMode === 'native') {
+        if (bindingRef.current) { unbind(); bindingRef.current = null; setBinding(null); setExported(null); setError(''); }
+        return;
+      }
       const found = findModuleStorage(root, moduleId, window.location.origin);
       if (found?.bridge === bindingRef.current?.bridge) return;
       unbind(); bindingRef.current = found; setBinding(found);
-      setHydrated(false); setLoadFailed(false); setLocalCount(null); setHasRecovery(false);
+      setHydrated(false); setLoadFailed(false); setSignedOut(false); setLocalCount(null); setHasRecovery(false);
       setExported(null); setCopyMessage(''); setCacheWarning(''); setError(''); setBusy(false);
       setStatus(found?.bridge.status ?? loading);
       if (!found) return;
@@ -84,7 +91,10 @@ export default function HubStoragePanel({moduleId, iframeRef, mode = hubStorageM
       found.bridge.ready.then(() => {
         if (active && bindingRef.current?.bridge === found.bridge) { setHydrated(true); setError(''); sync(); }
       }, cause => {
-        if (active && bindingRef.current?.bridge === found.bridge) { setLoadFailed(true); setError(errorText(cause)); sync(); }
+        if (active && bindingRef.current?.bridge === found.bridge) {
+          const guest = isSignedOutStorageFailure(cause, found.bridge);
+          setLoadFailed(true); setSignedOut(guest); setError(guest ? '' : errorText(cause)); sync();
+        }
       });
       sync();
     };
@@ -169,18 +179,21 @@ export default function HubStoragePanel({moduleId, iframeRef, mode = hubStorageM
     } catch { setCopyMessage('未能自动复制，可选中上方文本手动复制。'); }
   }
 
-  if (mode === 'native') return <aside className={`${styles.panel} ${className}`} aria-label="应用存储说明"><span className={styles.label}>应用独立保存</span><span className={styles.description}>业务记录与附件的保存状态，请查看应用内提示。</span></aside>;
+  if (storageMode === 'native') return <aside className={`${styles.panel} ${className}`} aria-label="应用存档"><span className={styles.label}>{moduleId === 'novel-studio' ? '作品存档' : '存档与附件'}</span><span className={styles.description}>{moduleId === 'novel-studio' ? '在「作品」中导出与导入。' : '在应用内查看和管理。'}</span></aside>;
+
+  if (signedOut) return <aside className={`${styles.panel} ${className}`} aria-label="应用存档"><div className={styles.row}><strong className={styles.label}>登录后同步存档</strong><a className={styles.signIn} target="_top" href={`/signin-with-chatgpt?return_to=${encodeURIComponent('/?app=' + moduleId)}`}>登录</a></div></aside>;
 
   return <aside className={`${styles.panel} ${className}`} aria-label="应用存档">
     {preferencesOnly && <p className={styles.note}>此处仅同步界面偏好。对话、记忆与手账的保存和导出，请使用应用内入口。</p>}
     <div className={styles.row}>
-      <div className={styles.state} role="status" aria-live="polite"><span className={styles.dot} data-state={status.state}/><strong>{preferencesOnly ? `界面偏好 · ${labels[status.state]}` : labels[status.state]}</strong>{hydrated && <small>版本 {status.revision}{localCount !== null ? ` · ${localCount} 项记录` : ''}</small>}</div>
+      <div className={styles.state} role="status" aria-live="polite"><span className={styles.dot} data-state={status.state}/><strong>{preferencesOnly ? `界面偏好 · ${labels[status.state]}` : labels[status.state]}</strong></div>
       <div className={styles.actions}>
-        <button type="button" disabled={busy || !binding || status.state === 'conflict'} onClick={() => void run(retrySync)}>{busy ? '处理中…' : loadFailed ? '重新加载存档' : status.state === 'offline' ? '重新连接存档' : '重试同步'}</button>
+        {status.state !== 'saved' && <button type="button" disabled={busy || !binding || status.state === 'conflict'} onClick={() => void run(retrySync)}>{busy ? '处理中…' : loadFailed ? '重新加载存档' : status.state === 'offline' ? '重新连接存档' : '重试同步'}</button>}
         <button type="button" disabled={busy || !hydrated} onClick={() => showExport('local')}>{preferencesOnly ? '导出界面偏好' : '导出本机存档'}</button>
-        <button type="button" disabled={busy || !hydrated || !hasRecovery} onClick={() => showExport('recovery')}>导出恢复副本</button>
+        {hasRecovery && <button type="button" disabled={busy || !hydrated} onClick={() => showExport('recovery')}>导出恢复副本</button>}
       </div>
     </div>
+    {hydrated && <details className={styles.details}><summary>存档详情</summary><p>版本 {status.revision}{localCount !== null ? `，${localCount} 项记录` : ''}{status.updatedAt ? `。最近同步：${new Date(status.updatedAt).toLocaleString('zh-CN')}` : '。'}</p></details>}
     {(status.state === 'pending' || status.state === 'offline') && <p className={styles.note}>修改尚未全部同步。可导出本机存档，或重试同步后再离开。</p>}
     {status.state === 'conflict' && <div className={styles.conflict}>
       <div className={styles.copies}><span><b>此设备</b>{localCount ?? '—'} 项记录 · 版本 {status.revision}</span><span><b>云端</b>{cloud ? `${cloud.count} 项记录 · 版本 ${cloud.revision}` : cloudError || '正在读取摘要…'}</span></div>
