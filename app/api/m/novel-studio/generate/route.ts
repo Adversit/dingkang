@@ -1,6 +1,10 @@
 import { env } from 'cloudflare:workers';
 import { feedbackIdentity } from '@/lib/feedback/server';
-import { HubError, failure, json, readBoundedBody, requireMutation } from '@/lib/hub/server';
+import { HubError, failure, json, readBoundedBody, requireMutation, requireUser } from '@/lib/hub/server';
+import { selectModel } from '@/modules/novel-ai/model-selection.mjs';
+import { ContextError } from '@/modules/novel-ai/context.mjs';
+import { getNovelKeyBinding } from '@/modules/novel-ai/key-preference';
+import { KeyPreferenceError } from '@/modules/novel-ai/key-preference-core.mjs';
 
 export const dynamic = 'force-dynamic';
 const MAX_BODY = 64 * 1024;
@@ -32,6 +36,7 @@ async function boundedResponse(res: Response): Promise<unknown> {
 export async function POST(req: Request) {
   try {
     requireMutation(req);
+    const user = requireUser(req);
     const identity = feedbackIdentity(req, { FEEDBACK_OWNER_EMAIL: config('FEEDBACK_OWNER_EMAIL') });
     if (!identity.authenticated) throw new HubError('请先使用 ChatGPT 登录。', 401);
     if (!identity.isOwner) throw new HubError('AI 起草目前仅向站点负责人开放。', 403);
@@ -42,7 +47,8 @@ export async function POST(req: Request) {
     if (!data || typeof data !== 'object' || Array.isArray(data)) throw new HubError('请求格式错误。', 400);
     const { instruction, scene, facts } = data as Record<string, unknown>;
     if (typeof instruction !== 'string' || !instruction.trim() || instruction.length > 2000 || typeof scene !== 'string' || scene.length > 12000 || !Array.isArray(facts) || facts.length > 40 || !facts.every(f => typeof f === 'string' && f.length <= 500)) throw new HubError('请检查指令、场景和事实的长度。', 400);
-    const key = config('NOVEL_OPENAI_API_KEY'), model = config('NOVEL_OPENAI_MODEL');
+    const binding = await getNovelKeyBinding(user.userId);
+    const key = binding.key, model = selectModel((data as Record<string, unknown>).model, config('NOVEL_OPENAI_MODEL'));
     if (!key || !model) throw new HubError('站点尚未配置模型，请先配置服务端模型后再使用 AI 起草。', 503);
     const target = endpoint(config('NOVEL_OPENAI_BASE_URL') || 'https://api.openai.com/v1');
     const controller = new AbortController();
@@ -54,11 +60,13 @@ export async function POST(req: Request) {
       const result = await boundedResponse(response) as { model?: unknown; choices?: Array<{ message?: { content?: unknown } }> };
       const text = result?.choices?.[0]?.message?.content;
       if (typeof text !== 'string' || !text.trim() || text.length > 50000) throw new HubError('模型没有返回有效的候选正文。', 502);
+      const currentBinding = await getNovelKeyBinding(user.userId);
+      if (currentBinding.source!==binding.source || currentBinding.revision!==binding.revision) throw new HubError('生成期间密钥配置发生变化，请重新生成。',409);
       return json({text, model: typeof result.model === 'string' ? result.model.slice(0, 200) : model});
     } catch (error) {
       if (error instanceof HubError) throw error;
       if (controller.signal.aborted) throw new HubError('模型请求超过 30 秒，请重试。', 504);
       throw new HubError('模型服务连接失败，请稍后重试。', 502);
     } finally { clearTimeout(timer); }
-  } catch (error) { return failure(error); }
+  } catch (error) { if (error instanceof ContextError || error instanceof KeyPreferenceError) return json({error:error.message},error.status); return failure(error); }
 }

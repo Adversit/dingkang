@@ -52,3 +52,11 @@ export const novelArchiveChunks = sqliteTable('novel_archive_chunks', {
   chunkIndex: integer('chunk_index').notNull(),
   data: text('data').notNull(),
 }, table => [primaryKey({columns:[table.ownerId, table.chunkIndex]})]);
+
+/** Only the allowed environment variable name, never a secret, is stored here. */
+export const novelModelSecretPreferences = sqliteTable('novel_model_secret_preferences', {
+  ownerId: text('owner_id').primaryKey(),
+  source: text('source').notNull(),
+  revision: integer('revision').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});

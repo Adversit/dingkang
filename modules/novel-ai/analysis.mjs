@@ -8,6 +8,7 @@ const text = (value, max, required = true) => typeof value === 'string' && value
 
 export function validateInput(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input) || !['extract','check'].includes(input.mode)) throw new AnalysisError('请选择事实提取或一致性检查。');
+  if (input.guidance !== undefined && !text(input.guidance,2000,false)) throw new AnalysisError('作者检查要求格式无效或超过 2000 字符。');
   const scene = input.scene;
   if (!scene || typeof scene !== 'object' || Array.isArray(scene) || !text(scene.text,12000) || !text(scene.revisionId,120) || (scene.storyTime !== undefined && !text(scene.storyTime,120,false))) throw new AnalysisError('请填写场景正文和版本标识，正文不超过 12000 字符。');
   if (!Array.isArray(input.facts) || input.facts.length > 40) throw new AnalysisError('参考事实最多 40 条。');
@@ -17,7 +18,7 @@ export function validateInput(input) {
     ids.add(f.id);
     return { id:f.id, statement:f.statement, kind:f.kind, storyTime:f.storyTime || '', subject:f.subject || '' };
   });
-  return { mode:input.mode, scene:{ text:scene.text, revisionId:scene.revisionId, storyTime:scene.storyTime || '' }, facts };
+  return { mode:input.mode, scene:{ text:scene.text, revisionId:scene.revisionId, storyTime:scene.storyTime || '' }, facts, ...(input.guidance !== undefined ? {guidance:input.guidance} : {}) };
 }
 function evidenceFor(quote, sceneText) {
   if (!text(quote,1000) || !sceneText.includes(quote)) throw new AnalysisError('模型引用的证据不在所给场景中，结果未保存。',502);

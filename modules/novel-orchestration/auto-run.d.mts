@@ -1,0 +1,5 @@
+export function preparePreview(input: unknown, archive: any, model: string, baseUrl: string, binding?: {source:string;revision:number}): Promise<any>;
+export function prepareRun(input: unknown, archive: any, model: string, baseUrl: string, key: string, binding?: {source:string;revision:number}): Promise<{preview: any; prompts: {writer:string;extract:string;review:string};sceneCount:number;scenePlans:string[];firstMessages:any[];analysisTemplates:any;previewHash:string;binding:any}>;
+export function runPrepared(options: {input:any; preview:any; prompts:{writer:string;extract:string;review:string}; sceneCount?:number; scenePlans?:string[]; firstMessages?:any[];previewHash?:string; key:string; model:string; baseUrl:string; loadArchive:()=>Promise<any>; checkBinding?:()=>Promise<boolean>; isCancelled?:()=>boolean}): AsyncGenerator<{type:string;data:any}>;
+export function preparePlanPreview(input:unknown,model:string,baseUrl:string,binding?:{source:string;revision:number}):Promise<any>;
+export function generatePlan(preview:any,options:{key:string;model:string;baseUrl:string}):Promise<any>;
