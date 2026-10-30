@@ -60,3 +60,12 @@ export const novelModelSecretPreferences = sqliteTable('novel_model_secret_prefe
   revision: integer('revision').notNull(),
   updatedAt: text('updated_at').notNull(),
 });
+
+/** The selected model is scoped independently of the credential reference. */
+export const novelModelPreferences = sqliteTable('novel_model_preferences', {
+  ownerId: text('owner_id').primaryKey(),
+  modelId: text('model_id'),
+  sourceRevision: integer('source_revision').notNull(),
+  revision: integer('revision').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});

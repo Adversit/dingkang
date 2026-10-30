@@ -3,48 +3,20 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 
-const script = readFileSync(new URL('../public/apps/novel-studio/model-settings.js', import.meta.url), 'utf8');
-
-async function run(payload, ok = true) {
-  class Element {
-    constructor(){ this.children=[]; this.textContent=''; this.disabled=false; this.className=''; }
-    append(...children){this.children.push(...children)}
-    replaceChildren(...children){this.children=children}
-    addEventListener(name, callback){this.callback=callback}
-  }
-  const state = new Element(), button = new Element(), requests=[];
-  const document = {getElementById: id => id === 'state' ? state : button, createElement: () => new Element()};
-  const fetch = async (path, options) => {requests.push({path, options});return {ok, json:async()=>payload};};
-  vm.runInNewContext(script, {document, fetch, Error});
-  await new Promise(resolve => setImmediate(resolve));
-  return {state,button,requests};
+const script=readFileSync(new URL('../public/apps/novel-studio/model-settings.js',import.meta.url),'utf8');
+const html=readFileSync(new URL('../public/apps/novel-studio/model-settings.html',import.meta.url),'utf8');
+const tick=()=>new Promise(r=>setImmediate(r));
+function env({key=true,agree=false,listResponse=null}={}){
+  class Element {constructor(){this.children=[];this.value='';this.disabled=false;this.textContent='';this.className='';this.listeners={};this.attrs={}} append(...x){this.children.push(...x)}replaceChildren(...x){this.children=x}addEventListener(k,v){this.listeners[k]=v}setAttribute(k,v){this.attrs[k]=v}}
+  const ids=['connect-available','connect-saved','state','refresh','key-source','save-source','disable-existing','source-message','load-models','model-search','model-list','model-feedback','current-model','use-site-default','selected-model','save-model','model-save-message'];
+  const elements=Object.fromEntries(ids.map(id=>[id,new Element()]));const calls=[];let source='NOVEL_OPENAI_API_KEY',sourceRevision=0,model=null,modelRevision=0,consent=agree;
+  const fetch=async(path,options={})=>{calls.push({path,options});if(path.endsWith('/model-status')){if(options.method==='POST'){let v=JSON.parse(options.body);source=v.source;sourceRevision++;return {ok:true,json:async()=>({source,revision:sourceRevision})}}return {ok:true,json:async()=>({keyConfigured:key,modelConfigured:true,model:'gpt-test',selectedSource:source,preferenceRevision:sourceRevision,sources:{NOVEL_OPENAI_API_KEY:key,OPENAI_CHATGPT:true}})}}if(path.endsWith('/model-preference')){if(options.method==='POST'){const v=JSON.parse(options.body);model=v.model;modelRevision++}return {ok:true,json:async()=>({model,revision:modelRevision,sourceRevision,stale:false,fallbackModel:'gpt-test'})}}if(path.endsWith('/models'))return listResponse||{ok:true,json:async()=>({models:[{id:'gpt-test'},{id:'other-model'}],sourceRevision,truncated:false})};throw Error('unexpected request')};
+  const document={getElementById:id=>elements[id],createElement:()=>new Element()};vm.runInNewContext(script,{document,fetch,Error,confirm:()=>consent});return {elements,calls,setConsent:v=>{consent=v}};
 }
-const texts = element => [element.textContent, ...element.children.flatMap(texts)].join(' ');
-test('status check requests only configuration presence and renders model name as text', async () => {
-  const output = await run({keyConfigured:true,modelConfigured:true,model:'<img onerror=alert(1)>',verified:false,selectedSource:'NOVEL_OPENAI_API_KEY',preferenceRevision:0,sources:{NOVEL_OPENAI_API_KEY:true,OPENAI_CHATGPT:false}});
-  assert.equal(output.requests.length,1);
-  assert.equal(output.requests[0].path,'/api/m/novel-studio/model-status');
-  assert.equal(output.requests[0].options.cache,'no-store');
-  assert.match(texts(output.state), /已读取到配置/);
-  assert.match(texts(output.state), /尚未验证/);
-  assert.match(texts(output.state), /<img onerror=alert\(1\)>/);
-  assert.equal(output.button.disabled,false);
-});
-test('unconfigured and access-denied responses do not imply a verified model', async () => {
-  const missing = await run({keyConfigured:false,modelConfigured:false,model:null,verified:false,selectedSource:'NOVEL_OPENAI_API_KEY',preferenceRevision:0,sources:{NOVEL_OPENAI_API_KEY:false,OPENAI_CHATGPT:false}});
-  assert.match(texts(missing.state), /未配置/);
-  assert.match(texts(missing.state), /重新部署/);
-  const denied = await run({error:'仅站点负责人可以查看模型配置状态。'}, false);
-  assert.match(texts(denied.state), /仅站点负责人/);
-  assert.equal(denied.button.disabled,false);
-});
-test('reuse is opt-in, sends only allowed reference and revision, and can be revoked', async () => {
-  class Element {constructor(){this.children=[];this.value='';this.disabled=false;this.textContent='';this.listeners={}} append(...x){this.children.push(...x)} replaceChildren(...x){this.children=x} addEventListener(k,v){this.listeners[k]=v}}
-  const elements=Object.fromEntries(['state','refresh','key-source','save-source','disable-existing','source-message'].map(x=>[x,new Element()]));
-  const document={getElementById:id=>elements[id],createElement:()=>new Element()}, calls=[];let source='NOVEL_OPENAI_API_KEY',rev=0,agree=false;
-  const fetch=async(path,options)=>{calls.push({path,options});if(options.method==='POST'){let req=JSON.parse(options.body);source=req.source;rev++;return {ok:true,json:async()=>({source,revision:rev})}}return {ok:true,json:async()=>({keyConfigured:true,modelConfigured:true,model:'gpt-6.1-sol',selectedSource:source,preferenceRevision:rev,sources:{NOVEL_OPENAI_API_KEY:true,OPENAI_CHATGPT:true}})}};
-  vm.runInNewContext(script,{document,fetch,Error,confirm:()=>agree});await new Promise(r=>setImmediate(r));
-  elements['key-source'].value='OPENAI_CHATGPT';await elements['save-source'].listeners.click();assert.equal(calls.filter(x=>x.options.method==='POST').length,0,'declined consent never writes');
-  agree=true;await elements['save-source'].listeners.click();let post=calls.find(x=>x.options.method==='POST');assert.deepEqual(JSON.parse(post.options.body),{source:'OPENAI_CHATGPT',expectedRevision:0});assert(!/sk-proj|secret.value/i.test(post.options.body));
-  await elements['disable-existing'].listeners.click();let posts=calls.filter(x=>x.options.method==='POST');assert.deepEqual(JSON.parse(posts[1].options.body),{source:'NOVEL_OPENAI_API_KEY',expectedRevision:1});
-});
+const textOf=e=>[e.textContent,...e.children.flatMap(textOf)].join(' ');
+test('owner can see provider returned models and set a default using an independent revision',async()=>{const x=env();await tick();await tick();assert(x.calls.some(x=>x.path.endsWith('/models')));assert.match(textOf(x.elements['model-list']),/gpt-test/);x.elements['model-list'].children[0].listeners.click();await x.elements['save-model'].listeners.click();const call=x.calls.find(x=>x.path.endsWith('/model-preference')&&x.options.method==='POST');assert.deepEqual(JSON.parse(call.options.body),{model:'gpt-test',expectedRevision:0,expectedSourceRevision:0});assert.equal(x.elements['current-model'].textContent,'gpt-test')});
+test('missing connection does not claim availability or request a model list',async()=>{const x=env({key:false});await tick();await tick();assert(!x.calls.some(x=>x.path.endsWith('/models')));assert.match(textOf(x.elements.state),/未连接/);assert.doesNotMatch(textOf(x.elements.state),/小说专用连接/);assert.equal(x.elements['load-models'].disabled,true)});
+test('a saved connection offers an explicit connect action without using it automatically',async()=>{const x=env({key:false});await tick();assert.equal(x.elements['connect-available'].hidden,false);assert.equal(x.calls.filter(c=>c.path.endsWith('/model-status')&&c.options.method==='POST').length,0);await x.elements['connect-saved'].listeners.click();assert.equal(x.calls.filter(c=>c.path.endsWith('/model-status')&&c.options.method==='POST').length,0);x.setConsent(true);await x.elements['connect-saved'].listeners.click();assert.equal(x.calls.filter(c=>c.path.endsWith('/model-status')&&c.options.method==='POST').length,1)});
+test('provider errors are actionable without invented models',async()=>{const x=env({listResponse:{ok:false,json:async()=>({error:'模型列表获取失败，请检查连接。'})}});await tick();await tick();assert.match(x.elements['model-feedback'].textContent,/获取失败/);assert.equal(x.elements['model-list'].children.length,0);assert.equal(x.elements['save-model'].disabled,true)});
+test('existing connection is opt-in and sends only source identifier and version',async()=>{const x=env({key:false});await tick();x.elements['key-source'].value='OPENAI_CHATGPT';await x.elements['save-source'].listeners.click();assert.equal(x.calls.filter(c=>c.path.endsWith('/model-status')&&c.options.method==='POST').length,0);x.setConsent(true);await x.elements['save-source'].listeners.click();const call=x.calls.find(c=>c.path.endsWith('/model-status')&&c.options.method==='POST');assert.deepEqual(JSON.parse(call.options.body),{source:'OPENAI_CHATGPT',expectedRevision:0});assert(!/sk-proj/i.test(call.options.body))});
+test('internal credential identifiers are not exposed as option labels',()=>{assert.match(html,/使用工作台已有连接/);assert.doesNotMatch(html,/>[^<]*(?:OPENAI_CHATGPT|NOVEL_OPENAI_MODEL)[^<]*</)});

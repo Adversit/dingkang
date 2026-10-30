@@ -1,7 +1,7 @@
 import { env } from 'cloudflare:workers';
 import { feedbackIdentity } from '@/lib/feedback/server';
 import { HubError, failure, json, readBoundedBody, requireMutation, requireUser } from '@/lib/hub/server';
-import { selectModel } from '@/modules/novel-ai/model-selection.mjs';
+import { chooseModel } from '@/modules/novel-ai/model-preference';
 import { ContextError } from '@/modules/novel-ai/context.mjs';
 import { getNovelKeyBinding } from '@/modules/novel-ai/key-preference';
 import { KeyPreferenceError } from '@/modules/novel-ai/key-preference-core.mjs';
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
     const { instruction, scene, facts } = data as Record<string, unknown>;
     if (typeof instruction !== 'string' || !instruction.trim() || instruction.length > 2000 || typeof scene !== 'string' || scene.length > 12000 || !Array.isArray(facts) || facts.length > 40 || !facts.every(f => typeof f === 'string' && f.length <= 500)) throw new HubError('请检查指令、场景和事实的长度。', 400);
     const binding = await getNovelKeyBinding(user.userId);
-    const key = binding.key, model = selectModel((data as Record<string, unknown>).model, config('NOVEL_OPENAI_MODEL'));
+    const key = binding.key, model = await chooseModel(user.userId,(data as Record<string, unknown>).model,binding.revision);
     if (!key || !model) throw new HubError('站点尚未配置模型，请先配置服务端模型后再使用 AI 起草。', 503);
     const target = endpoint(config('NOVEL_OPENAI_BASE_URL') || 'https://api.openai.com/v1');
     const controller = new AbortController();

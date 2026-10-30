@@ -1,0 +1,25 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import vm from 'node:vm';
+import {webcrypto} from 'node:crypto';
+const response=(body,status=200)=>({ok:status>=200&&status<300,status,json:async()=>body});
+async function boot({models=[{id:'writer-model'},{id:'review-model'}], fail=false}={}) {
+ const code=await readFile(new URL('../public/apps/novel-studio/canvas.js',import.meta.url),'utf8');
+ let preference='writer-model',sourceRevision=1; const handlers={},calls=[],toasts=[],store=new Map(),root={innerHTML:'',addEventListener:(k,f)=>handlers[k]=f};
+ const inputs={model:{id:'model',value:''},'idea-model':{id:'idea-model',value:''}};
+ const picks=[{dataset:{modelPicker:'model'},value:'',innerHTML:''},{dataset:{modelPicker:'idea-model'},value:'',innerHTML:''}],statuses=[{textContent:''}];
+ const document={querySelector:s=>s==='#root'?root:null,querySelectorAll:s=>s==='[data-model-picker]'?picks:s==='[data-model-status]'?statuses:[],getElementById:id=>inputs[id]||null,createElement:()=>({setAttribute(){},remove(){},textContent:''}),body:{append(e){toasts.push(e.textContent)}}};
+ const fetch=async(url,opts={})=>{calls.push({url,opts});if(url==='/api/hub/session')return response({authenticated:true,userId:'owner'});if(url.endsWith('/canon'))return response({version:0,state:{schema:1,projects:[]}});if(url.endsWith('/model-status'))return response({model:'fallback'});if(url.endsWith('/model-preference'))return response({model:preference,revision:1,fallbackModel:'fallback'});if(url.endsWith('/models'))return fail?response({error:'连接未配置'},503):response({models,truncated:false,sourceRevision});if(url.endsWith('/auto-preview'))return response({previewHash:'a',model:'writer-model',messages:[],analysisTemplates:{}});if(url.endsWith('/auto-run'))return response({error:'should not run'},503);throw Error('unexpected')};
+ const window={addEventListener(){}},sessionStorage={getItem:k=>store.get(k)||'',setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)};
+ vm.runInNewContext(code,{document,window,fetch,sessionStorage,crypto:webcrypto,confirm:()=>true,Date,console,setTimeout:()=>0,clearTimeout,TextEncoder,TextDecoder});await new Promise(setImmediate);await new Promise(setImmediate);
+ return {root,handlers,picks,inputs,statuses,calls,store,setDefault:value=>{preference=value},setSourceRevision:value=>{sourceRevision=value},change:(value)=>handlers.change({target:{dataset:{modelPicker:'idea-model'},value}}),input:(id,value)=>handlers.input({target:{id,value}}),click:async act=>handlers.click({target:{closest:()=>({dataset:{act}})}})};
+}
+test('connection list supplies actual IDs and selecting one binds request, preserves manual entry',async()=>{const h=await boot();assert.match(h.picks[0].innerHTML,/writer-model/);assert.match(h.picks[0].innerHTML,/review-model/);assert.match(h.picks[0].innerHTML,/使用默认模型/);assert.match(h.statuses[0].textContent,/是否支持写作需实际验证/);h.change('review-model');assert.equal(h.inputs['idea-model'].value,'review-model');assert.equal(h.store.get('novel-model-choice:owner'),'review-model');h.input('idea','小说构思');await h.click('idea-preview');const c=h.calls.find(c=>c.url.endsWith('/auto-preview'));assert.equal(JSON.parse(c.opts.body).model,'review-model');});
+test('failed list leaves manual input and avoids invented options',async()=>{const h=await boot({fail:true});assert.match(h.statuses[0].textContent,/连接未配置/);assert.doesNotMatch(h.picks[0].innerHTML,/value="writer-model"/);h.input('idea','构思');h.input('idea-model','manual-model');await h.click('idea-preview');const c=h.calls.find(c=>c.url.endsWith('/auto-preview'));assert.equal(JSON.parse(c.opts.body).model,'manual-model');});
+test('choosing a different model after preview prevents running stale preview',async()=>{const h=await boot();h.input('idea','构思');await h.click('idea-preview');h.change('review-model');await h.click('auto-run');assert.equal(h.calls.filter(x=>x.url.endsWith('/auto-run')).length,0)});
+
+test('refresh after changing account default invalidates a pending default-model preview',async()=>{const h=await boot();h.input('idea','构思');await h.click('idea-preview');h.setDefault('review-model');await h.click('refresh-models');await h.click('auto-run');assert.equal(h.calls.filter(x=>x.url.endsWith('/auto-run')).length,0);assert.match(h.picks[0].innerHTML,/使用默认模型 · review-model/)});
+
+test('refresh after changing model connection invalidates even an explicitly selected model preview',async()=>{const h=await boot();h.input('idea','构思');h.change('review-model');await h.click('idea-preview');h.setSourceRevision(2);await h.click('refresh-models');await h.click('auto-run');assert.equal(h.calls.filter(x=>x.url.endsWith('/auto-run')).length,0)});
+test('model settings opens in a separate tab and does not replace the editing canvas',async()=>{const h=await boot();h.input('idea','不能丢失的故事构思');assert.match(h.root.innerHTML,/<a href="model-settings\.html" target="_blank" rel="noopener">/);await h.click('idea-preview');let call=h.calls.find(x=>x.url.endsWith('/auto-preview'));assert.equal(JSON.parse(call.opts.body).idea,'不能丢失的故事构思')});

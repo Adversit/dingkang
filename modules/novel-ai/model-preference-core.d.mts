@@ -1,0 +1,3 @@
+export type ModelPreferenceAdapter={load:(owner:string)=>Promise<{model_id:string|null;source_revision:number;revision:number}|null>;compareAndSwap:(owner:string,revision:number,model:string|null,sourceRevision:number,at:string)=>Promise<boolean>};
+export function readModelPreference(adapter:ModelPreferenceAdapter,owner:string,currentSourceRevision:number):Promise<{model:string|null;revision:number;sourceRevision:number;stale:boolean}>;
+export function saveModelPreference(adapter:ModelPreferenceAdapter,owner:string,model:unknown,expectedRevision:unknown,expectedSourceRevision:unknown,currentSourceRevision:number,now?:string):Promise<{model:string|null;revision:number;sourceRevision:number;stale:boolean}>;
