@@ -1,7 +1,7 @@
 import { providerModelError } from './fallback-service.mjs';
 import { providerPolicy,completionText } from './provider-policy.mjs';
 /** Pure AI analysis pipeline. Its inputs are caller-supplied; it never commits facts. */
-import { normalizeStyleId, roleSystem } from './writing-profile.mjs';
+import { normalizeStyleId, normalizeWritingProfile, publicBrief, roleSystem } from './writing-profile.mjs';
 const TYPES = new Set(['world', 'belief', 'speech', 'plan']);
 const MAX_RESPONSE = 128 * 1024;
 export class AnalysisError extends Error {
@@ -39,8 +39,10 @@ function normalizePriorDrafts(input) {
 export function validateInput(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input) || !['extract','check'].includes(input.mode)) throw new AnalysisError('请选择事实提取或一致性检查。');
   if (input.guidance !== undefined && !text(input.guidance,2000,false)) throw new AnalysisError('作者检查要求格式无效或超过 2000 字符。');
-  const styleId = input.mode==='check' ? normalizeStyleId(input.styleId,AnalysisError) : 'general';
-  if(input.mode==='check' && input.revealedClues!==undefined && !text(input.revealedClues,2000,false))throw new AnalysisError('本幕公开线索格式无效。');
+  const profile=input.mode==='check'&&input.writingProfile!==undefined?normalizeWritingProfile(input.writingProfile,AnalysisError):null;
+  const styleId = input.mode==='check' ? (profile?.styleId??normalizeStyleId(input.styleId,AnalysisError)) : 'general';
+  const revealedClues=profile?publicBrief(profile).revealNow:input.revealedClues;
+  if(input.mode==='check' && revealedClues!==undefined && !text(revealedClues,2000,false))throw new AnalysisError('本幕公开线索格式无效。');
   const scene = input.scene;
   if (!scene || typeof scene !== 'object' || Array.isArray(scene) || !text(scene.text,12000) || !text(scene.revisionId,120) || (scene.storyTime !== undefined && !text(scene.storyTime,120,false))) throw new AnalysisError('请填写场景正文和版本标识，正文不超过 12000 字符。');
   if (!Array.isArray(input.facts) || input.facts.length > 40) throw new AnalysisError('参考事实最多 40 条。');
@@ -50,7 +52,7 @@ export function validateInput(input) {
     ids.add(f.id);
     return { id:f.id, statement:f.statement, kind:f.kind, storyTime:f.storyTime || '', subject:f.subject || '' };
   });
-  return { mode:input.mode, ...(input.mode==='check'?{styleId,...(input.revealedClues?{revealedClues:input.revealedClues}:{})}:{}), scene:{ text:scene.text, revisionId:scene.revisionId, storyTime:scene.storyTime || '' }, facts, ...normalizePriorDrafts(input), ...normalizeBaseScene(input), ...(input.guidance !== undefined ? {guidance:input.guidance} : {}) };
+  return { mode:input.mode, ...(input.mode==='check'?{styleId,...(revealedClues?{revealedClues}:{})}:{}), scene:{ text:scene.text, revisionId:scene.revisionId, storyTime:scene.storyTime || '' }, facts, ...normalizePriorDrafts(input), ...normalizeBaseScene(input), ...(input.guidance !== undefined ? {guidance:input.guidance} : {}) };
 }
 function evidenceFor(quote, sceneText) {
   if (!text(quote,1000) || !sceneText.includes(quote)) throw new AnalysisOutputError('模型引用的证据不在所给场景中，结果未保存。');

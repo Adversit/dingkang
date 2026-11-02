@@ -14,8 +14,8 @@ const styles = {
  general:{planner:'',writer:'',extract:'',review:''},
  xuanhuan:{
   planner:'布局从远处起，每次解谜安排可观察的异象、相争的解释、可检验的行动及代价。一项检验如果只排除了一个解释，不得据此坐实另一个；章卡要区分观察结果、被排除的说法和仍要追查的问题。布局者有自己的局限和利益。大道的层级要说明上层规则如何产生下层现象，而非改写成战力榜。不要硬造一个报信人或让旁白提前公布真相。',
-  writer:'把强者的旧识写成他能先看见的异样，也写出他判断错的条件。角色从留下的痕迹提出预测，用身体或选择付出验证代价；让悟道改变他的下一步做法。可写恢宏的尺度，但用当场可见之物承载它。让有哲理的话回应具体困局，避免警句串联、境界报幕与借旁人赞叹烘托。',
-  review:'检查前世知识是否令角色无证据通晓今生布局、下层异象是否被当作上层真相的唯一证明。若证据只够排除一种解释，区分人物怀疑与叙述者断言；只在文本越过证据时引用原句提出问题。',
+  writer:'强者的旧识让他更早提出假说，却不能替他验明真伪。按视角写清亲眼所见、亲手所触和推断的差别；远望可知形色，未经接触不能断言温度、材质或身份。让试探先有预测，再给结果、时间和对象的位置；若结果也能由更早触发的机关造成，就保留那个解释。以现场细节承载诸天的尺度。角色为所悟付出代价后，让他的下一步选择和他人反应留下余味；不另补全知旁白讲理，不连缀警句或借旁人惊叹报境界。',
+  review:'沿角色的感知范围复核由现象到结论的那一步：他能看见、触到，还是只在猜测？查器物位置、测试与可能触发的先后；事后观察不可单独排除先前原因。证据只排除一种解释时，不得坐实剩余解释。若付出代价的动作已表达感悟，检查其后是否重复加了全知说理。仅在当前原文可定位时提问。',
  },
  mystery:{
   planner:'让每幕处理一个问题：先给读者可见的证物，再容许至少一种替代解释，安排能排除其一的调查。决定证物在何时出现；不要在场景标题提前宣告犯人或结局。',
@@ -63,5 +63,5 @@ export function publicBrief(profile,sceneIndex=1,{plan=false}={}){
 export function roleSystem(role,styleId='general',additional='',contractOverride=''){
  const [roleName,contract]=contracts[role];
  const supplement=styles[styleId][role];
- return [COMMON,contractOverride||roleName+'：'+contract,supplement&&('题材 · '+labels.get(styleId)+' v1：'+supplement),additional].filter(Boolean).join('\n');
+ return [COMMON,contractOverride||roleName+'：'+contract,supplement&&('题材 · '+labels.get(styleId)+(styleId==='xuanhuan' && (role==='writer'||role==='review')?' v2：':' v1：')+supplement),additional].filter(Boolean).join('\n');
 }
