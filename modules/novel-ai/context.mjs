@@ -1,3 +1,4 @@
+import { providerPolicy,completionText } from './provider-policy.mjs';
 /** Compile only caller-selected, server-confirmed records into a previewable context. */
 import { buildAnalysisMessages } from './analysis.mjs';
 import { normalizeWritingProfile, publicBrief, roleSystem } from './writing-profile.mjs';
@@ -84,11 +85,11 @@ function endpoint(raw){let u;try{u=new URL(raw)}catch{throw new ContextError('�
 async function bounded(res){if(!res.body)throw new ContextError('模型返回空响应。',502);let r=res.body.getReader(),d=new TextDecoder(),s='',n=0;try{while(true){let c=await r.read();if(c.done)break;n+=c.value.byteLength;if(n>128*1024){await r.cancel();throw new ContextError('模型响应超出限制。',502)}s+=d.decode(c.value,{stream:true})}s+=d.decode()}finally{r.releaseLock()}try{return JSON.parse(s)}catch{throw new ContextError('模型服务响应格式无效。',502)}}
 export async function generateFromPreview(preview,options){
   if(!options.key||!options.model)throw new ContextError('站点尚未配置模型，请先配置服务端模型。',503);
-  const url=endpoint(options.baseUrl||'https://api.openai.com/v1'); if(url!==preview.provider||options.model!==preview.model)throw new ContextError('模型配置已变化，请重新预览。',409); const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),preview.longForm===true?90000:30000);
-  try{const response=await (options.fetchImpl||fetch)(url,{method:'POST',redirect:'manual',signal:controller.signal,headers:{'content-type':'application/json',authorization:`Bearer ${options.key}`},body:JSON.stringify({model:options.model,max_completion_tokens:preview.longForm===true?5000:3000,messages:preview.messages})});
+  const url=endpoint(options.baseUrl||'https://api.openai.com/v1'); if(url!==preview.provider||options.model!==preview.model)throw new ContextError('模型配置已变化，请重新预览。',409); const planner=['scenes','book'].includes(preview.planMode),task=planner?(preview.planMode==='book'?'book':'plan'):preview.longForm===true?'chapter':'prose',policy=providerPolicy(options.model,task),label=planner?'规划':'正文';const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),policy.timeoutMs);
+  try{const response=await (options.fetchImpl||fetch)(url,{method:'POST',redirect:'manual',signal:controller.signal,headers:{'content-type':'application/json',authorization:`Bearer ${options.key}`},body:JSON.stringify({model:options.model,...policy.params,messages:preview.messages})});
     if(!response.ok)throw new ContextError(`模型服务请求失败（HTTP ${response.status}）。`,502);
-    const data=await bounded(response),choice=data?.choices?.[0],candidate=choice?.message?.content;
-    if(choice?.finish_reason!=='stop'||choice?.message?.refusal||typeof candidate!=='string'||!candidate.trim()||candidate.length>50000)throw new ContextError('模型未返回完整的候选正文。',502);
+    const data=await bounded(response),candidate=completionText(data?.choices?.[0],label,ContextError);
+    if(candidate.length>50000)throw new ContextError('模型返回内容超出允许长度，未采用。',502);
     return {status:'REVIEW',text:candidate,previewHash:preview.previewHash,stateVersion:preview.stateVersion,revisionId:preview.revisionId,model:typeof data.model==='string'?data.model.slice(0,200):options.model,notice:'候选正文尚未保存或提交事实；采用前请确认作品与预览依据仍未变化。'};
-  }catch(e){if(e instanceof ContextError)throw e;if(controller.signal.aborted)throw new ContextError('模型请求超时。',504);throw new ContextError('模型服务连接失败。',502)}finally{clearTimeout(timer)}
+  }catch(e){if(e instanceof ContextError)throw e;if(controller.signal.aborted)throw new ContextError(`模型${label}请求超过 ${policy.timeoutMs/1000} 秒，未收到完整结果。`,504);throw new ContextError('模型服务连接失败。',502)}finally{clearTimeout(timer)}
 }

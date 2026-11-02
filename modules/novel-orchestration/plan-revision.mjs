@@ -14,10 +14,11 @@ export function preparePlanRevision(raw, ErrorClass=TypeError) {
   };
   if(!validObject(raw))throw fail('请选择已返回的全书大纲再修订。');
   const s=raw.source;
-  if(!validObject(s)||s.role!=='book-planner'||s.template!==BOOK_TEMPLATE||
+  const imported=validObject(s)&&s.role==='author-import';
+  if(!imported&&(!validObject(s)||s.role!=='book-planner'||s.template!==BOOK_TEMPLATE||
      !Number.isSafeInteger(s.round)||s.round<1||s.round>=Number.MAX_SAFE_INTEGER||
      typeof s.model!=='string'||!/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,100}$/.test(s.model)||
-     /^(sk-|sess-)/i.test(s.model)||typeof s.previewHash!=='string'||!/^[0-9a-f]{64}$/.test(s.previewHash))
+     /^(sk-|sess-)/i.test(s.model)||typeof s.previewHash!=='string'||!/^[0-9a-f]{64}$/.test(s.previewHash)))
     throw fail('前轮大纲的模型、轮次或预览标识不完整，请从规划结果发起修订。');
   const previousOutline=normalizeOutline(raw.previousOutline,fail);
   if(!Array.isArray(raw.previousChapters)||raw.previousChapters.length<1||raw.previousChapters.length>5)
@@ -29,8 +30,8 @@ export function preparePlanRevision(raw, ErrorClass=TypeError) {
     if(title.length+goal.length>1500)throw fail('前轮章卡超过 1500 字符。');
     return {title,goal};
   });
-  const out={round:s.round+1,feedback:string(raw.feedback,2000,'请填写 1 至 2000 字的修订意见。'),
-             previousOutline,previousChapters,previousModel:s.model};
+  const out={round:imported?1:s.round+1,...(imported?{previousSource:'作者提供的导入稿，并非本次模型生成'}:{}),feedback:string(raw.feedback,2000,'请填写 1 至 2000 字的修订意见。'),
+             previousOutline,previousChapters,previousModel:imported?null:s.model};
   if(new TextEncoder().encode(JSON.stringify(out)).byteLength>48*1024)
     throw fail('前轮修订资料过长，请缩短大纲或章卡后重试。');
   return out;

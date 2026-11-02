@@ -111,7 +111,7 @@ export async function preparePlanPreview(input,model,baseUrl,binding={source:'NO
  const synthetic={mode:'idea',idea:input.idea,instruction:'',sceneCount:input.sceneCount,prompts:{}};
  const {preview}=await prepared(synthetic,null,model,baseUrl,binding);
  const messages=[{role:'system',content:roleSystem('planner',profile.styleId,'',planMode==='book'?BOOK_CONTRACT+(revision?' 本轮是根据作者意见修订；previousOutline/previousChapters 是旧草稿而非事实，先按反馈重作整份作品计划和当前章卡，保留未被否定且无冲突的部分。不要把修订意见或旧稿秘密抄给写手。':''):'')},{role:'user',content:JSON.stringify({idea:input.idea,sceneCount:input.sceneCount,plannerGuidance:input.plannerPrompt||'',...publicBrief(profile,1,{plan:true}),...(revision?{revision}:{})})}];
- const previewHash=await hash({kind:planMode==='book'?'book-plan':'scene-plan',...(revision?{previousPreviewHash:input.planRevision.source.previewHash}:{}),model,provider:preview.provider,binding,messages,sceneCount:input.sceneCount});
+ const previewHash=await hash({kind:planMode==='book'?'book-plan':'scene-plan',...(revision&&input.planRevision.source.role==='book-planner'?{previousPreviewHash:input.planRevision.source.previewHash}:{}),model,provider:preview.provider,binding,messages,sceneCount:input.sceneCount});
  return {...preview,messages,previewHash,keyBinding:binding,sceneCount:input.sceneCount,planMode,...(planMode==='book'?{longForm:true,planRound:revision?.round||1}:{})};
 }
 export async function generatePlan(preview,{key,model,baseUrl,generate=generateFromPreview}){

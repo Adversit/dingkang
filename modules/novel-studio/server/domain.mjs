@@ -46,8 +46,9 @@ export function applyGuardedFactCommand(original,c,now=new Date().toISOString())
 function savedOutlineRecords(plan,now){
   if(plan===undefined)return [];
   const o=normalizeOutline(plan?.bookOutline,msg=>new NovelError(msg)),src=plan.source;
-  if(!src||src.role!=='book-planner'||src.template!==BOOK_TEMPLATE||typeof src.model!=='string'||!/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,100}$/.test(src.model)||/^(sk-|sess-)/i.test(src.model)||!Number.isSafeInteger(src.round)||src.round<1||typeof src.previewHash!=='string'||!/^[0-9a-f]{64}$/.test(src.previewHash))throw new NovelError('创作来源记录无效。');
-  const source={role:'book-planner',template:BOOK_TEMPLATE,model:src.model,round:src.round,previewHash:src.previewHash};
+  const imported=src?.role==='author-import';
+  if(!imported&&(!src||src.role!=='book-planner'||src.template!==BOOK_TEMPLATE||typeof src.model!=='string'||!/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,100}$/.test(src.model)||/^(sk-|sess-)/i.test(src.model)||!Number.isSafeInteger(src.round)||src.round<1||typeof src.previewHash!=='string'||!/^[0-9a-f]{64}$/.test(src.previewHash)))throw new NovelError('创作来源记录无效。');
+  const source=imported?{role:'author-import'}:{role:'book-planner',template:BOOK_TEMPLATE,model:src.model,round:src.round,previewHash:src.previewHash};
   return outlineRecordSections(o).map((v,i)=>({id:'book-plan-'+(i+1),category:'outline',title:v.title,content:v.content,subject:o.title,storyTime:'',status:'plan',visibility:'author_only',source,updatedAt:now,history:[]}));
 }
 export function applyCommand(original,c,now=new Date().toISOString()){

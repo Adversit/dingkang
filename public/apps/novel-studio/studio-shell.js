@@ -7,6 +7,7 @@
     write: '<path d="m14 4 6 6M4 20l5-1L21 7a2 2 0 0 0-4-4L5 15zM13 20h8"/>',
     knowledge: '<circle cx="12" cy="5" r="2.5"/><circle cx="5" cy="18" r="2.5"/><circle cx="19" cy="18" r="2.5"/><path d="m10.5 7-4 8m7-8 4 8M8 18h8"/>',
     review: '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6m-12 6 3 3 5-6"/>',
+    promptSources: '<path d="M5 4h13v14H9a4 4 0 0 0-4 3V4Zm4 5h6m-6 4h5"/>',
     settings: '<path d="M4 7h8m4 0h4M4 17h3m4 0h9"/><circle cx="14" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
     hub: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>'
   };
@@ -17,6 +18,7 @@
     ['write','正文编辑','consistency.html?view=write'],
     ['knowledge','设定资料','consistency.html?view=records'],
     ['review','审阅修订','consistency.html?view=check'],
+    ['promptSources','提示词资料库','prompt-library.html'],
     ['settings','模型设置','model-settings.html']
   ];
   function shell({active='canvas',content='',title='',actions='',status=''}={}) {

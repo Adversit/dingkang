@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>开源写作流程对照 · 小说创作</title>
+  <style>
+    :root{color-scheme:light dark;--paper:#faf9f6;--ink:#272621;--sub:#5a574f;--rule:#d6d3ca;--link:#343328}
+    @media(prefers-color-scheme:dark){:root{--paper:#20211e;--ink:#eae9e1;--sub:#b7b8ab;--rule:#47483f;--link:#e5e4cd}}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.8 system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
+    main{width:min(100% - 38px,760px);margin:auto;padding:34px 0 74px}
+    nav{font-size:15px;color:var(--sub)}
+    a{color:var(--link);text-decoration-thickness:1px;text-underline-offset:.22em;overflow-wrap:anywhere}
+    a:focus-visible{outline:2px solid currentColor;outline-offset:3px}
+    h1,h2{font-family:ui-serif,"Songti SC","Noto Serif CJK SC",serif;line-height:1.4}
+    h1{font-size:clamp(30px,6vw,44px);margin:1em 0 .35em}
+    h2{font-size:24px;margin:0 0 .45em}p{margin:.65em 0}
+    .intro{color:var(--sub);margin:0 0 2em}
+    section{border-top:1px solid var(--rule);padding:1.55em 0}
+    .sources{font-size:15px;color:var(--sub)}.sources a{display:inline-block;margin-right:1em}
+    ol{padding-left:1.5em}li{padding-left:.2em;margin:.65em 0}
+    @media print{main{width:100%;padding:0}nav{display:none}section{break-inside:avoid}}
+  </style>
+</head>
+<body><main>
+  <nav aria-label="页面导航"><a href="canvas.html">返回创作画布</a></nav>
+  <h1>开源写作流程对照</h1>
+  <p class="intro">一份长篇大纲可能很完整，第二章仍会写错一件小物件。下面三个项目解决的是不同的问题。链接固定到所核对的源码版本；这里只说明设计取舍，不包含第三方源码或作者书稿。</p>
+  <section>
+    <h2>Re³：下一段该记住什么</h2>
+    <p>Re³ 每次续写都重组上下文：本段提纲、相关人物、靠近当前位置的原文。若生成多个候选，分别评估它是否承接前文、是否服务当前提纲；发现实体属性冲突时，还能针对句子提出修改。这几个判断不能互相代替：念完预定台词，并不意味着人物知道那句话的依据。</p>
+    <p><strong>本站的取舍：</strong>写手接收本轮前章原文。审阅者可据两章原句指出器物、时间或知情范围的矛盾；前章仍是草稿。默认不为每段购买多份候选，也不让审阅者直接覆盖作者正文。</p>
+    <p class="sources"><a href="https://aclanthology.org/2022.emnlp-main.296/">原论文</a><a href="https://github.com/yangkevin2/emnlp22-re3-story-generation/blob/3a97ebde04e3333962c2825146897efe1dc87dd8/story_generation/draft_module/beam_candidate.py#L179-L253">输入组装与冲突修订</a><a href="https://github.com/yangkevin2/emnlp22-re3-story-generation/blob/3a97ebde04e3333962c2825146897efe1dc87dd8/story_generation/draft_module/beam_candidate.py#L298-L313">候选排序</a></p>
+  </section>
+  <section>
+    <h2>DOC：全书纲如何变成今天写得出的章</h2>
+    <p>DOC 将粗纲递归拆成更具体的子目标，写作循环按树的叶结点推进，并在各段完成后保存中间状态。如此一来，一段文字是否完成目标，比“这一段像不像整本小说”更容易核对。</p>
+    <p><strong>本站的取舍：</strong>全书大纲保留卷与终局；采用后，写手只接收本章可公开的章卡。研究代码允许加入未来上下文；连载悬疑和玄幻布局不能默认这样做，否则第二章的答案会先进入第一章的提示词。按阶段恢复则是值得对照的另一种能力：有进度显示，并不等于断线后能从同一步续跑。</p>
+    <p class="sources"><a href="https://aclanthology.org/2023.acl-long.190/">原论文</a><a href="https://github.com/yangkevin2/doc-story-generation/blob/9d727cdbae40c72169ab03b729bff4419a113dac/story_generation/plan_module/plan.py#L102-L203">分层扩纲</a><a href="https://github.com/yangkevin2/doc-story-generation/blob/9d727cdbae40c72169ab03b729bff4419a113dac/scripts/main.py#L144-L187">逐段生成与恢复</a><a href="https://github.com/yangkevin2/doc-story-generation/blob/9d727cdbae40c72169ab03b729bff4419a113dac/scripts/main.py#L65-L71">未来上下文选项</a></p>
+  </section>
+  <section>
+    <h2>AI Novel Generator：候选在哪一步才算保存</h2>
+    <p>这个项目把“生成章计划”和“写正文”做成不同的流程。前者可检查章计划的覆盖与衔接；后者先筛选本章材料，再产生正文候选。确认保存另走一个接口，作者确认某项章后事实时还要核对它所引用的版本。这解释了一个容易忽略的操作：作者可以喜欢一章的文字，却不同意系统从一句台词推导出的世界设定。</p>
+    <p><strong>本站的取舍：</strong>大纲是作者的计划，正文是稿件，提取结果是待核对的事实。三者分别处理；画布应在真实步骤完成时显示结果，不以装饰动画代替模型回包。无需为此引入另一套数据库或完整图编辑器。</p>
+    <p class="sources"><a href="https://github.com/YILING0013/AI_NovelGenerator/blob/a61674fad4dd6c4c5fa9a2ad2f12b667109e628a/backend/services/task_flows/defaults/plan_chapters_by_ai.json">章计划流程图定义</a><a href="https://github.com/YILING0013/AI_NovelGenerator/blob/a61674fad4dd6c4c5fa9a2ad2f12b667109e628a/backend/services/task_flows/defaults/write_chapter_by_ai.json">章正文流程图定义</a><a href="https://github.com/YILING0013/AI_NovelGenerator/blob/a61674fad4dd6c4c5fa9a2ad2f12b667109e628a/backend/api/default_routers/writing_router.py#L122-L217">生成与确认接口</a><a href="https://github.com/YILING0013/AI_NovelGenerator/blob/a61674fad4dd6c4c5fa9a2ad2f12b667109e628a/backend/services/novel/chapter_record_service.py#L201-L265">章后事实的确认</a></p>
+    <p>提示词升级也有一个可借鉴的办法：该项目比较内置工作流的内容摘要与当前选用的版本；只对仍与已知旧默认相同的最新内置方案做升级，备份旧版，保留作者改过或固定的历史版本。对工作台来说，下载的参考材料应当先成为独立条目，不应悄悄替换一本书正在使用的提示词。</p>
+    <p class="sources"><a href="https://github.com/YILING0013/AI_NovelGenerator/blob/a61674fad4dd6c4c5fa9a2ad2f12b667109e628a/backend/migrations/task_flows.py#L24-L75">区分内置、历史与自定义版本</a><a href="https://github.com/YILING0013/AI_NovelGenerator/blob/a61674fad4dd6c4c5fa9a2ad2f12b667109e628a/backend/migrations/task_flows.py#L148-L180">升级与备份</a></p>
+  </section>
+  <section>
+    <h2>怎样检验一轮两章创作</h2>
+    <ol>
+      <li><strong>大纲有没有修到点上？</strong>在上一版中圈出一个越过证据的结论，要求模型区分已排除和仍可能的解释；对照下一版，检查它是否只换了一句措辞。</li>
+      <li><strong>写手是否提前见到答案？</strong>分别指定第一章可看、第二章才可看、永不发送三种材料，核对各节点实际输入。还要人工读章卡：即使技术上没发送后卷内容，规划模型自己也可能在当前章卡中泄题。</li>
+      <li><strong>跨章细节能否对得起来？</strong>先核对物件的数量、位置和持有人，再核对重生者亲见、听说、推测的区别。报告冲突须能找回两处原文；没有交代的细节可以挂起，不因此认定写错。</li>
+      <li><strong>分开评价流程和文学效果。</strong>接口测试能确认材料发送给谁；主角的一句话是否从眼前的选择中长出来，要读正文。一轮中改了模型和提示词，就不能把改进单独归功于其中一项。</li>
+    </ol>
+  </section>
+</main></body>
+</html>

@@ -27,7 +27,7 @@ test('unconfigured model reports a real failure without displaying a candidate',
  const h=await boot();await prepare(h);await h.click('draft');
  assert.ok(h.calls.some(c=>c.url.endsWith('/draft')));
  assert.match(h.root.innerHTML,/候选生成失败/);assert.match(h.root.innerHTML,/HTTP 503/);
- assert.match(h.root.innerHTML,/尚无候选正文/);assert.doesNotMatch(h.root.innerHTML,/已收到候选，等待作者审阅/);
+ await h.click('read-results');assert.match(h.root.innerHTML,/尚无候选正文/);assert.doesNotMatch(h.root.innerHTML,/已收到候选，等待作者审阅/);
 });
 
 test('changing the instruction after preview prevents a model request',async()=>{

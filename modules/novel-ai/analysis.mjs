@@ -1,3 +1,4 @@
+import { providerPolicy,completionText } from './provider-policy.mjs';
 /** Pure AI analysis pipeline. Its inputs are caller-supplied; it never commits facts. */
 import { normalizeStyleId, roleSystem } from './writing-profile.mjs';
 const TYPES = new Set(['world', 'belief', 'speech', 'plan']);
@@ -114,17 +115,17 @@ export async function analyze(inputRaw, options) {
   const input=validateInput(inputRaw);
   if (!options?.key || !options?.model) throw new AnalysisError('站点尚未配置模型，请先配置服务端模型后再使用 AI 检查。',503);
   const url=endpoint(options.baseUrl || 'https://api.openai.com/v1');
-  const controller=new AbortController(); const timer=setTimeout(()=>controller.abort(),30000);
+  const totalChars=input.scene.text.length+(input.baseScene?.text?.length||0)+(input.priorDrafts||[]).reduce((n,x)=>n+x.text.length,0);
+  const policy=providerPolicy(options.model,totalChars>=1600?'longAnalysis':'analysis');const controller=new AbortController(); const timer=setTimeout(()=>controller.abort(),policy.timeoutMs);
   try {
-    const response=await (options.fetchImpl || fetch)(url,{method:'POST',redirect:'manual',signal:controller.signal,headers:{'content-type':'application/json',authorization:`Bearer ${options.key}`},body:JSON.stringify({model:options.model,max_completion_tokens:3000,response_format:{type:'json_object'},messages:buildAnalysisMessages(input)})});
+    const response=await (options.fetchImpl || fetch)(url,{method:'POST',redirect:'manual',signal:controller.signal,headers:{'content-type':'application/json',authorization:`Bearer ${options.key}`},body:JSON.stringify({model:options.model,...policy.params,messages:buildAnalysisMessages(input)})});
     if(!response.ok)throw new AnalysisError(`模型服务请求失败（HTTP ${response.status}）。`,502);
     const result=await jsonBounded(response); const choice=result?.choices?.[0];
-    if (!choice || choice.finish_reason !== 'stop' || choice.message?.refusal || typeof choice.message?.content!=='string' || !choice.message.content.trim()) throw new AnalysisError('模型未返回完整有效的分析结果，未完成检查。',502);
-    const parsed=parseOutput(choice.message.content,input);
+    const parsed=parseOutput(completionText(choice,input.mode==='extract'?'事实提取':'审阅',AnalysisError),input);
     return {status:'REVIEW',mode:input.mode,sceneHash:await hash(input.scene.text),inputHash:await hash(JSON.stringify(input)),revisionId:input.scene.revisionId,model:typeof result.model==='string'?result.model.slice(0,200):options.model,...parsed,notice:'仅分析本次提供的场景和事实；结果需作者审阅，不代表全书一致，也不验证服务器当前版本。'};
   } catch(error) {
     if(error instanceof AnalysisError)throw error;
-    if(controller.signal.aborted)throw new AnalysisError('模型请求超过 30 秒，未完成检查。',504);
+    if(controller.signal.aborted)throw new AnalysisError(`模型分析超过 ${policy.timeoutMs/1000} 秒，未完成检查。`,504);
     throw new AnalysisError('模型服务连接失败，未完成检查。',502);
   } finally {clearTimeout(timer);}
 }
