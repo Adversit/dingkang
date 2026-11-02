@@ -24,6 +24,7 @@ export async function POST(req: Request) {
     let data: unknown;
     try { data = JSON.parse(new TextDecoder().decode(bytes)); } catch { throw new HubError('请求 JSON 格式错误。', 400); }
     if (!data || typeof data !== 'object' || Array.isArray(data)) throw new HubError('请求格式错误。',400);
+    if (Object.prototype.hasOwnProperty.call(data,'priorDrafts') || Object.prototype.hasOwnProperty.call(data,'baseScene')) throw new HubError('前幕证据由连续创作流程提供。',400);
     const binding = await getNovelKeyBinding(user.userId);
     const model = await chooseModel(user.userId,(data as Record<string, unknown>).model,binding.revision);
     const result = await analyze(data, { key:binding.key, model, baseUrl:config('NOVEL_OPENAI_BASE_URL') });

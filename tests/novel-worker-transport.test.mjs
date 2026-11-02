@@ -12,10 +12,10 @@ const fixtureKey='sk-workerd-regression-fixture-not-a-real-api-key';
 const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 const sources=[
  'modules/novel-ai/models-list.mjs','modules/novel-ai/context.mjs','modules/novel-ai/analysis.mjs',
- 'modules/novel-ai/connection-sources.mjs','modules/novel-ai/key-preference-core.mjs','modules/novel-studio/temporal.mjs',
+ 'modules/novel-ai/writing-profile.mjs','modules/novel-ai/connection-sources.mjs','modules/novel-ai/key-preference-core.mjs','modules/novel-studio/temporal.mjs',
 ].map(path=>({type:'ESModule',path,contents:read(path)}));
 let legacy=ts.transpileModule(read('app/api/m/novel-studio/generate/route.ts'),{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
-legacy=legacy.replaceAll('@/modules/novel-ai/context.mjs','./modules/novel-ai/context.mjs').replaceAll('@/modules/novel-ai/key-preference-core.mjs','./modules/novel-ai/key-preference-core.mjs');
+legacy=legacy.replaceAll('@/modules/novel-ai/writing-profile.mjs','./modules/novel-ai/writing-profile.mjs').replaceAll('@/modules/novel-ai/context.mjs','./modules/novel-ai/context.mjs').replaceAll('@/modules/novel-ai/key-preference-core.mjs','./modules/novel-ai/key-preference-core.mjs');
 for(const name of ['@/lib/feedback/server','@/lib/hub/server','@/modules/novel-ai/model-preference','@/modules/novel-ai/key-preference'])legacy=legacy.replaceAll(name,'./stubs.mjs');
 const stubs=`
 export class HubError extends Error {constructor(message,status=400){super(message);this.status=status}}

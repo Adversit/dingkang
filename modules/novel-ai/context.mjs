@@ -1,5 +1,6 @@
 /** Compile only caller-selected, server-confirmed records into a previewable context. */
 import { buildAnalysisMessages } from './analysis.mjs';
+import { normalizeWritingProfile, publicBrief, roleSystem } from './writing-profile.mjs';
 import { projectAsOf, TemporalError } from '../novel-studio/temporal.mjs';
 import { validSourceName } from './connection-sources.mjs';
 export class ContextError extends Error { constructor(message,status=400){super(message);this.status=status} }
@@ -71,9 +72,10 @@ export async function compileContext(input, archive, model='', provider='https:/
     sections[state.layer].push({id:item.id,statement:item.statement,subject:item.subject,storyTime:item.storyTime});included.push({id:factId,layer:state.layer,...item});
   }
   temporalProjection={...temporalProjection,excluded:[...temporalProjection.excluded,...temporalExcluded],notice:temporalProjection.notice+' 当前仅使用作品现有档案，不支持历史提交或分支回放；话语未自动注入模型。'};
-  const user={scene:{title:revision.title,body:revision.body,revisionId:revision.id,storyMoment:input.storyMoment,perspective:input.perspective,pov:input.pov},instruction:input.instruction,reference:sections};
-  const messages=[{role:'system',content:SYSTEM},{role:'user',content:JSON.stringify(user,null,2)}];
-  const reviewInput={mode:'check',scene:{text:revision.body,revisionId:revision.id,storyTime:input.storyMoment},facts:included.map(f=>({id:f.id,statement:f.statement,kind:f.layer,subject:f.subject,storyTime:f.storyTime}))};
+  const profile=normalizeWritingProfile(input.writingProfile,ContextError), brief=publicBrief(profile);
+  const user={...brief,scene:{title:revision.title,body:revision.body,revisionId:revision.id,storyMoment:input.storyMoment,perspective:input.perspective,pov:input.pov},instruction:input.instruction,reference:sections};
+  const messages=[{role:'system',content:roleSystem('writer',profile.styleId,SYSTEM)},{role:'user',content:JSON.stringify(user,null,2)}];
+  const reviewInput={mode:'check',styleId:profile.styleId,...(brief.revealNow?{revealedClues:brief.revealNow}:{}),scene:{text:revision.body,revisionId:revision.id,storyTime:input.storyMoment},facts:included.map(f=>({id:f.id,statement:f.statement,kind:f.layer,subject:f.subject,storyTime:f.storyTime}))};
   const checkMessages=buildAnalysisMessages(reviewInput);
   const body={stateVersion:archive.version,canonVersion:p.canonVersion,revisionId:revision.id,model,provider:endpoint(provider),credentialSource:credentialBinding.source,credentialRevision:credentialBinding.revision,maxCompletionTokens:3000,messages,checkMessages};
   return {status:'REVIEW',...body,previewHash:await digest(JSON.stringify(body)),reviewInput,included,excluded,temporalProjection,notice:'结构化时态按全部显式事件投影；其他未结构化资料须人工核对。限知视角缺少知情关系时保守排除。当前不支持历史提交或分支回放，预览不证明事实语义正确，也不代表全书一致。'};
@@ -82,8 +84,8 @@ function endpoint(raw){let u;try{u=new URL(raw)}catch{throw new ContextError('�
 async function bounded(res){if(!res.body)throw new ContextError('模型返回空响应。',502);let r=res.body.getReader(),d=new TextDecoder(),s='',n=0;try{while(true){let c=await r.read();if(c.done)break;n+=c.value.byteLength;if(n>128*1024){await r.cancel();throw new ContextError('模型响应超出限制。',502)}s+=d.decode(c.value,{stream:true})}s+=d.decode()}finally{r.releaseLock()}try{return JSON.parse(s)}catch{throw new ContextError('模型服务响应格式无效。',502)}}
 export async function generateFromPreview(preview,options){
   if(!options.key||!options.model)throw new ContextError('站点尚未配置模型，请先配置服务端模型。',503);
-  const url=endpoint(options.baseUrl||'https://api.openai.com/v1'); if(url!==preview.provider||options.model!==preview.model)throw new ContextError('模型配置已变化，请重新预览。',409); const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),30000);
-  try{const response=await (options.fetchImpl||fetch)(url,{method:'POST',redirect:'manual',signal:controller.signal,headers:{'content-type':'application/json',authorization:`Bearer ${options.key}`},body:JSON.stringify({model:options.model,max_completion_tokens:3000,messages:preview.messages})});
+  const url=endpoint(options.baseUrl||'https://api.openai.com/v1'); if(url!==preview.provider||options.model!==preview.model)throw new ContextError('模型配置已变化，请重新预览。',409); const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),preview.longForm===true?90000:30000);
+  try{const response=await (options.fetchImpl||fetch)(url,{method:'POST',redirect:'manual',signal:controller.signal,headers:{'content-type':'application/json',authorization:`Bearer ${options.key}`},body:JSON.stringify({model:options.model,max_completion_tokens:preview.longForm===true?5000:3000,messages:preview.messages})});
     if(!response.ok)throw new ContextError(`模型服务请求失败（HTTP ${response.status}）。`,502);
     const data=await bounded(response),choice=data?.choices?.[0],candidate=choice?.message?.content;
     if(choice?.finish_reason!=='stop'||choice?.message?.refusal||typeof candidate!=='string'||!candidate.trim()||candidate.length>50000)throw new ContextError('模型未返回完整的候选正文。',502);

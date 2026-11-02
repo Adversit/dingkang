@@ -1,3 +1,4 @@
+import { BOOK_TEMPLATE, normalizeOutline, outlineRecordSections } from '../../novel-orchestration/book-outline.mjs';
 import { applyRetconCommand, RetconError } from '../../novel-retcon/branch.mjs';
 import { applyTemporalCommand, isTemporalCommand, TemporalError } from '../temporal.mjs';
 /** Domain operations for the first server-backed novel archive. Pure functions only. */
@@ -42,13 +43,20 @@ export function applyGuardedFactCommand(original,c,now=new Date().toISOString())
  if(!original||original.schema!==1||!Array.isArray(original.projects)||!c||c.type!=='commit_fact')throw new NovelError('受控事实提交格式无效。');
  const state=structuredClone(original);commitFact(state,c,now,true);return {state,receipt:{type:'guarded_commit_fact'}};
 }
+function savedOutlineRecords(plan,now){
+  if(plan===undefined)return [];
+  const o=normalizeOutline(plan?.bookOutline,msg=>new NovelError(msg)),src=plan.source;
+  if(!src||src.role!=='book-planner'||src.template!==BOOK_TEMPLATE||typeof src.model!=='string'||!/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,100}$/.test(src.model)||/^(sk-|sess-)/i.test(src.model)||!Number.isSafeInteger(src.round)||src.round<1||typeof src.previewHash!=='string'||!/^[0-9a-f]{64}$/.test(src.previewHash))throw new NovelError('创作来源记录无效。');
+  const source={role:'book-planner',template:BOOK_TEMPLATE,model:src.model,round:src.round,previewHash:src.previewHash};
+  return outlineRecordSections(o).map((v,i)=>({id:'book-plan-'+(i+1),category:'outline',title:v.title,content:v.content,subject:o.title,storyTime:'',status:'plan',visibility:'author_only',source,updatedAt:now,history:[]}));
+}
 export function applyCommand(original,c,now=new Date().toISOString()){
   if(!original||original.schema!==1||!Array.isArray(original.projects)||!Array.isArray(original.imports)||!c||typeof c!=='object'||Array.isArray(c))throw new NovelError('状态或命令无效。');
   let state=structuredClone(original),receipt={type:c.type};
   switch(c.type){
     case 'create_project': {notUsed(state.projects,c.projectId,'作品标识');state.projects.push({id:c.projectId,name:text(c.name,'作品名称',100,true),description:text(c.description??'','作品简介',2000),canonVersion:0,scenes:[],proposals:[],facts:[],commits:[],legacyFacts:[],records:[]});break}
     case 'create_project_with_scene_draft': {notUsed(state.projects,c.projectId,'作品标识');identifier(c.sceneId,'场景标识');const name=text(c.name,'作品名称',100,true),description=text(c.description??'','作品简介',2000),title=text(c.title,'场景标题',100,true),draft=text(c.body,'场景正文',500000,true);state.projects.push({id:c.projectId,name,description,canonVersion:0,scenes:[{id:c.sceneId,title,draft,revisions:[]}],proposals:[],facts:[],commits:[],legacyFacts:[],records:[]});Object.assign(receipt,{projectId:c.projectId,sceneId:c.sceneId,status:'draft_saved'});break}
-    case 'create_project_with_scene_drafts': {notUsed(state.projects,c.projectId,'作品标识');const name=text(c.name,'作品名称',100,true),description=text(c.description??'','作品简介',2000);if(!Array.isArray(c.scenes)||c.scenes.length<1||c.scenes.length>5)throw new NovelError('候选场景数量须为 1 至 5。');const ids=new Set(),scenes=c.scenes.map(item=>{if(!item||typeof item!=='object'||Array.isArray(item))throw new NovelError('场景内容无效。');const sceneId=identifier(item.sceneId,'场景标识');if(ids.has(sceneId))throw new NovelError('场景标识重复。');ids.add(sceneId);return {id:sceneId,title:text(item.title,'场景标题',100,true),draft:text(item.body,'场景正文',500000,true),revisions:[]}});state.projects.push({id:c.projectId,name,description,canonVersion:0,scenes,proposals:[],facts:[],commits:[],legacyFacts:[],records:[]});Object.assign(receipt,{projectId:c.projectId,sceneIds:scenes.map(s=>s.id),status:'draft_saved'});break}
+    case 'create_project_with_scene_drafts': {notUsed(state.projects,c.projectId,'作品标识');const name=text(c.name,'作品名称',100,true),description=text(c.description??'','作品简介',2000);if(!Array.isArray(c.scenes)||c.scenes.length<1||c.scenes.length>5)throw new NovelError('候选场景数量须为 1 至 5。');const ids=new Set(),scenes=c.scenes.map(item=>{if(!item||typeof item!=='object'||Array.isArray(item))throw new NovelError('场景内容无效。');const sceneId=identifier(item.sceneId,'场景标识');if(ids.has(sceneId))throw new NovelError('场景标识重复。');ids.add(sceneId);return {id:sceneId,title:text(item.title,'场景标题',100,true),draft:text(item.body,'场景正文',500000,true),revisions:[]}});state.projects.push({id:c.projectId,name,description,canonVersion:0,scenes,proposals:[],facts:[],commits:[],legacyFacts:[],records:savedOutlineRecords(c.bookPlan,now)});Object.assign(receipt,{projectId:c.projectId,sceneIds:scenes.map(s=>s.id),status:'draft_saved'});break}
     case 'create_scene': {let p=project(state,c.projectId);notUsed(p.scenes,c.sceneId,'场景标识');p.scenes.push({id:c.sceneId,title:text(c.title,'场景标题',100,true),draft:'',revisions:[]});break}
     case 'save_draft': {let p=project(state,c.projectId),s=scene(p,c.sceneId);s.title=text(c.title,'场景标题',100,true);s.draft=text(c.body,'场景正文',500000);break}
     case 'save_revision': {let p=project(state,c.projectId),s=scene(p,c.sceneId);notUsed(s.revisions,c.revisionId,'版本标识');if(!s.draft.trim())throw new NovelError('空场景不能保存版本。');if(s.revisions.length&&unchanged(s,s.revisions.at(-1)))throw new NovelError('正文未变化。',409);s.revisions.push({id:c.revisionId,title:s.title,body:s.draft,createdAt:now});break}

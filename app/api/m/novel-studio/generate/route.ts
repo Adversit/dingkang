@@ -2,6 +2,7 @@ import { env } from 'cloudflare:workers';
 import { feedbackIdentity } from '@/lib/feedback/server';
 import { HubError, failure, json, readBoundedBody, requireMutation, requireUser } from '@/lib/hub/server';
 import { chooseModel } from '@/modules/novel-ai/model-preference';
+import { normalizeWritingProfile, publicBrief, roleSystem } from '@/modules/novel-ai/writing-profile.mjs';
 import { ContextError } from '@/modules/novel-ai/context.mjs';
 import { getNovelKeyBinding } from '@/modules/novel-ai/key-preference';
 import { KeyPreferenceError } from '@/modules/novel-ai/key-preference-core.mjs';
@@ -45,7 +46,8 @@ export async function POST(req: Request) {
     let data: unknown;
     try { data = JSON.parse(new TextDecoder().decode(bytes)); } catch { throw new HubError('请求 JSON 格式错误。', 400); }
     if (!data || typeof data !== 'object' || Array.isArray(data)) throw new HubError('请求格式错误。', 400);
-    const { instruction, scene, facts } = data as Record<string, unknown>;
+    const { instruction, scene, facts, writingProfile } = data as Record<string, unknown>;
+    const profile=normalizeWritingProfile(writingProfile,ContextError);
     if (typeof instruction !== 'string' || !instruction.trim() || instruction.length > 2000 || typeof scene !== 'string' || scene.length > 12000 || !Array.isArray(facts) || facts.length > 40 || !facts.every(f => typeof f === 'string' && f.length <= 500)) throw new HubError('请检查指令、场景和事实的长度。', 400);
     const binding = await getNovelKeyBinding(user.userId);
     const key = binding.key, model = await chooseModel(user.userId,(data as Record<string, unknown>).model,binding.revision);
@@ -55,7 +57,7 @@ export async function POST(req: Request) {
     const timer = setTimeout(() => controller.abort(), 30000);
     let response: Response;
     try {
-      response = await fetch(target, {method:'POST', redirect:'manual', signal:controller.signal, headers:{'content-type':'application/json', authorization:`Bearer ${key}`}, body:JSON.stringify({model, max_completion_tokens:3000, messages:[{role:'system',content:SYSTEM},{role:'user',content:JSON.stringify({ instruction, scene, facts })}]})});
+      response = await fetch(target, {method:'POST', redirect:'manual', signal:controller.signal, headers:{'content-type':'application/json', authorization:`Bearer ${key}`}, body:JSON.stringify({model, max_completion_tokens:3000, messages:[{role:'system',content:roleSystem('writer',profile.styleId,SYSTEM)},{role:'user',content:JSON.stringify({ instruction, scene, facts, ...publicBrief(profile) })}]})});
       if (!response.ok) throw new HubError(`模型服务请求失败（HTTP ${response.status}）；请检查服务端配置和额度。`, 502);
       const result = await boundedResponse(response) as { model?: unknown; choices?: Array<{ message?: { content?: unknown } }> };
       const text = result?.choices?.[0]?.message?.content;
