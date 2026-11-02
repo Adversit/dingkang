@@ -1,31 +1,36 @@
 import { HubError } from '@/lib/hub/server';
 import { archiveFor, config, inputFor, problem } from '@/modules/novel-ai/route-support';
-import { chooseModel } from '@/modules/novel-ai/model-preference';
+import { openTextRun, type SwitchNotice } from '@/modules/novel-ai/text-run';
 import { getNovelKeyBinding } from '@/modules/novel-ai/key-preference';
 import { prepareRun, runPrepared } from '@/modules/novel-orchestration/auto-run.mjs';
 
 export const dynamic='force-dynamic';
 export async function POST(req: Request) {
   try {
-    const { owner, input }=await inputFor(req);
+    const { owner, input }=await inputFor(req,160*1024);
     if (!input || typeof input !== 'object' || Array.isArray(input)) throw new HubError('请求格式无效。',400);
     const data=input as Record<string, unknown>;
     const baseUrl=config('NOVEL_OPENAI_BASE_URL')||'https://api.openai.com/v1';
     const initial=await getNovelKeyBinding(owner);
     const {key,source,revision}=initial;
-    const model=await chooseModel(owner,data.model,revision);
     const binding={source,revision};
     const archive=data.mode==='scene'?await archiveFor(owner):null;
+    let cancelled=false,reportSwitch:((value:SwitchNotice)=>void)|undefined;
+    const run=await openTextRun(owner,data.model,initial,baseUrl,async()=>{
+      if(cancelled||req.signal.aborted)return false;
+      return !archive||(await archiveFor(owner)).version===archive.version;
+    },value=>reportSwitch?.(value));
+    const model=run.model;
     const {preview,prompts,sceneCount,scenePlans,firstMessages,previewHash}=await prepareRun(data,archive,model,baseUrl,key,binding);
     if(typeof data.previewHash!=='string'||data.previewHash!==previewHash)throw new HubError('写作要求、模型、资料或密钥来源已变化，请重新预览后开始。',409);
-    let cancelled=false;
     const encoder=new TextEncoder();
     const stream=new ReadableStream<Uint8Array>({
       async start(controller) {
         const write=(type:string, payload:unknown)=>controller.enqueue(encoder.encode(`event: ${type}\ndata: ${JSON.stringify(payload)}\n\n`));
+        reportSwitch=value=>{if(!cancelled&&!req.signal.aborted)write('model_switched',value)};
         const heartbeat=setInterval(()=>{if(!cancelled){try{controller.enqueue(encoder.encode(': keepalive\n\n'))}catch{cancelled=true}}},12000);
         try {
-          for await (const event of runPrepared({input:data,preview,prompts,sceneCount,scenePlans,firstMessages,previewHash,key,model,baseUrl,loadArchive:()=>archiveFor(owner),checkBinding:async()=>{const next=await getNovelKeyBinding(owner);return next.source===source&&next.revision===revision},isCancelled:()=>cancelled||req.signal.aborted})) {
+          for await (const event of runPrepared({input:data,preview,prompts,sceneCount,scenePlans,firstMessages,previewHash,key,model,baseUrl,modelRun:run,loadArchive:()=>archiveFor(owner),checkBinding:async()=>{const next=await getNovelKeyBinding(owner);return next.source===source&&next.revision===revision&&next.key===key},isCancelled:()=>cancelled||req.signal.aborted})) {
             if(cancelled||req.signal.aborted) break;
             write(event.type,event.data);
           }

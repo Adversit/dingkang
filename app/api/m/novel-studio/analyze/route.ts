@@ -2,7 +2,7 @@ import { env } from 'cloudflare:workers';
 import { feedbackIdentity } from '@/lib/feedback/server';
 import { HubError, json, readBoundedBody, requireMutation,requireUser } from '@/lib/hub/server';
 import { analyze, AnalysisError } from '@/modules/novel-ai/analysis.mjs';
-import { chooseModel } from '@/modules/novel-ai/model-preference';
+import { openTextRun } from '@/modules/novel-ai/text-run';
 import { ContextError } from '@/modules/novel-ai/context.mjs';
 import { getNovelKeyBinding } from '@/modules/novel-ai/key-preference';
 import { KeyPreferenceError } from '@/modules/novel-ai/key-preference-core.mjs';
@@ -26,11 +26,12 @@ export async function POST(req: Request) {
     if (!data || typeof data !== 'object' || Array.isArray(data)) throw new HubError('请求格式错误。',400);
     if (Object.prototype.hasOwnProperty.call(data,'priorDrafts') || Object.prototype.hasOwnProperty.call(data,'baseScene')) throw new HubError('前幕证据由连续创作流程提供。',400);
     const binding = await getNovelKeyBinding(user.userId);
-    const model = await chooseModel(user.userId,(data as Record<string, unknown>).model,binding.revision);
-    const result = await analyze(data, { key:binding.key, model, baseUrl:config('NOVEL_OPENAI_BASE_URL') });
+    const baseUrl=config('NOVEL_OPENAI_BASE_URL')||'https://api.openai.com/v1';
+    const run=await openTextRun(user.userId,(data as Record<string,unknown>).model,binding,baseUrl,async()=>!req.signal.aborted);
+    const result = await run.run(model=>analyze(data, { key:binding.key, model, baseUrl }));
     const currentBinding = await getNovelKeyBinding(user.userId);
-    if (currentBinding.source!==binding.source || currentBinding.revision!==binding.revision) throw new HubError('分析期间密钥配置发生变化，请重新分析。',409);
-    return json(result);
+    if (currentBinding.source!==binding.source || currentBinding.revision!==binding.revision||currentBinding.key!==binding.key) throw new HubError('分析期间密钥配置发生变化，请重新分析。',409);
+    return json({...result,requestedModel:run.model,modelFallback:run.notice});
   } catch (error) {
     if (error instanceof HubError || error instanceof AnalysisError || error instanceof ContextError || error instanceof KeyPreferenceError) return json({status:'ERROR', error:error.message}, error.status);
     return json({status:'ERROR',error:'分析未完成，请重试。'},500);

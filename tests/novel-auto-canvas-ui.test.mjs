@@ -40,3 +40,18 @@ test('planning failure remains visible on the canvas after the toast and stores 
  const h=await boot({plan:async()=>response({status:'ERROR',error:'模型达到输出额度，规划遭到截断，未采用不完整内容。'},502)});h.input('idea','规划');await h.click('plan-preview');await h.click('plan-run');await h.click('result-tab');assert.match(h.root.innerHTML,/role="alert".*规划未完成.*HTTP 502：模型达到输出额度/);assert.ok([...h.store.values()].some(v=>v.includes('规划遭到截断')));assert.equal(h.calls.filter(x=>x.url.endsWith('/plan')).length,1);
  const raw=await boot({plan:async()=>response({error:'SENSITIVE-UPSTREAM'},502)});raw.input('idea','规划');await raw.click('plan-preview');await raw.click('plan-run');assert.match(raw.root.innerHTML,/HTTP 502/);assert.doesNotMatch(raw.root.innerHTML,/SENSITIVE-UPSTREAM/);
 });
+test('planner fallback preserves its preflight and returned cards, uses the working manual selection for the next run without replanning',async()=>{
+ const info={requestedModel:'missing-model',selectedModel:'gpt-5.5',reason:'model_not_found',defaultUpdated:false};
+ const h=await boot({plan:()=>response({scenes:[{title:'开端',goal:'保留这张章卡'}],model:'gpt-5.5-date',modelFallback:info}),auto:()=>stream([['draft_ready',{text:'接续'}],['complete',{}]])});
+ h.input('idea','旧梦');h.input('idea-model','missing-model');await h.click('plan-preview');await h.click('plan-run');await h.click('plan-apply');
+ assert.match(h.root.innerHTML,/原选 missing-model 不可用，已验证并切换至 gpt-5.5。未修改默认模型/);
+ assert.equal(h.store.get('novel-model-choice:u'),'gpt-5.5');assert.equal(h.calls.find(x=>x.url.endsWith('/plan')).body.model,'missing-model');
+ await h.click('start-creation');const runs=h.calls.filter(x=>x.url.endsWith('/auto-run'));assert.equal(runs.length,1);assert.equal(runs[0].body.model,'gpt-5.5');assert.deepEqual(runs[0].body.scenePlans,['开端：保留这张章卡']);assert.equal(h.calls.filter(x=>x.url.endsWith('/plan')).length,1);
+});
+test('switch during execution updates the canvas, keeps the original run payload, and does not replay a failed step',async()=>{
+ const fallback={requestedModel:'absent',selectedModel:'gpt-5.5',reason:'model_access',defaultUpdated:true};
+ const h=await boot({auto:()=>stream([['context_ready',{model:'absent',messages:[]}],['stage_start',{stage:'draft',sceneIndex:1,messages:[]}],['model_switched',fallback],['error',{stage:'draft',error:'模型响应不明',uncertain:true}]])});
+ h.input('idea','构思');h.input('idea-model','absent');await h.click('idea-preview');await h.click('auto-run');
+ assert.match(h.root.innerHTML,/原选 absent 不可用，已验证并切换至 gpt-5.5。默认模型已更新/);assert.match(h.root.innerHTML,/data-effective-model>gpt-5.5</);assert.match(h.root.innerHTML,/结果未知/);assert.equal(h.store.get('novel-model-choice:u'),'gpt-5.5');
+ const runs=h.calls.filter(x=>x.url.endsWith('/auto-run'));assert.equal(runs.length,1);assert.equal(runs[0].body.model,'absent');assert.equal(runs[0].body.previewHash,'h');
+});

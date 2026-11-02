@@ -1,7 +1,8 @@
 import { env } from 'cloudflare:workers';
 import { feedbackIdentity } from '@/lib/feedback/server';
 import { HubError, failure, json, readBoundedBody, requireMutation, requireUser } from '@/lib/hub/server';
-import { chooseModel } from '@/modules/novel-ai/model-preference';
+import { openTextRun } from '@/modules/novel-ai/text-run';
+import { providerModelError } from '@/modules/novel-ai/fallback-service.mjs';
 import { normalizeWritingProfile, publicBrief, roleSystem } from '@/modules/novel-ai/writing-profile.mjs';
 import { ContextError } from '@/modules/novel-ai/context.mjs';
 import { getNovelKeyBinding } from '@/modules/novel-ai/key-preference';
@@ -50,25 +51,26 @@ export async function POST(req: Request) {
     const profile=normalizeWritingProfile(writingProfile,ContextError);
     if (typeof instruction !== 'string' || !instruction.trim() || instruction.length > 2000 || typeof scene !== 'string' || scene.length > 12000 || !Array.isArray(facts) || facts.length > 40 || !facts.every(f => typeof f === 'string' && f.length <= 500)) throw new HubError('请检查指令、场景和事实的长度。', 400);
     const binding = await getNovelKeyBinding(user.userId);
-    const key = binding.key, model = await chooseModel(user.userId,(data as Record<string, unknown>).model,binding.revision);
-    if (!key || !model) throw new HubError('站点尚未配置模型，请先配置服务端模型后再使用 AI 起草。', 503);
-    const target = endpoint(config('NOVEL_OPENAI_BASE_URL') || 'https://api.openai.com/v1');
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 30000);
-    let response: Response;
-    try {
-      response = await fetch(target, {method:'POST', redirect:'manual', signal:controller.signal, headers:{'content-type':'application/json', authorization:`Bearer ${key}`}, body:JSON.stringify({model, max_completion_tokens:3000, messages:[{role:'system',content:roleSystem('writer',profile.styleId,SYSTEM)},{role:'user',content:JSON.stringify({ instruction, scene, facts, ...publicBrief(profile) })}]})});
-      if (!response.ok) throw new HubError(`模型服务请求失败（HTTP ${response.status}）；请检查服务端配置和额度。`, 502);
-      const result = await boundedResponse(response) as { model?: unknown; choices?: Array<{ message?: { content?: unknown } }> };
-      const text = result?.choices?.[0]?.message?.content;
-      if (typeof text !== 'string' || !text.trim() || text.length > 50000) throw new HubError('模型没有返回有效的候选正文。', 502);
-      const currentBinding = await getNovelKeyBinding(user.userId);
-      if (currentBinding.source!==binding.source || currentBinding.revision!==binding.revision) throw new HubError('生成期间密钥配置发生变化，请重新生成。',409);
-      return json({text, model: typeof result.model === 'string' ? result.model.slice(0, 200) : model});
-    } catch (error) {
-      if (error instanceof HubError) throw error;
-      if (controller.signal.aborted) throw new HubError('模型请求超过 30 秒，请重试。', 504);
-      throw new HubError('模型服务连接失败，请稍后重试。', 502);
-    } finally { clearTimeout(timer); }
+    const key=binding.key,baseUrl=config('NOVEL_OPENAI_BASE_URL')||'https://api.openai.com/v1';
+    const run=await openTextRun(user.userId,(data as Record<string,unknown>).model,binding,baseUrl,async()=>!req.signal.aborted);
+    if(!key)throw new HubError('站点尚未配置模型，请先配置服务端模型后再使用 AI 起草。',503);
+    const target=endpoint(baseUrl),messages=[{role:'system',content:roleSystem('writer',profile.styleId,SYSTEM)},{role:'user',content:JSON.stringify({instruction,scene,facts,...publicBrief(profile)})}];
+    const result=await run.run(async model=>{
+      const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),90000);
+      try{
+        const response=await fetch(target,{method:'POST',redirect:'manual',signal:controller.signal,headers:{'content-type':'application/json',authorization:`Bearer ${key}`},body:JSON.stringify({model,max_completion_tokens:3000,messages})});
+        if(!response.ok)throw await providerModelError(response,model,HubError);
+        const value=await boundedResponse(response) as {model?:unknown;choices?:Array<{message?:{content?:unknown}}>};
+        const text=value?.choices?.[0]?.message?.content;
+        if(typeof text!=='string'||!text.trim()||text.length>50000)throw new HubError('模型没有返回有效的候选正文。',502);
+        return {text,model:typeof value.model==='string'?value.model.slice(0,200):model};
+      }catch(error){
+        if(error instanceof HubError)throw error;
+        if(controller.signal.aborted)throw new HubError('模型请求超时，结果未知；不会自动重试。',504);
+        throw new HubError('模型服务连接失败，结果未知。',502);
+      }finally{clearTimeout(timer)}
+    });
+    if(!await run.valid())throw new HubError('生成期间密钥配置发生变化，请重新生成。',409);
+    return json({...result,requestedModel:run.model,modelFallback:run.notice});
   } catch (error) { if (error instanceof ContextError || error instanceof KeyPreferenceError) return json({error:error.message},error.status); return failure(error); }
 }

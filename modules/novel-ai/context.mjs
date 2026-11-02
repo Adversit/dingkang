@@ -1,3 +1,4 @@
+import { providerModelError } from './fallback-service.mjs';
 import { providerPolicy,completionText } from './provider-policy.mjs';
 /** Compile only caller-selected, server-confirmed records into a previewable context. */
 import { buildAnalysisMessages } from './analysis.mjs';
@@ -87,7 +88,7 @@ export async function generateFromPreview(preview,options){
   if(!options.key||!options.model)throw new ContextError('站点尚未配置模型，请先配置服务端模型。',503);
   const url=endpoint(options.baseUrl||'https://api.openai.com/v1'); if(url!==preview.provider||options.model!==preview.model)throw new ContextError('模型配置已变化，请重新预览。',409); const planner=['scenes','book'].includes(preview.planMode),task=planner?(preview.planMode==='book'?'book':'plan'):preview.longForm===true?'chapter':'prose',policy=providerPolicy(options.model,task),label=planner?'规划':'正文';const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),policy.timeoutMs);
   try{const response=await (options.fetchImpl||fetch)(url,{method:'POST',redirect:'manual',signal:controller.signal,headers:{'content-type':'application/json',authorization:`Bearer ${options.key}`},body:JSON.stringify({model:options.model,...policy.params,messages:preview.messages})});
-    if(!response.ok)throw new ContextError(`模型服务请求失败（HTTP ${response.status}）。`,502);
+    if(!response.ok)throw await providerModelError(response,options.model,ContextError);
     const data=await bounded(response),candidate=completionText(data?.choices?.[0],label,ContextError);
     if(candidate.length>50000)throw new ContextError('模型返回内容超出允许长度，未采用。',502);
     return {status:'REVIEW',text:candidate,previewHash:preview.previewHash,stateVersion:preview.stateVersion,revisionId:preview.revisionId,model:typeof data.model==='string'?data.model.slice(0,200):options.model,notice:'候选正文尚未保存或提交事实；采用前请确认作品与预览依据仍未变化。'};

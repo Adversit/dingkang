@@ -44,6 +44,7 @@
             <p id="models-note" class="settings-note"></p>
             <div class="settings-save-row"><span id="selection-label" class="subtle">选择一个模型作为默认</span><button id="save-model" class="primary" type="button" disabled>保存默认模型</button></div>
           </div>
+          <p class="settings-note">写作模型明确不可用时，站点会从当前连接的 GPT‑5.5 模型中发起小额测试，再使用通过的模型。密钥、额度或超时问题不会触发自动重试。</p>
           <p id="model-message" class="settings-message" role="status" aria-live="polite"></p>
         </section>
       </div>

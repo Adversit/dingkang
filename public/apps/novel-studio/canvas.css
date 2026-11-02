@@ -32,3 +32,5 @@ body,.studio-shell .studio-sidebar,.studio-topbar{background:var(--paper);color:
 
 @media(min-width:721px){.studio-shell .studio-nav-link{padding-inline:9px;gap:10px;white-space:nowrap}}
 @media(min-width:721px) and (max-width:1050px){:root{--studio-sidebar-width:148px}}
+
+.chapter-checks{margin-top:22px;padding-top:12px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}.chapter-checks strong,.chapter-checks small{display:block;font-size:14px}.chapter-checks small{padding-left:1em;overflow-wrap:anywhere}.chapter-checks div+div{margin-top:4px}.canvas-page .prose-title{font-family:"Songti SC",serif;font-size:1.23em;line-height:1.6;margin:0 0 .6em;color:var(--text)}.canvas-page .check-gaps p{margin:5px 0}.candidate-recovery textarea{min-height:80px}.canvas-dock{flex-wrap:wrap}

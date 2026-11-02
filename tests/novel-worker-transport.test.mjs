@@ -12,18 +12,18 @@ const fixtureKey='sk-workerd-regression-fixture-not-a-real-api-key';
 const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 const sources=[
  'modules/novel-ai/models-list.mjs','modules/novel-ai/context.mjs','modules/novel-ai/analysis.mjs',
- 'modules/novel-ai/provider-policy.mjs','modules/novel-ai/writing-profile.mjs','modules/novel-ai/connection-sources.mjs','modules/novel-ai/key-preference-core.mjs','modules/novel-studio/temporal.mjs',
+ 'modules/novel-ai/provider-policy.mjs','modules/novel-ai/fallback-service.mjs','modules/novel-ai/writing-profile.mjs','modules/novel-ai/connection-sources.mjs','modules/novel-ai/key-preference-core.mjs','modules/novel-studio/temporal.mjs',
 ].map(path=>({type:'ESModule',path,contents:read(path)}));
 let legacy=ts.transpileModule(read('app/api/m/novel-studio/generate/route.ts'),{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
-legacy=legacy.replaceAll('@/modules/novel-ai/writing-profile.mjs','./modules/novel-ai/writing-profile.mjs').replaceAll('@/modules/novel-ai/context.mjs','./modules/novel-ai/context.mjs').replaceAll('@/modules/novel-ai/key-preference-core.mjs','./modules/novel-ai/key-preference-core.mjs');
-for(const name of ['@/lib/feedback/server','@/lib/hub/server','@/modules/novel-ai/model-preference','@/modules/novel-ai/key-preference'])legacy=legacy.replaceAll(name,'./stubs.mjs');
+legacy=legacy.replaceAll('@/modules/novel-ai/fallback-service.mjs','./modules/novel-ai/fallback-service.mjs').replaceAll('@/modules/novel-ai/writing-profile.mjs','./modules/novel-ai/writing-profile.mjs').replaceAll('@/modules/novel-ai/context.mjs','./modules/novel-ai/context.mjs').replaceAll('@/modules/novel-ai/key-preference-core.mjs','./modules/novel-ai/key-preference-core.mjs');
+for(const name of ['@/lib/feedback/server','@/lib/hub/server','@/modules/novel-ai/text-run','@/modules/novel-ai/key-preference'])legacy=legacy.replaceAll(name,'./stubs.mjs');
 const stubs=`
 export class HubError extends Error {constructor(message,status=400){super(message);this.status=status}}
 export const feedbackIdentity=()=>({authenticated:true,isOwner:true});
 export const requireMutation=()=>{};export const requireUser=()=>({userId:'fixture-owner'});
 export const json=(body,status=200)=>Response.json(body,{status});export const failure=e=>json({error:e.message},e.status||500);
 export const readBoundedBody=async req=>new Uint8Array(await req.arrayBuffer());
-export const chooseModel=async()=> 'fixture-model';
+export const openTextRun=async()=>({model:'fixture-model',notice:null,valid:async()=>true,run:fn=>fn('fixture-model')});
 export const getNovelKeyBinding=async()=>({key:${JSON.stringify(fixtureKey)},source:'FixtureKey',revision:1});
 `;
 const entry=`
