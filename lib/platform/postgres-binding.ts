@@ -92,9 +92,17 @@ let pool: Pool | undefined;
 
 function databasePool() {
   if (!pool) {
+    const databaseUrl = process.env.WORKSPACE_DATABASE_URL;
+    if (!databaseUrl) throw new Error('The workspace database URL is missing.');
+    const connection = new URL(databaseUrl);
+    // node-postgres replaces the SSL options when the connection URL has SSL parameters.
+    for (const option of ['ssl', 'sslmode', 'sslcert', 'sslkey', 'sslrootcert']) {
+      connection.searchParams.delete(option);
+    }
+    const ca = process.env.WORKSPACE_DATABASE_CA?.trim() || undefined;
     pool = new Pool({
-      connectionString: process.env.WORKSPACE_DATABASE_URL,
-      ssl: { rejectUnauthorized: true },
+      connectionString: connection.toString(),
+      ssl: { ca, rejectUnauthorized: true },
       max: 3,
       idleTimeoutMillis: 10_000,
       connectionTimeoutMillis: 8_000,
