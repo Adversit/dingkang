@@ -8,15 +8,29 @@
 
 [经典工作台](https://dingkang-hub.dingikang.chatgpt.site/?style=classic) · [夜航实验室](https://dingkang-hub.dingikang.chatgpt.site/?style=night-harbor) · [灵感轨道](https://dingkang-hub.dingikang.chatgpt.site/?style=kinetic) · [暖居小镇](https://dingkang-hub.dingikang.chatgpt.site/?style=cozy)
 
-[应用目录](#应用目录) · [架构](#一处修改四种外观共同生效) · [本地运行](#本地运行) · [维护文档](#维护约定与文档)
+[部署与访问](#部署与访问) · [应用目录](#应用目录) · [架构](#一处修改四种外观共同生效) · [本地运行](#本地运行) · [维护文档](#维护约定与文档)
 
 </div>
 
 [![暖居小镇：暖阳海岛与可进入的小屋](docs/screenshots/cozy.webp)](https://dingkang-hub.dingikang.chatgpt.site/?style=cozy)
 
-这是一个把独立站点整合为个人工作空间的完整项目。信息雷达、论文研究、产品开发、日常陪伴与七段游戏旅程，共用一个入口、一套账号与一组存储资源。各模块保留自己的功能与界面，可以搜索、收藏、继续最近使用的应用，也可以在数据中心管理文件和存档。
+这是一个把独立站点整合为个人工作空间的完整项目。信息雷达、论文研究、产品开发、日常陪伴与七段游戏旅程，在同一部署内共用入口、登录和存储。各模块保留自己的功能与界面，可以搜索、收藏、继续最近使用的应用，也可以在数据中心管理文件和存档。
 
-**源码公开，线上空间保持私人访问。** 上面的预览链接需要站点授权登录；截图可直接查看。仓库不包含用户数据库、私人附件、迁移快照或服务凭据。
+**源码与演示截图公开。** 工作台的个人存档、偏好和附件按登录账号授权访问，真实数据与服务凭据保存在所属部署平台。
+
+## 部署与访问
+
+| 环境 | 发布来源 | 前端 | 后端 |
+|---|---|---|---|
+| Vercel 生产 | 合并或推送到 `main` 后自动部署到 Production | [正式站](https://dingkang.vercel.app) | [API 健康检查](https://dingkang.vercel.app/api/campus/health) · [生产 Supabase](https://supabase.com/dashboard/project/byrvthkuvebtvsedmzdh) |
+| Vercel 测试 | 推送到 `codex/vercel-preview` 或其他功能分支后自动部署到 Preview | [测试分支预览](https://dingkang-git-codex-vercel-preview-dingzikangs-projects.vercel.app)，需要 Vercel 项目访问权限 | [API 健康检查](https://dingkang-git-codex-vercel-preview-dingzikangs-projects.vercel.app/api/campus/health) · [测试 Supabase](https://supabase.com/dashboard/project/fhwqjjeaqwajbipdifrg) |
+| ChatGPT Sites | 在项目「丁康的工作空间」执行 [Sites 发布流程](#chatgpt-sites-发布) | [自定义域名](https://www.dingkangopen.xyz) · [平台域名](https://dingkang-hub.dingikang.chatgpt.site) | [API 健康检查](https://www.dingkangopen.xyz/api/campus/health) · Cloudflare Worker、D1 `DB` 和 R2 `BUCKET` |
+
+Vercel 的页面和 Next.js API 使用同一域名，API 路径以 `/api/` 开头。构建状态、提交和构建日志在 [Vercel Deployments](https://vercel.com/dingzikangs-projects/dingkang/deployments) 查看，运行时请求在 [Vercel Logs](https://vercel.com/dingzikangs-projects/dingkang/logs) 查看。数据库、认证和附件到表中对应的 Supabase 项目查看。
+
+日常开发先推功能分支验收，再合入 `main`。首次通过 `main` 自动发布前，需先合入包含 `pnpm build:vercel` 的 Vercel 迁移改动。数据库结构迁移在对应 Supabase 环境单独执行。
+
+ChatGPT Sites 的 Worker 日志和 D1 数据按站点项目查看。Sites 版使用 ChatGPT 登录和该站点的 D1/R2，Vercel 的生产库和测试库各自管理账号、业务数据及附件。
 
 ## 四种外观，同一份工作空间
 
@@ -108,7 +122,7 @@ flowchart TB
 
 ## 数据如何保存
 
-一个 Worker 共用一个 D1 `DB` 和一个 R2 `BUCKET`。D1 包含 **33 张原生业务表 + 3 张统一存储表**；表前缀和账号字段负责隔离。R2 使用用户与模块前缀区分数据中心文件和研究附件。
+ChatGPT Sites 版的 Worker 使用 D1 `DB` 和 R2 `BUCKET`。D1 的表前缀和账号字段负责隔离，R2 按用户与模块前缀保存数据中心文件和研究附件。Vercel 版在对应 Supabase 项目中使用 PostgreSQL 和私有 Storage。
 
 - **账号归属**：服务端只接受部署平台验证的身份；浏览器提交的用户 ID 不能决定数据归属。
 - **游戏与偏好**：保留原存档键和内容，通过统一桥同步到 `hub_states`。页面等待恢复完成后再启动。
@@ -117,7 +131,7 @@ flowchart TB
 - **业务记录**：研究项目、对话、产品工作区等继续由各模块原生 API 保存。
 - **附件**：数据中心支持单文件最大 25 MiB，下载须验证归属；文件不以公开 HTML 页面执行。
 
-数据中心的“导出存档”只包含当前账号的统一存档与偏好，**不包含原生业务数据库、附件或历史版本**。完整备份需要分别处理 D1 与 R2。旧域名浏览器存档需要先导出再导入，不能跨域自动读取；一个游戏通过迁移验收也不代表全部旧设备的存档已迁入。详见 [存储说明](docs/unification.md) 和 [迁移流程](docs/migration-2026-10-23.md)。
+数据中心的“导出存档”只包含当前账号的统一存档与偏好，**不包含原生业务数据库、附件或历史版本**。ChatGPT Sites 版的完整备份需要分别处理 D1 与 R2。旧域名浏览器存档需要先导出再导入，不能跨域自动读取；一个游戏通过迁移验收也不代表全部旧设备的存档已迁入。详见 [存储说明](docs/unification.md) 和 [迁移流程](docs/migration-2026-10-23.md)。
 
 ## 本地运行
 
@@ -163,9 +177,9 @@ pnpm run build
 
 共享测试覆盖身份、存档、版本冲突、备份导入、主题导航及房间返回；场景验证还需核对 15 个物件热点与目录的一一对应、资源路径和拾取范围。发布时另行检查四种外观的桌面与 375px 移动布局、建筑选中与进入、物件实际点击、窄屏观察、音效开关，以及应用打开期间切换主题不重载。具体模块保留各自的测试文件；静态数据和几何检查不能替代实际浏览器验收。新版场景的上线结论以部署结果与浏览器验收为准。
 
-生产部署使用 Sites 的源码发布流程：
+### ChatGPT Sites 发布
 
-1. 保留 `.openai/hosting.json` 的现有站点标识、`DB` / `BUCKET` 绑定和私人访问设置。
+1. 保留 `.openai/hosting.json` 的现有站点标识、`DB` / `BUCKET` 绑定及站点访问范围。
 2. 完成测试，审查数据库迁移，将锁文件、源码、静态资源和迁移文件一并交给发布流程。
 3. 在托管环境配置所需服务凭据，不写入源码、截图、日志或提交历史。
 4. 发布后等平台报告成功，再检查登录、D1/R2 健康状态和真实模块读写。
