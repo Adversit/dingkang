@@ -4,6 +4,24 @@ import { postgresQuery } from './sqlite-query';
 type Argument = string | number | boolean | null | Uint8Array;
 type Row = Record<string, unknown>;
 
+function reportDatabaseError(error: unknown) {
+  const failure = error as { code?: unknown; message?: unknown } | null;
+  const code = typeof failure?.code === 'string' && /^[A-Z0-9_]{3,80}$/.test(failure.code)
+    ? failure.code
+    : 'UNKNOWN';
+  const message = typeof failure?.message === 'string' ? failure.message : '';
+  const reason = [
+    [/tenant or user not found/i, 'pooler tenant lookup'],
+    [/EAUTHQUERY|secret format/i, 'pooler authentication query'],
+    [/password authentication failed|SASL|SCRAM/i, 'database authentication'],
+    [/certificate|TLS|SSL/i, 'TLS negotiation'],
+    [/timeout|timed out/i, 'connection timeout'],
+    [/does not exist/i, 'missing database object'],
+    [/permission denied/i, 'database permission'],
+  ] as const;
+  console.error('Workspace PostgreSQL query failed', { code, reason: reason.find(([pattern]) => pattern.test(message))?.[1] });
+}
+
 const parsers: typeof types = {
   ...types,
   getTypeParser(oid, format) {
@@ -29,7 +47,13 @@ export class PostgresStatement {
 
   async execute<T>(client: Pool | PoolClient, previousChanges = 0) {
     const query = postgresQuery(this.statement, this.args, previousChanges);
-    const result = await client.query(query);
+    let result;
+    try {
+      result = await client.query(query);
+    } catch (error) {
+      reportDatabaseError(error);
+      throw error;
+    }
     return {
       success: true,
       results: result.rows as T[],
