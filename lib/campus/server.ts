@@ -93,7 +93,7 @@ async function authenticate(request:Request,db:D1Database,now:number):Promise<Se
 }
 async function limit(db:D1Database,key:string,max:number,windowMs:number,now:number) {
   const bucket=Math.floor(now/windowMs);
-  const row=await db.prepare('INSERT INTO campus_limits (key,hits,expires_at) VALUES (?,1,?) ON CONFLICT(key) DO UPDATE SET hits=hits+1 RETURNING hits')
+  const row=await db.prepare('INSERT INTO campus_limits (key,hits,expires_at) VALUES (?,1,?) ON CONFLICT(key) DO UPDATE SET hits=campus_limits.hits+1 RETURNING hits')
     .bind(`${key}:${bucket}`,(bucket+2)*windowMs).first<{hits:number}>();
   if(!row || row.hits>max) fail(429,'RATE_LIMIT','操作太快了，请稍等片刻。');
 }
