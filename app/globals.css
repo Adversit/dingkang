@@ -685,21 +685,63 @@ button,a,input,select{-webkit-tap-highlight-color:transparent}
 @media(max-width:380px){.hub-module-tools{padding:15px}.hub-module-controls{gap:5px}.hub-module-controls>button,.hub-module-controls>a{gap:6px;padding-left:5px;padding-right:5px}}
 
 /* Game Hall entry card on the main catalog */
-.hub-game-hall-card{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;padding:24px 28px;border-radius:12px;background:var(--hub-surface);border:1px solid var(--hub-line);transition:border-color .2s ease,transform .2s ease}
-.hub-game-hall-card:hover{border-color:var(--hub-accent);transform:translateY(-1px)}
+.hub-game-hall-card{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;padding:26px 30px;border-radius:20px;background:var(--hub-surface);border:1px solid var(--hub-line);box-shadow:0 16px 40px -16px rgba(15,23,42,.1);position:relative;overflow:hidden;transition:border-color .24s ease,transform .24s cubic-bezier(.2,.8,.2,1),box-shadow .24s ease}
+.hub-game-hall-card::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--hub-accent),#6366f1,#10b981)}
+.hub-game-hall-card:hover{border-color:var(--hub-accent);transform:translateY(-3px);box-shadow:0 22px 48px -16px rgba(15,23,42,.16)}
 .hub-game-hall-info{display:flex;align-items:center;gap:18px;min-width:0}
-.hub-game-hall-icon{width:52px;height:52px;border-radius:12px;display:grid;place-items:center;background:var(--hub-raised);color:var(--hub-accent);flex-shrink:0}
-.hub-game-hall-info h4{font-size:22px;font-weight:600;margin:0}
+.hub-game-hall-icon{width:56px;height:56px;border-radius:16px;display:grid;place-items:center;background:color-mix(in srgb,var(--hub-accent) 15%,var(--hub-raised));color:var(--hub-accent);flex-shrink:0;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--hub-accent) 25%,transparent)}
+.hub-game-hall-info h4{font-size:23px;font-weight:700;letter-spacing:-.025em;margin:0}
 .hub-game-hall-info p{font-size:16px;color:var(--hub-muted);margin-top:4px}
 .hub-game-hall-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.theme-kinetic .hub-game-hall-card{background:linear-gradient(135deg,#ffffffcf,#f4f7fbad);border:1px solid #ffffffd9;box-shadow:0 14px 36px #3e56810d;backdrop-filter:blur(14px)}
-.theme-cozy .hub-game-hall-card{background:#FFFCF4;border-color:#DDD5BF;border-radius:16px;box-shadow:0 4px 0 #E5DECA80}
-.theme-night-harbor .hub-game-hall-card{background:linear-gradient(135deg,rgba(23,35,37,.92),rgba(27,44,46,.88));border-color:#344345;box-shadow:0 12px 32px rgba(0,0,0,.28);backdrop-filter:blur(12px)}
-.theme-classic .hub-game-hall-card{box-shadow:0 2px 10px rgba(36,56,77,.04)}
+.theme-kinetic .hub-game-hall-card{background:linear-gradient(135deg,#ffffffd9,#f4f7fbb8);border:1px solid #ffffffe0;box-shadow:0 18px 44px #3e568112;backdrop-filter:blur(18px)}
+.theme-cozy .hub-game-hall-card{background:#FFFCF4;border-color:#DDD5BF;border-radius:20px;box-shadow:0 6px 0 #E5DECA90,0 16px 36px -14px rgba(75,68,53,.12)}
+.theme-night-harbor .hub-game-hall-card{background:linear-gradient(135deg,rgba(23,35,37,.94),rgba(29,47,49,.9));border-color:#3b4d50;box-shadow:0 18px 42px rgba(0,0,0,.35);backdrop-filter:blur(16px)}
+.theme-classic .hub-game-hall-card{background:linear-gradient(135deg,#ffffff,#f8fafc);box-shadow:0 14px 34px -12px rgba(36,56,77,.09)}
 
 /* Theme-aware dynamic surfaces for WorkspaceCalendar */
-.theme-kinetic [data-calendar-surface]{background:linear-gradient(135deg,#ffffffcc,#f6f8fbad);border-color:#ffffffd9;box-shadow:0 12px 34px #3e56810c;backdrop-filter:blur(14px)}
-.theme-night-harbor [data-calendar-surface]{background:rgba(23,35,37,.9);border-color:#344345;box-shadow:0 10px 28px rgba(0,0,0,.24);backdrop-filter:blur(12px)}
-.theme-cozy [data-calendar-surface]{background:#FFFCF4;border-color:#DDD5BF;border-radius:14px;box-shadow:0 4px 0 #E5DECA75}
-.theme-classic [data-calendar-surface]{box-shadow:0 2px 8px rgba(36,56,77,.04)}
+.theme-kinetic [data-calendar-surface]{background:linear-gradient(135deg,#ffffffd9,#f6f8fbb8);border-color:#ffffffe0;box-shadow:0 16px 40px #3e568110;backdrop-filter:blur(18px)}
+.theme-night-harbor [data-calendar-surface]{background:linear-gradient(145deg,rgba(23,35,37,.92),rgba(20,31,33,.88));border-color:#38494b;box-shadow:0 16px 38px rgba(0,0,0,.32);backdrop-filter:blur(16px)}
+.theme-cozy [data-calendar-surface]{background:#FFFCF4;border-color:#DDD5BF;border-radius:20px;box-shadow:0 5px 0 #E5DECA85,0 14px 32px -14px rgba(75,68,53,.1)}
+.theme-classic [data-calendar-surface]{background:#ffffff;box-shadow:0 12px 32px -14px rgba(36,56,77,.08)}
+
+/* V2 Spatial Bento Overhaul: Architectural Grid Backdrop, Stage & Tactile Cards */
+.hub-shell.theme-classic{background-color:#f4f7fb;background-image:radial-gradient(circle at 50% 0%,#ffffff 0%,transparent 65%),radial-gradient(#cbd5e1 1px,transparent 1px);background-size:100% 100%,28px 28px}
+.hub-shell.theme-night-harbor{background-color:#0b1314;background-image:radial-gradient(ellipse at 50% 0%,rgba(223,253,86,.07) 0%,transparent 55%),radial-gradient(rgba(255,255,255,.06) 1px,transparent 1px);background-size:100% 100%,32px 32px}
+.hub-shell.theme-cozy{background-image:radial-gradient(circle at 50% 0%,#fffdf7 0%,transparent 70%)}
+
+.hub-header{backdrop-filter:blur(16px);background:color-mix(in srgb,var(--hub-surface) 82%,transparent);position:sticky;top:0;z-index:45}
+.theme-classic>.hub-header{background:rgba(255,255,255,.86);backdrop-filter:blur(16px)}
+.theme-classic>.hub-style-bar{background:rgba(255,255,255,.75);backdrop-filter:blur(12px)}
+.hub-style-switcher{padding:4px;border-radius:999px;background:color-mix(in srgb,var(--hub-surface) 85%,var(--hub-raised));border:1px solid var(--hub-line);box-shadow:0 4px 16px rgba(0,0,0,.04)}
+.hub-style-switcher>button{border-radius:999px!important;padding:6px 15px!important;font-weight:550;white-space:nowrap;transition:background-color .18s ease,color .18s ease,transform .18s ease}
+@media(max-width:620px){.hub-style-switcher>button{padding:6px 9px!important;font-size:15px}}
+.hub-style-switcher>button[aria-pressed="true"]{background:var(--hub-accent)!important;color:var(--hub-accent-text)!important;border-color:transparent!important;box-shadow:0 4px 12px color-mix(in srgb,var(--hub-accent) 40%,transparent)}
+
+/* Classic Architectural Stage */
+.hub-classic-stage{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(280px,.9fr);gap:24px;align-items:center;padding:28px 32px;border-radius:22px;background:linear-gradient(135deg,#ffffff 0%,#f1f6fc 100%);border:1px solid #d5e0ec;box-shadow:0 18px 44px -16px rgba(36,56,77,.1);position:relative;overflow:hidden}
+.hub-classic-stage::before{content:"";position:absolute;right:-60px;top:-80px;width:280px;height:280px;border-radius:50%;background:radial-gradient(circle,rgba(54,95,131,.12),transparent 70%);pointer-events:none}
+.hub-classic-status-pill{display:inline-flex;align-items:center;gap:8px;padding:5px 13px;border-radius:999px;background:#eaf1f8;border:1px solid #cfdeec;font-size:14px;font-weight:600;color:#365f83;margin-bottom:14px}
+.hub-pulse-dot{width:8px;height:8px;border-radius:50%;background:#10b981;box-shadow:0 0 0 4px rgba(16,185,129,.18)}
+.hub-classic-domain-pills{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:18px}
+.hub-classic-domain-pills button{display:inline-flex;align-items:center;gap:7px;padding:8px 15px;border-radius:999px;background:#ffffff;border:1px solid #d5e0ec;font-size:14px;font-weight:600;color:#344e68;box-shadow:0 2px 6px rgba(36,56,77,.04);transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
+.hub-classic-domain-pills button:hover{transform:translateY(-2px);border-color:#365f83;color:#365f83;box-shadow:0 8px 18px rgba(54,95,131,.12)}
+.theme-classic .hub-classic-recents{margin-top:0}
+.theme-classic .hub-classic-recents h2{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:650;color:var(--hub-muted);margin-bottom:12px}
+.theme-classic .hub-classic-recents>div{grid-template-columns:1fr;gap:10px}
+.theme-classic .hub-classic-recents button{padding:13px 16px;border-radius:14px;box-shadow:0 4px 12px rgba(36,56,77,.04);transition:transform .18s ease,border-color .18s ease}
+.theme-classic .hub-classic-recents button:hover{transform:translateX(3px)}
+
+/* Tactile Bento App Cards across All 4 Themes */
+.hub-editorial-grid{border-top:0!important;border-bottom:0!important;gap:20px!important}
+.hub-editorial-grid .hub-application{background:var(--hub-surface);border:1px solid var(--hub-line)!important;border-radius:18px;padding:4px;box-shadow:0 10px 28px -12px rgba(15,23,42,.07);position:relative;overflow:hidden;transition:transform .22s cubic-bezier(.2,.8,.2,1),border-color .22s ease,box-shadow .22s ease}
+.hub-editorial-grid .hub-application::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--app-accent,var(--hub-accent));opacity:.85;pointer-events:none}
+.hub-editorial-grid .hub-application::after{content:"";position:absolute;right:-30px;top:-30px;width:130px;height:130px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--app-accent,var(--hub-accent)) 18%,transparent),transparent 70%);pointer-events:none;transition:transform .3s ease}
+.hub-editorial-grid .hub-application:hover{transform:translateY(-4px);border-color:color-mix(in srgb,var(--app-accent,var(--hub-accent)) 60%,var(--hub-line))!important;box-shadow:0 18px 38px -14px rgba(15,23,42,.15)}
+.hub-editorial-grid .hub-application:hover::after{transform:scale(1.25)}
+.hub-editorial-grid .hub-app-copy{padding:20px 52px 20px 18px!important;min-height:84px;align-items:center!important;gap:15px!important}
+.hub-editorial-grid .hub-app-icon{width:46px!important;height:46px!important;border-radius:13px;background:color-mix(in srgb,var(--app-accent,var(--hub-accent)) 14%,var(--hub-raised));color:var(--app-accent,var(--hub-accent))!important;display:grid;place-items:center;margin-top:0!important;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--app-accent,var(--hub-accent)) 24%,transparent)}
+.hub-editorial-grid .hub-editorial-arrow{display:inline-flex!important;position:static!important;color:var(--hub-muted);transition:transform .2s ease,color .2s ease}
+.hub-editorial-grid .hub-application:hover .hub-editorial-arrow{transform:translate(3px,-3px);color:var(--app-accent,var(--hub-accent))}
+.hub-editorial-grid .hub-favorite{right:12px!important;top:12px!important;transform:none!important}
+@media(max-width:960px){.hub-classic-stage{grid-template-columns:1fr;padding:22px}}
 @media(max-width:620px){.hub-game-hall-card{padding:18px;gap:16px}.hub-game-hall-actions{width:100%}}

@@ -351,7 +351,18 @@ export default function Hub(){
         </section>
         <div className="hub-frame-wrap">{frameLoading&&<div className="hub-frame-loading" role="status"><LoaderCircle size={28} className="hub-spin"/><p>正在打开{open.name}…</p></div>}<iframe key={open.id} ref={frameRef} src={open.path} title={open.name} allow="fullscreen; clipboard-write; autoplay" onLoad={()=>{setFrameLoading(false);setLegacyNovelPage(openRef.current?.id==='novel-studio'&&hubStorageMode('novel-studio',frameRef.current?.contentWindow)==='bridge');}}/></div>
       </div>:<>
-        {showHero&&theme.id==='classic'&&<section className="hub-classic-welcome hub-content"><div><h1>今天，从这里继续。</h1></div>{recentModules.length>0&&<div className="hub-classic-recents"><h2>最近使用</h2><div>{recentModules.slice(0,3).map(module=><button key={module.id} disabled={controlsDisabled} onClick={()=>launch(module)}><AppIcon module={module}/><span><strong>{module.name}</strong></span><ArrowUpRight size={20}/></button>)}</div></div>}</section>}
+        {showHero&&theme.id==='classic'&&<section className="hub-classic-welcome hub-content">
+          <div className="hub-classic-stage">
+            <div className="hub-classic-intro">
+              <div className="hub-classic-status-pill"><span className="hub-pulse-dot" aria-hidden="true"/><span>{modules.length} 个应用空间已就绪 · {calendar.today}</span></div>
+              <h1>今天，从这里继续。</h1>
+              <div className="hub-classic-domain-pills">
+                {categories.map(cat=>{const Icon=icons[cat.icon];return <button key={cat.id} type="button" onClick={()=>selectSection(cat.id)} disabled={controlsDisabled}><Icon size={16}/><span>{cat.id==='games'?'游戏大厅':cat.name}</span></button>;})}
+              </div>
+            </div>
+            {recentModules.length>0&&<div className="hub-classic-recents"><h2><Clock3 size={17}/>最近使用</h2><div>{recentModules.slice(0,3).map(module=><button key={module.id} disabled={controlsDisabled} onClick={()=>launch(module)}><AppIcon module={module}/><span><strong>{module.name}</strong></span><ArrowUpRight size={19}/></button>)}</div></div>}
+          </div>
+        </section>}
         {showHero&&theme.id==='kinetic'&&<KineticScene {...sceneProps} motionEnabled={appearance.motion} reducedMotion={reducedMotion} onToggleMotion={()=>persist({appearance:{...appearanceRef.current,motion:!appearanceRef.current.motion}})}/>}
         {cozyHome&&<div className="hub-cozy-space"><CozyBaseScene {...sceneProps} initialRoom={cozyRoom.current} onRoomChange={rememberCozyRoom} onOpenCalendar={()=>{document.getElementById('hub-workspace-calendar')?.scrollIntoView({behavior:reducedMotion?'instant':'smooth',block:'start'});}} onOpenGameHall={()=>selectSection('games')}/></div>}
         {showHero&&theme.id==='night-harbor'&&<section className="hub-hero" aria-labelledby="hero-title">
@@ -403,11 +414,17 @@ export default function Hub(){
               <div className="hub-collection-heading"><h3 id={'category-'+category.id}>{theme.id==='classic'?category.name:presentation.title}</h3></div>
               <div className={scenic?'hub-art-grid':'hub-editorial-grid'}>{visible.filter(module=>module.category===category.id).map(module=>{
                 const art=moduleArtwork[module.id];
-                return <article className={'hub-application '+(art?'has-art':'type-art')} key={module.id}>
+                return <article className={'hub-application '+(art?'has-art':'type-art')} key={module.id} style={{'--app-accent':module.color} as CSSProperties} data-kinetic-interactive="true">
                   <button className="hub-app-launch" onClick={()=>launch(module)} disabled={controlsDisabled}>
                     {theme.id==='kinetic'&&!scenic&&<div className={'hub-kinetic-glyph glyph-'+module.category} aria-hidden="true"><i/><i/><i/><i/><span><AppIcon module={module} size={35}/></span></div>}
                     {scenic&&<div className="hub-artwork">{art?<img src={art.src} alt={art.label} loading="lazy" style={{objectPosition:art.position}}/>:<div className={'hub-art-type art-'+module.id}><AppIcon module={module} size={48}/><span>{module.id==='yourwar-battle-forge'?'YourWar':module.name}</span></div>}<span className="hub-open-mark" aria-hidden="true"><ArrowUpRight size={26}/></span></div>}
-                    <div className="hub-app-copy">{!scenic&&<AppIcon module={module} size={27}/>}<div><h4>{module.name}</h4></div></div>
+                    <div className="hub-app-copy">
+                      {!scenic&&<AppIcon module={module} size={25}/>}
+                      <div>
+                        <h4>{module.name}</h4>
+                      </div>
+                      {!scenic&&<span className="hub-editorial-arrow" aria-hidden="true"><ArrowUpRight size={20}/></span>}
+                    </div>
                   </button>
                   <button className={'hub-favorite '+(favorites.includes(module.id)?'selected':'')} onClick={()=>toggleFavorite(module.id)} disabled={!ready||importing} aria-label={(favorites.includes(module.id)?'取消收藏':'收藏')+module.name} title={favorites.includes(module.id)?'取消收藏':'收藏'} aria-pressed={favorites.includes(module.id)}><Star size={20} fill={favorites.includes(module.id)?'currentColor':'none'}/></button>
                 </article>;

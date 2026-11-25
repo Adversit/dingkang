@@ -17,6 +17,7 @@
 - [x] T010 Create `docs/spec-plan-task/` handoff documentation and initialize Spec Kit (`specs/001-frontend-workspace-v1/`)
 - [x] T011 Upgrade per-module stylesheets & HUD motion across all 17 sub-workbenches (`modules/*/app/*.css`, `public/apps/*/*.css`, `public/assets/yunque-sanguo/game.css`, `roommate-housekeeper/index.html`)
 
-## Phase 4: Verification
+## Phase 4: Verification & V2 Spatial Bento Overhaul
 - [x] T012 Pass `pnpm exec tsc --noEmit --pretty false`, all 7 Node unit test suites (82 tests), and `pnpm build:vercel`
 - [x] T013 Initialize local D1 migrations (51 tables) and verify D1-backed calendar persistence, `409` conflict, `/api/hub/health`, and `/api/games/jlu-campus/health` in live browser environment
+- [x] T014 V2 Spatial Bento Overhaul: Command Deck (mini matrix badge, telemetry orbs, live `HH:MM:SS` clock), 3-column Bento Calendar Grid with Current Focus card & 7-segment progress bar, Game Hall Spotlight Stage & filter tabs, Tactile Bento App Cards with per-app color accents, and elevated 17-app visual system

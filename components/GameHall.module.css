@@ -1,11 +1,11 @@
 .hall {
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 24px;
   padding-top: 24px;
 }
 
-.header {
+.topToolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -20,12 +20,23 @@
   flex-wrap: wrap;
 }
 
-.titleBlock h2 {
+.titleCopy h2 {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 26px;
-  font-weight: 600;
+  gap: 12px;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.hallIconBadge {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--hub-accent) 16%, var(--hub-raised));
+  color: var(--hub-accent);
+  display: grid;
+  place-items: center;
 }
 
 .note {
@@ -34,33 +45,203 @@
   margin-top: 4px;
 }
 
-.continueRow {
+.filterPills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px;
+  border-radius: 999px;
+  background: var(--hub-raised);
+  border: 1px solid var(--hub-line);
+  flex-wrap: wrap;
+}
+
+.filterPills button {
+  padding: 7px 15px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 550;
+  color: var(--hub-muted);
+  transition: background-color 0.18s ease, color 0.18s ease;
+}
+
+.filterPills button:hover {
+  color: var(--hub-text);
+}
+
+.filterActive {
+  background: var(--hub-accent) !important;
+  color: var(--hub-accent-text) !important;
+  font-weight: 650 !important;
+}
+
+/* Spotlight 焦点舞台横幅 */
+.spotlightBanner {
+  position: relative;
+  border-radius: 22px;
+  overflow: hidden;
+  min-height: 250px;
+  display: flex;
+  align-items: flex-end;
+  padding: 28px 32px;
+  background: #142224;
+  color: #f6f4ee;
+  border: 1px solid color-mix(in srgb, var(--game-accent, var(--hub-accent)) 45%, var(--hub-line));
+  box-shadow: 0 20px 50px -18px rgba(0, 0, 0, 0.28);
+  isolation: isolate;
+}
+
+.spotlightBackdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+}
+
+.spotlightBackdrop img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transform: scale(1.03);
+}
+
+.spotlightShade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(10, 18, 22, 0.92) 0%,
+    rgba(10, 18, 22, 0.72) 48%,
+    rgba(10, 18, 22, 0.25) 100%
+  );
+}
+
+.spotlightContent {
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.spotlightTags {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
-  font-size: 14px;
-  color: var(--hub-muted);
 }
 
+.spotlightKicker,
+.spotlightCap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  backdrop-filter: blur(10px);
+}
+
+.spotlightKicker {
+  background: rgba(223, 253, 86, 0.18);
+  color: #dffd56;
+  border: 1px solid rgba(223, 253, 86, 0.35);
+}
+
+.spotlightCap {
+  background: rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.spotlightContent h3 {
+  font-size: clamp(28px, 3.2vw, 38px);
+  font-weight: 750;
+  letter-spacing: -0.04em;
+  line-height: 1.2;
+}
+
+.spotlightContent p {
+  font-size: 16px;
+  color: #cbd5e1;
+}
+
+.spotlightActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.spotlightPrimaryBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 22px;
+  border-radius: 999px;
+  background: #dffd56 !important;
+  color: #142008 !important;
+  font-size: 16px;
+  font-weight: 700;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.spotlightPrimaryBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(223, 253, 86, 0.3);
+}
+
+.spotlightSecondaryBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14) !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(255, 255, 255, 0.24) !important;
+  backdrop-filter: blur(10px);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Bento 游戏卡片网格 */
 .grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 24px;
+  gap: 22px;
 }
 
 .card {
   position: relative;
-  border-radius: 10px;
+  border-radius: 20px;
   background: var(--hub-surface);
   border: 1px solid var(--hub-line);
   overflow: hidden;
-  transition: transform 0.22s ease, border-color 0.22s ease;
+  box-shadow: 0 12px 30px -14px rgba(15, 23, 42, 0.08);
+  transition:
+    transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-color 0.24s ease,
+    box-shadow 0.24s ease;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--game-accent, var(--hub-accent));
+  opacity: 0.85;
+  z-index: 2;
 }
 
 .card:hover {
-  transform: translateY(-2px);
-  border-color: var(--hub-accent);
+  transform: translateY(-4px);
+  border-color: var(--game-accent, var(--hub-accent));
+  box-shadow: 0 20px 42px -16px rgba(15, 23, 42, 0.18);
 }
 
 .launchBtn {
@@ -82,11 +263,11 @@
   height: 100%;
   object-fit: cover;
   display: block;
-  transition: transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
+  transition: transform 0.55s cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
 .card:hover .artwork > img {
-  transform: scale(1.03);
+  transform: scale(1.05);
 }
 
 .artFallback {
@@ -94,48 +275,66 @@
   display: grid;
   place-items: center;
   font-size: 24px;
+  font-weight: 650;
+}
+
+.floatingCapBadge {
+  position: absolute;
+  left: 14px;
+  top: 14px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 14px;
   font-weight: 600;
+  background: rgba(15, 23, 30, 0.72);
+  color: #f8fafc;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(10px);
 }
 
 .openMark {
   position: absolute;
   right: 14px;
   bottom: 14px;
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: #122523a8;
+  background: rgba(15, 28, 30, 0.76);
   color: #f6f4ee;
-  border: 1px solid #e7f0e749;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(8px);
+  transition: transform 0.2s ease, background-color 0.2s ease;
 }
 
 .card:hover .openMark {
   background: var(--hub-accent);
   color: var(--hub-accent-text);
   border-color: var(--hub-accent);
+  transform: scale(1.08);
 }
 
 .cardBody {
-  padding: 16px 48px 18px 16px;
+  padding: 18px 52px 20px 18px;
 }
 
 .cardTitleRow {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
 .cardBody h3 {
-  font-size: 20px;
-  font-weight: 600;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
-.capabilityBadge {
+.subtitlePill {
   font-size: 14px;
-  padding: 1px 8px;
+  padding: 1px 10px;
   border-radius: 999px;
   background: var(--hub-raised);
   color: var(--hub-muted);
@@ -145,31 +344,35 @@
 .cardBody p {
   font-size: 16px;
   color: var(--hub-muted);
-  margin-top: 6px;
-  line-height: 1.5;
+  margin-top: 7px;
+  line-height: 1.55;
 }
 
 .favBtn {
   position: absolute;
-  right: 12px;
-  bottom: 16px;
-  width: 36px;
-  height: 36px;
+  right: 14px;
+  bottom: 18px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   display: grid;
   place-items: center;
+  background: var(--hub-raised) !important;
+  border: 1px solid var(--hub-line) !important;
   color: var(--hub-muted) !important;
 }
 
 .favBtn:hover {
-  background: var(--hub-raised);
+  border-color: var(--hub-accent) !important;
+  color: var(--hub-text) !important;
 }
 
 .favSelected {
   color: var(--hub-accent) !important;
+  border-color: color-mix(in srgb, var(--hub-accent) 45%, var(--hub-line)) !important;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 960px) {
   .grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -179,5 +382,10 @@
   .grid {
     grid-template-columns: 1fr;
     gap: 18px;
+  }
+
+  .spotlightBanner {
+    padding: 20px;
+    min-height: 220px;
   }
 }
