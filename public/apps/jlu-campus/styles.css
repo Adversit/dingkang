@@ -13,3 +13,19 @@
 @media(max-width:600px){.navigation-panel{width:calc(100vw - 137px);max-width:250px}.navigation-panel p{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.navigation-panel>div{flex-wrap:nowrap;gap:6px}.navigation-panel button{padding:7px 8px}.has-navigation .notice-region{top:280px}.map-navigation{top:8px;left:8px;max-width:calc(100% - 64px);padding:7px 9px}.map-navigation p{margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.map-navigation button{padding:6px 10px;min-height:36px}}
 
 .map-navigation:not([hidden])~.map-tip{display:none}
+
+
+/* Minimalist & dynamic campus HUD polish */
+.hud-panel, .panel, .modal-card, .room-card, .chat-panel {
+  backdrop-filter: blur(10px);
+  transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.room-card:hover {
+  transform: translateY(-2px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .hud-panel, .panel, .modal-card, .room-card, .chat-panel {
+    transition: none !important;
+    transform: none !important;
+  }
+}

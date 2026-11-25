@@ -30,3 +30,15 @@
 .page-heading h1,.desk-title h1,.study-page-heading h1{margin-bottom:0}
 
 .desk-path>button{align-items:center;padding:15px 0}.desk-path>button>svg:first-child{margin-top:0}
+
+/* Dynamic & minimalist polish */
+.topbar{backdrop-filter:blur(12px);background:#fcfcf9e6}
+.stat,.panel,.evidence-note,.reading-book,.rail-item{transition:transform .22s cubic-bezier(.2,.8,.2,1),box-shadow .22s ease,border-color .22s ease,background-color .18s ease}
+.stat:hover,.evidence-note:hover{transform:translateY(-2px);box-shadow:0 10px 24px #244e400f}
+.sidebar nav button{transition:background .18s ease,color .18s ease,transform .18s ease}
+.sidebar nav button:hover{transform:translateX(2px)}
+.button{transition:transform .16s cubic-bezier(.2,.8,.2,1),background .16s ease,border-color .16s ease,box-shadow .16s ease}
+.button:active:not(:disabled){transform:scale(.98)}
+.modal{animation:zhizhengModalIn .22s cubic-bezier(.16,1,.3,1)}
+@keyframes zhizhengModalIn{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.stat,.panel,.evidence-note,.reading-book,.rail-item,.sidebar nav button,.button,.modal{animation:none!important;transition:none!important;transform:none!important}}

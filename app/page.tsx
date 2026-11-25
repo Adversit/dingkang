@@ -1,11 +1,14 @@
 'use client';
 
 import {useEffect,useRef,useState,type ChangeEvent,type CSSProperties} from 'react';
-import {BookOpen,Layers,Heart,Gamepad2,Search,Star,ArrowUpRight,ArrowRight,ChevronLeft,CloudCheck,CloudOff,LoaderCircle,RefreshCw,Upload,Download,File,FileText,Image as ImageIcon,Music2,ShieldCheck,X,Code2,Radar,Microscope,Lightbulb,ChartNoAxesCombined,LampDesk,House,Wind,Sparkles,Swords,Mail,Moon,Flag,Clock3,ExternalLink,Check,AlertCircle,FolderOpen,SlidersHorizontal,Maximize2,Minimize2,LogOut,Grid2X2,Menu} from 'lucide-react';
+import {BookOpen,Layers,Heart,Gamepad2,Search,Star,ArrowUpRight,ArrowRight,ChevronLeft,CloudCheck,CloudOff,LoaderCircle,RefreshCw,Upload,Download,File,FileText,Image as ImageIcon,Music2,ShieldCheck,X,Code2,Radar,Microscope,Lightbulb,ChartNoAxesCombined,LampDesk,House,Wind,Sparkles,Swords,Mail,Moon,Flag,Clock3,ExternalLink,Check,AlertCircle,FolderOpen,SlidersHorizontal,Maximize2,Minimize2,LogOut,Grid2X2,Menu,CalendarDays} from 'lucide-react';
 import {modules,categories,moduleById,type HubModule,type ModuleCategory} from '@/lib/hub/catalog';
 import {hubThemes,defaultAppearance,parseAppearance,themeById,themeVariables,moduleArtwork,categoryPresentation,parseThemeId,appearanceForRoute,buildHubUrl,type HubThemeId,type HubAppearance} from '@/lib/hub/theme';
 import {GAME_IMPORT_METADATA} from '@/lib/hub/legacy-import';
 import {parseBackup,prepareBackupPreview,type BackupPreview} from '@/lib/hub/backup-preview';
+import {useWorkspaceCalendar} from '@/lib/hub/use-workspace-calendar';
+import WorkspaceCalendar from '@/components/WorkspaceCalendar';
+import GameHall from '@/components/GameHall';
 import HubStoragePanel,{flushHubModule} from '@/components/HubStoragePanel';
 import {findModuleStorage,hubStorageMode,cancelHubModuleLeave} from '@/lib/hub/storage-panel';
 import {installNavigationModal} from '@/lib/hub/navigation-focus';
@@ -289,6 +292,9 @@ export default function Hub(){
   const query=search.trim().toLowerCase(),activeCategory=categories.find(category=>category.id===section);
   const visible=modules.filter(module=>(section==='all'||module.category===section||section==='favorites'&&favorites.includes(module.id))&&(!query||(module.name+module.subtitle+module.description).toLowerCase().includes(query)));
   const recentModules=recents.map(moduleById).filter(Boolean) as HubModule[];
+  const calendar=useWorkspaceCalendar(session,ready);
+  const gameModules=modules.filter(module=>module.category==='games');
+  const recentGameModules=recentModules.filter(module=>module.category==='games');
   const hasIssue=!!(error||healthError||fileError);
   const status=!ready||health==='checking'?'正在连接':saving?'正在保存偏好':hasIssue?'连接需要留意':session?.authenticated&&health==='ready'?'私人空间已连接':session?.authenticated?'保存服务待确认':'尚未登录';
   const controlsDisabled=!ready||navigating||importing;
@@ -304,7 +310,7 @@ export default function Hub(){
       <aside ref={sidebarRef} id="hub-sidebar" className={'hub-sidebar '+(sidebarOpen?'is-open':'')} aria-label="工作空间导航" role={mobileNavigation&&sidebarOpen?'dialog':undefined} aria-modal={mobileNavigation&&sidebarOpen?true:undefined} tabIndex={-1}>
         <button className="hub-sidebar-close hub-icon-button" onClick={()=>setSidebarOpen(false)} aria-label="关闭导航"><X size={22}/></button>
         <button className="hub-sidebar-brand" onClick={()=>selectSection('all')} disabled={navigating}><span className="hub-classic-mark" aria-hidden="true"><i/><i/><i/><i/></span><span>丁康的工作空间</span></button>
-        <nav><button className={section==='all'&&!open?'active':''} onClick={()=>selectSection('all')} disabled={navigating}><Grid2X2 size={21}/>全部应用<span>{modules.length}</span></button><button className={section==='favorites'&&!open?'active':''} onClick={()=>selectSection('favorites')} disabled={navigating}><Star size={21}/>我的收藏</button>{categories.map(category=>{const Icon=icons[category.icon];return <button key={category.id} className={section===category.id&&!open?'active':''} onClick={()=>selectSection(category.id)} disabled={navigating}><Icon size={21}/>{category.name}</button>;})}</nav>
+        <nav><button className={section==='all'&&!open?'active':''} onClick={()=>selectSection('all')} disabled={navigating}><Grid2X2 size={21}/>工作台<span>{modules.length}</span></button><button className={section==='favorites'&&!open?'active':''} onClick={()=>selectSection('favorites')} disabled={navigating}><Star size={21}/>我的收藏</button>{categories.map(category=>{const Icon=icons[category.icon];return <button key={category.id} className={section===category.id&&!open?'active':''} onClick={()=>selectSection(category.id)} disabled={navigating}><Icon size={21}/>{category.id==='games'?'游戏大厅':category.name}</button>;})}</nav>
         <div className="hub-sidebar-rule"/><button className={'hub-sidebar-data '+(section==='data'&&!open?'active':'')} onClick={()=>selectSection('data')} disabled={navigating}><FolderOpen size={21}/>数据中心</button>
         <div className="hub-sidebar-bottom"><ShieldCheck size={21}/><div><strong>{session?.displayName||'私人空间'}</strong>{!session?.authenticated&&<p>登录后保存个人偏好</p>}</div></div>
       </aside>
@@ -347,12 +353,13 @@ export default function Hub(){
       </div>:<>
         {showHero&&theme.id==='classic'&&<section className="hub-classic-welcome hub-content"><div><h1>今天，从这里继续。</h1></div>{recentModules.length>0&&<div className="hub-classic-recents"><h2>最近使用</h2><div>{recentModules.slice(0,3).map(module=><button key={module.id} disabled={controlsDisabled} onClick={()=>launch(module)}><AppIcon module={module}/><span><strong>{module.name}</strong></span><ArrowUpRight size={20}/></button>)}</div></div>}</section>}
         {showHero&&theme.id==='kinetic'&&<KineticScene {...sceneProps} motionEnabled={appearance.motion} reducedMotion={reducedMotion} onToggleMotion={()=>persist({appearance:{...appearanceRef.current,motion:!appearanceRef.current.motion}})}/>}
-        {cozyHome&&<div className="hub-cozy-space"><CozyBaseScene {...sceneProps} initialRoom={cozyRoom.current} onRoomChange={rememberCozyRoom}/></div>}
+        {cozyHome&&<div className="hub-cozy-space"><CozyBaseScene {...sceneProps} initialRoom={cozyRoom.current} onRoomChange={rememberCozyRoom} onOpenCalendar={()=>{document.getElementById('hub-workspace-calendar')?.scrollIntoView({behavior:reducedMotion?'instant':'smooth',block:'start'});}} onOpenGameHall={()=>selectSection('games')}/></div>}
         {showHero&&theme.id==='night-harbor'&&<section className="hub-hero" aria-labelledby="hero-title">
           {theme.scene.src&&<div className="hub-scene" aria-hidden="true"><img src={theme.scene.src} alt="" style={{objectPosition:theme.scene.position}} fetchPriority="high"/><div className="hub-scene-shade"/></div>}
           <div className="hub-hero-copy"><h1 id="hero-title">好奇不熄，<br/>继续创造。</h1><button className="hub-hero-link" onClick={exploreCatalog}>打开应用目录<ArrowRight size={21}/></button></div>
           {recentModules.length>0?<div className="hub-continue"><h2><Clock3 size={18}/>接着上次</h2>{recentModules.slice(0,3).map(module=><button key={module.id} onClick={()=>launch(module)} disabled={controlsDisabled}><AppIcon module={module} size={21}/><span>{module.name}</span><ArrowUpRight size={21}/></button>)}</div>:null}
         </section>}
+        {!open&&section==='all'&&!query&&<div id="hub-workspace-calendar" data-kinetic-section="true"><WorkspaceCalendar calendar={calendar} authenticated={!!session?.authenticated} onSignIn={()=>void leaveFor('/signin-with-chatgpt?return_to=/')}/></div>}
 
         {section==='data'?<div className="hub-content hub-data-content">
           <div className="hub-page-heading"><div><h1>数据中心</h1></div><button className="hub-button" onClick={()=>void refreshData()} disabled={fileLoading||!session?.authenticated}><RefreshCw size={18} className={fileLoading?'hub-spin':''}/>刷新</button></div>
@@ -371,9 +378,27 @@ export default function Hub(){
           {cozyHome&&cozyDirectoryOpen&&<div className="hub-cozy-directory-toggle hub-content"><button className="hub-button" aria-expanded={cozyDirectoryOpen} aria-controls="hub-catalog" onClick={()=>setCozyDirectoryOpen(false)}><Search size={19}/>收起列表</button><span>全部 {modules.length} 个应用</span></div>}
           <div className="hub-content hub-catalog" id="hub-catalog" hidden={cozyHome&&!cozyDirectoryOpen}>
           <div className="hub-catalog-heading"><div><h2>{section==='favorites'?'我的收藏':activeCategory?.name||'应用目录'}</h2></div><label className="hub-search"><Search size={21}/><input ref={searchRef} aria-label="搜索应用" placeholder="找一个应用" value={search} onChange={event=>setSearch(event.target.value)}/>{search?<button onClick={()=>setSearch('')} aria-label="清除搜索"><X size={19}/></button>:<kbd>/</kbd>}</label></div>
-          {section!=='favorites'&&<nav className="hub-category-filter" aria-label="应用分类"><button className={section==='all'?'active':''} onClick={()=>selectSection('all')}>全部</button>{categories.map(category=><button key={category.id} className={section===category.id?'active':''} onClick={()=>selectSection(category.id)}>{category.name}</button>)}</nav>}
-          {visible.length===0?<div className="hub-empty hub-no-apps">{section==='favorites'?<Star size={38}/>:<Search size={38}/>}<h3>{query?'没有找到这个应用':'还没有收藏应用'}</h3><p>{query?'试试名称，例如“知证”或“三国”。':'应用旁的星标，会把它留在这里。'}</p><button className="hub-button" onClick={()=>selectSection('all')}>查看全部应用</button></div>:categories.filter(category=>visible.some(module=>module.category===category.id)).map(category=>{
+          {section!=='favorites'&&<nav className="hub-category-filter" aria-label="应用分类"><button className={section==='all'?'active':''} onClick={()=>selectSection('all')}>全部</button>{categories.map(category=><button key={category.id} className={section===category.id?'active':''} onClick={()=>selectSection(category.id)}>{category.id==='games'?'游戏大厅':category.name}</button>)}</nav>}
+          {section==='games'&&!query?<GameHall favorites={favorites} recentIds={recents} disabled={controlsDisabled} onLaunch={launch} onToggleFavorite={toggleFavorite} onBack={()=>selectSection('all')}/>:visible.length===0?<div className="hub-empty hub-no-apps">{section==='favorites'?<Star size={38}/>:<Search size={38}/>}<h3>{query?'没有找到这个应用':'还没有收藏应用'}</h3><p>{query?'试试名称，例如“知证”或“三国”。':'应用旁的星标，会把它留在这里。'}</p><button className="hub-button" onClick={()=>selectSection('all')}>查看全部应用</button></div>:categories.filter(category=>visible.some(module=>module.category===category.id)).map(category=>{
             const presentation=categoryPresentation[category.id],scenic=theme.id!=='classic'&&(category.id==='games'||category.id==='life');
+            if(category.id==='games'&&section==='all'&&!query){
+              return <section className="hub-collection hub-game-hall-section" data-category="games" key="games" aria-labelledby="category-games" data-kinetic-section="true">
+                <div className="hub-collection-heading"><h3 id="category-games">{theme.id==='classic'?'游戏大厅':presentation.title}</h3></div>
+                <div className="hub-game-hall-card" data-kinetic-interactive="true">
+                  <div className="hub-game-hall-info">
+                    <span className="hub-game-hall-icon"><Gamepad2 size={28}/></span>
+                    <div>
+                      <h4>游戏大厅</h4>
+                      <p>聚合 {gameModules.length} 款互动作品，支持统一进度保存与继续游玩。</p>
+                    </div>
+                  </div>
+                  <div className="hub-game-hall-actions">
+                    {recentGameModules.slice(0,2).map(game=><button key={game.id} type="button" className="hub-button" disabled={controlsDisabled} onClick={()=>launch(game)}>继续 · {game.name}<ArrowUpRight size={16}/></button>)}
+                    <button type="button" className="hub-button primary" disabled={controlsDisabled} onClick={()=>selectSection('games')}>进入游戏大厅<ArrowRight size={17}/></button>
+                  </div>
+                </div>
+              </section>;
+            }
             return <section className={'hub-collection '+(scenic?'scenic':'editorial')} data-category={category.id} key={category.id} aria-labelledby={'category-'+category.id}>
               <div className="hub-collection-heading"><h3 id={'category-'+category.id}>{theme.id==='classic'?category.name:presentation.title}</h3></div>
               <div className={scenic?'hub-art-grid':'hub-editorial-grid'}>{visible.filter(module=>module.category===category.id).map(module=>{
@@ -405,7 +430,7 @@ export default function Hub(){
     </dialog>
 
     <dialog ref={backupDialogRef} className="hub-dialog hub-import-dialog" aria-labelledby="backup-title" onCancel={event=>{if(importing)event.preventDefault();else setBackup(null);}}>
-      {backup&&<><div className="hub-dialog-heading"><h2 id="backup-title">确认这份存档</h2><button className="hub-icon-button" disabled={importing} onClick={()=>setBackup(null)} aria-label="关闭"><X size={22}/></button></div><p>包含 {backup.length} 项应用数据。同名记录使用备份内容，其他记录会保留。</p><div className="hub-import-list">{backup.map(item=><div key={item.moduleId}><span>{item.moduleId==='hub-preferences'?'工作空间偏好':moduleById(item.moduleId)?.name}</span><small>{Object.keys(item.values).length} 项记录</small></div>)}</div>{backupWarnings.map((warning,index)=><p className="hub-import-warning" key={index}>{warning}</p>)}{error&&<p className="hub-import-warning" role="alert">{error}</p>}<p className="hub-import-note">建议先导出当前存档。预览后若存档更新，对应应用会停止导入；此前已成功导入的应用会保留。</p><div className="hub-dialog-actions"><button className="hub-button" disabled={importing} onClick={()=>setBackup(null)}>取消</button><button className="hub-button primary" disabled={importing} onClick={()=>void importBackup()}>{importing&&<LoaderCircle size={18} className="hub-spin"/>}{importing?'正在导入':'确认导入'}</button></div></>}
+      {backup&&<><div className="hub-dialog-heading"><h2 id="backup-title">确认这份存档</h2><button className="hub-icon-button" disabled={importing} onClick={()=>setBackup(null)} aria-label="关闭"><X size={22}/></button></div><p>包含 {backup.length} 项应用数据。同名记录使用备份内容，其他记录会保留。</p><div className="hub-import-list">{backup.map(item=><div key={item.moduleId}><span>{item.moduleId==='hub-preferences'?'工作空间偏好':item.moduleId==='hub-workspace-calendar'?'工作台日历':moduleById(item.moduleId)?.name}</span><small>{Object.keys(item.values).length} 项记录</small></div>)}</div>{backupWarnings.map((warning,index)=><p className="hub-import-warning" key={index}>{warning}</p>)}{error&&<p className="hub-import-warning" role="alert">{error}</p>}<p className="hub-import-note">建议先导出当前存档。预览后若存档更新，对应应用会停止导入；此前已成功导入的应用会保留。</p><div className="hub-dialog-actions"><button className="hub-button" disabled={importing} onClick={()=>setBackup(null)}>取消</button><button className="hub-button primary" disabled={importing} onClick={()=>void importBackup()}>{importing&&<LoaderCircle size={18} className="hub-spin"/>}{importing?'正在导入':'确认导入'}</button></div></>}
     </dialog>
   </div>;
 }

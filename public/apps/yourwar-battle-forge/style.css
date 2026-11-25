@@ -17,3 +17,19 @@
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 
 .formation-plans{display:flex;align-items:center;gap:10px;padding:12px 4px 8px;color:#c6d2d8;font-size:13px}.formation-plans select,.formation-plans button{border:1px solid #84979c55;background:#233139;color:#eee5d1;border-radius:7px;padding:8px 12px;min-height:38px}.formation-plans small{margin-left:auto;color:#93a6b2;font-size:12px}@media(max-width:700px){.formation-plans{flex-wrap:wrap;gap:7px}.formation-plans small{margin:0;width:100%}.formation-plans button{padding:8px}.formation-plans label{font-size:12px}}
+
+
+/* Minimalist & dynamic battle-forge HUD polish */
+.panel, .card, .unit-card, .plan-card, .modal {
+  backdrop-filter: blur(10px);
+  transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.unit-card:hover, .plan-card:hover {
+  transform: translateY(-2px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .panel, .card, .unit-card, .plan-card, .modal {
+    transition: none !important;
+    transform: none !important;
+  }
+}

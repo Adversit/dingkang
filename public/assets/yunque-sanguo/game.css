@@ -176,3 +176,18 @@
 .model-loading{position:absolute;inset:15% 0 25%;display:grid;place-items:center;font-size:14px;letter-spacing:2px;color:#aecabd}
 @media(max-width:700px){.stage-ready .cinematic{inset:0 7% auto;height:115px}.stage-ready .cutin-title h2{font-size:26px}.stage-ready .cutin-title>span{font-size:10px}.stage-ready .skip-cinematic{right:0;top:90px;font-size:10px}}
 .audio-volume-settings{padding:18px 16px;border-bottom:1px solid #bca57525}.audio-volume-settings label{display:flex;justify-content:space-between;font-size:14px;color:#e1d7bf;margin:4px 0 8px}.audio-volume-settings output{font-variant-numeric:tabular-nums;color:#d0b476}.audio-volume-settings input{width:100%;height:26px;accent-color:#c9ac73;cursor:pointer;margin-bottom:10px}.audio-volume-settings p,.audio-credit-note{font-size:13px;line-height:1.65;color:#96aea8}.audio-credit-note{margin:14px 0 0}.audio-credit-note a{color:#dbc696;text-decoration:underline;text-underline-offset:3px}
+
+
+/* Minimalist & dynamic Yunque Sanguo polish */
+.panel, .card, .hero-card, .stage-card, .modal {
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.hero-card:hover, .stage-card:hover {
+  transform: translateY(-2px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .panel, .card, .hero-card, .stage-card, .modal {
+    transition: none !important;
+    transform: none !important;
+  }
+}

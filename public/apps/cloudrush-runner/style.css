@@ -11,3 +11,19 @@
 @media(max-width:800px){.build-banner{gap:12px;border-radius:16px;margin-top:15px}.build-banner strong{font-size:16px}.build-banner span{font-size:9px;letter-spacing:1px}.build-banner p{font-size:11px}.build-banner button{padding:10px;font-size:10px}.journey-grid{gap:10px}.journey-card{min-height:210px;border-radius:15px}.journey-copy{padding:16px 13px}.journey-copy h3{font-size:19px;letter-spacing:1px}.journey-copy p{font-size:10px}.journey-copy>span{font-size:9px}.trial-stars{display:block}.trial-stars small{display:block;margin-top:4px}.journey-goal{font-size:9px;padding:9px 12px;letter-spacing:0}.quest-grid{grid-template-columns:repeat(2,1fr);gap:10px}.quest-card{padding:15px}.ready-left .compass-icon{display:none}.mode-select button{padding:9px 10px}.start-button{min-width:147px}.world-route{display:flex;right:13px;bottom:23%}.lobby-intro h1{font-size:34px}}
 @media(max-width:560px){.build-banner{padding:15px;align-items:flex-start;gap:10px}.build-emblem{width:36px;height:36px;border-radius:11px}.build-emblem svg{width:22px;height:22px}.build-banner button{font-size:0;width:30px;height:30px;padding:7px;flex:none}.build-banner button svg{width:16px;height:16px}.build-banner p{font-size:10px}.build-banner span{font-size:8px}.build-banner strong{font-size:15px}.world-route{bottom:21%;left:16px;right:auto;background:#f3fff0dc;max-width:calc(100% - 30px)}.world-route button{font-size:9px;padding:7px 8px}.lobby-intro{top:16%;width:90%}.lobby-intro h1{font-size:33px;max-width:230px}.lobby-intro h1 span{display:block;margin-left:0}.lobby-intro .intro-copy{font-size:11px;max-width:195px}.lobby-shade{background:linear-gradient(90deg,#eaf7e9e8,transparent 80%)}.ready-bar{padding:15px 12px;gap:12px}.ready-left p{max-width:128px;font-size:9px}.ready-left strong{font-size:13px}.mode-select button{font-size:10px;padding:8px 7px}.journey-section,.quest-section{padding-top:21px}.journey-grid{grid-template-columns:1fr}.journey-card{min-height:157px;display:grid;grid-template-columns:1fr 100px;align-items:end}.journey-copy{padding:18px}.journey-copy h3{font-size:23px}.journey-copy p{max-width:210px;font-size:11px}.trial-stars{display:flex;font-size:18px}.trial-stars small{margin:0;font-size:10px}.journey-goal{background:#10392d40;border:0;align-self:stretch;display:flex;align-items:center;justify-content:center;text-align:center;padding:15px;line-height:1.9;font-size:11px;backdrop-filter:blur(3px)}.quest-card h3{font-size:13px;display:block}.quest-card h3 span{display:inline-block;margin-top:5px}.quest-card p{font-size:10px;min-height:28px}.quest-bottom{gap:4px}.quest-bottom button{padding:6px;font-size:9px}.quest-bottom small{font-size:9px}.trail-picker{gap:7px}.trail-picker button{font-size:10px;padding:7px 9px}.build-presets{gap:6px}.build-presets button{padding:10px 7px}.build-presets b{font-size:11px}.build-presets small{font-size:9px}.segment-caption{left:10px;font-size:8px;letter-spacing:1px;bottom:8%}.result-details{gap:13px}}
 @media(prefers-reduced-motion:reduce){.journey-card,.journey-card>img{transition:none}}
+
+
+/* Minimalist & dynamic HUD polish */
+.panel, .card, .hud-card, .modal-card, .select-card {
+  backdrop-filter: blur(10px);
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.card:hover, .select-card:hover {
+  transform: translateY(-2px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .panel, .card, .hud-card, .modal-card, .select-card {
+    transition: none !important;
+    transform: none !important;
+  }
+}

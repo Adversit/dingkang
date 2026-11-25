@@ -17,3 +17,19 @@
 button:disabled{opacity:.5;cursor:not-allowed}.choice:disabled{border-style:dashed}.icon-button,.secondary,.primary{min-height:44px}
 @media(max-width:800px){.mobile-save-status{display:flex;align-items:center;gap:8px;width:100%;padding:10px 0;margin-bottom:12px;background:transparent;text-align:left;font-size:.875rem;color:var(--teal)}.journey-guide{padding:15px;gap:12px;align-items:stretch;flex-direction:column}.journey-guide .meter{max-width:none}.journey-guide button{width:100%}.resources{gap:12px}.resource-label{font-size:.75rem}.story>p{font-size:1rem}.nav-item{min-height:48px}.layout{padding-bottom:env(safe-area-inset-bottom)}dialog{max-height:calc(100dvh - 32px);overflow:auto}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+
+/* Minimalist & dynamic mistbound polish */
+.panel, .card, .letter-card, .island-card, .modal {
+  backdrop-filter: blur(10px);
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.letter-card:hover, .island-card:hover, .card:hover {
+  transform: translateY(-2px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .panel, .card, .letter-card, .island-card, .modal {
+    transition: none !important;
+    transform: none !important;
+  }
+}

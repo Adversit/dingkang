@@ -415,3 +415,19 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+
+/* Minimalist & dynamic PM studio polish */
+.card, .method-card, .tool-card, .insight-card, .panel {
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.card:hover, .method-card:hover, .tool-card:hover, .insight-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 26px rgba(30, 41, 68, 0.08);
+}
+@media (prefers-reduced-motion: reduce) {
+  .card, .method-card, .tool-card, .insight-card, .panel {
+    transition: none !important;
+    transform: none !important;
+  }
+}

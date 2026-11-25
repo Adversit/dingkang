@@ -1,0 +1,183 @@
+.hall {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding-top: 24px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.titleBlock {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.titleBlock h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 26px;
+  font-weight: 600;
+}
+
+.note {
+  font-size: 14px;
+  color: var(--hub-muted);
+  margin-top: 4px;
+}
+
+.continueRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 14px;
+  color: var(--hub-muted);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.card {
+  position: relative;
+  border-radius: 10px;
+  background: var(--hub-surface);
+  border: 1px solid var(--hub-line);
+  overflow: hidden;
+  transition: transform 0.22s ease, border-color 0.22s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  border-color: var(--hub-accent);
+}
+
+.launchBtn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0;
+}
+
+.artwork {
+  aspect-ratio: 16 / 9;
+  position: relative;
+  overflow: hidden;
+  background: var(--hub-raised);
+}
+
+.artwork > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.card:hover .artwork > img {
+  transform: scale(1.03);
+}
+
+.artFallback {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.openMark {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #122523a8;
+  color: #f6f4ee;
+  border: 1px solid #e7f0e749;
+}
+
+.card:hover .openMark {
+  background: var(--hub-accent);
+  color: var(--hub-accent-text);
+  border-color: var(--hub-accent);
+}
+
+.cardBody {
+  padding: 16px 48px 18px 16px;
+}
+
+.cardTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cardBody h3 {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.capabilityBadge {
+  font-size: 14px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--hub-raised);
+  color: var(--hub-muted);
+  border: 1px solid var(--hub-line);
+}
+
+.cardBody p {
+  font-size: 16px;
+  color: var(--hub-muted);
+  margin-top: 6px;
+  line-height: 1.5;
+}
+
+.favBtn {
+  position: absolute;
+  right: 12px;
+  bottom: 16px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--hub-muted) !important;
+}
+
+.favBtn:hover {
+  background: var(--hub-raised);
+}
+
+.favSelected {
+  color: var(--hub-accent) !important;
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+}

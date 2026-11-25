@@ -41,7 +41,7 @@ export function parseBackup(data:unknown,selectedGame?:string):{entries:BackupEn
   const normalized=entries.map(item=>{
     if(!isObject(item)||typeof item.moduleId!=='string') throw Error('备份中的应用记录格式不正确。');
     const id=item.moduleId;
-    if(id!=='hub-preferences'&&!moduleById(id)) throw Error('备份包含未识别的应用，暂时不能导入。');
+    if(id!=='hub-preferences'&&id!=='hub-workspace-calendar'&&!moduleById(id)) throw Error('备份包含未识别的应用，暂时不能导入。');
     if(seen.has(id)) throw Error('备份包含同一应用的多份存档，请先保留要导入的一份。');
     seen.add(id);
     return {moduleId:id,values:validateBackupValues(item.values)};

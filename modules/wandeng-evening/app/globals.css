@@ -13,3 +13,15 @@
 
 /* Compact headings after removing decorative captions. */
 .chat-heading h2{margin-top:0}.stage-heading h1{margin-top:0}.page-title{margin-bottom:26px}.page-title h1{margin:0}
+
+/* Dynamic & minimalist polish */
+.main-navigation{backdrop-filter:blur(12px);background:#f9f6efe6}
+.journal-card,.memory-record,.settings-card,.conversation-panel{transition:transform .22s cubic-bezier(.2,.8,.2,1),box-shadow .22s ease,border-color .22s ease}
+.journal-card:hover,.memory-record:hover{transform:translateY(-2px);box-shadow:0 12px 28px #493c3012;border-color:#cbb99f}
+.message-wrap{animation:wandengMsgIn .22s cubic-bezier(.16,1,.3,1)}
+@keyframes wandengMsgIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.primary,.secondary,.send-button{transition:transform .16s cubic-bezier(.2,.8,.2,1),background .16s ease,border-color .16s ease}
+.primary:active:not(:disabled),.secondary:active:not(:disabled),.send-button:active:not(:disabled){transform:scale(.97)}
+.modal{animation:wandengModalIn .22s cubic-bezier(.16,1,.3,1)}
+@keyframes wandengModalIn{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.journal-card,.memory-record,.settings-card,.conversation-panel,.message-wrap,.primary,.secondary,.send-button,.modal{animation:none!important;transition:none!important;transform:none!important}}

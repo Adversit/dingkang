@@ -14,7 +14,7 @@ const objectPoints = {
   'jlu-campus': [.620, .871],
   'zhiliu-radar': [.12, .4], 'zhizheng-research': [.53, .67],
   'agent-architecture-journey': [.88, .28], 'aipm-studio-dk': [.14, .4],
-  'evopm-workbench': [.50, .4], 'ai-dev-collaboration-workbench': [.815, .4],
+  'evopm-workbench': [.50, .4], 'ai-dev-collaboration-workbench': [.815, .4], 'novel-studio': [.66, .69],
   'wandeng-evening': [.063, .3], 'roommate-housekeeper': [.93, .3],
   'cloudrush-runner': [.18, .2], 'starfall-creature-isles': [.12, .6],
   'pocket-arcade-ten': [.36, .4], 'yourwar-battle-forge': [.53, .68],

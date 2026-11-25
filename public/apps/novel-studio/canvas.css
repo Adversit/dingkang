@@ -37,3 +37,21 @@ body,.studio-shell .studio-sidebar,.studio-topbar{background:var(--paper);color:
 
 /* Progress summaries include retained chapters and must remain legible inside each node. */
 .canvas-page .graph-node:is([data-stage=draft],[data-stage=extract],[data-stage=review]) .node-detail{white-space:normal;overflow-wrap:anywhere;font-variant-numeric:tabular-nums;line-height:1.35}.canvas-page .graph-node.partial,.canvas-page .graph-node.incomplete{border-style:dashed;border-color:var(--mid)}.canvas-page .graph-node.missing{border-style:dashed;background:var(--faint)}
+
+
+/* Minimalist & dynamic canvas polish */
+.topbar, .studio-rail, .inspector-panel, .modal-card, .drawer-panel {
+  backdrop-filter: blur(12px);
+}
+.card, .chapter-card, .canon-card, .branch-card, .node-card {
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.card:hover, .chapter-card:hover, .canon-card:hover, .branch-card:hover {
+  transform: translateY(-2px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .card, .chapter-card, .canon-card, .branch-card, .node-card {
+    transition: none !important;
+    transform: none !important;
+  }
+}

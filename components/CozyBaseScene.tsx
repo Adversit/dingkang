@@ -1,7 +1,7 @@
 'use client';
 
 import {useCallback,useEffect,useRef,useState,type KeyboardEvent} from 'react';
-import {ArrowLeft,ArrowUpRight,BookOpen,ChevronRight,Compass,DoorOpen,Hammer,House,List,Search,Volume2,VolumeX,X} from 'lucide-react';
+import {ArrowLeft,ArrowUpRight,BookOpen,CalendarDays,ChevronRight,Compass,DoorOpen,Gamepad2,Hammer,House,List,Search,Volume2,VolumeX,X} from 'lucide-react';
 import {categories,modules,type HubModule,type ModuleCategory} from '@/lib/hub/catalog';
 import type {HubSceneProps} from '@/lib/hub/theme';
 import type {CozySceneController} from '@/lib/hub/cozy-scene';
@@ -15,7 +15,7 @@ const buildings=[
   {category:'life',name:'日常小屋',icon:House},
   {category:'games',name:'冒险收藏室',icon:Compass},
 ] satisfies {category:ModuleCategory;name:string;icon:typeof BookOpen}[];
-export type CozyBaseSceneProps=HubSceneProps&{initialRoom?:ModuleCategory|null;onRoomChange?:(room:ModuleCategory|null)=>void};
+export type CozyBaseSceneProps=HubSceneProps&{initialRoom?:ModuleCategory|null;onRoomChange?:(room:ModuleCategory|null)=>void;onOpenCalendar?:()=>void;onOpenGameHall?:()=>void};
 
 /** The island owns view state only; the shared portal owns navigation and saved data. */
 export default function CozyBaseScene(props:CozyBaseSceneProps) {
@@ -132,6 +132,8 @@ export default function CozyBaseScene(props:CozyBaseSceneProps) {
       <div className={styles.toolbar}>
         <button className={styles.toolButton} type="button" disabled={disabled&&!soundOn&&!soundPending} aria-pressed={soundOn} aria-busy={soundPending} aria-label={soundOn||soundPending?'关闭环境音':'开启环境音'} title={soundOn||soundPending?'关闭环境音':'开启环境音'} onClick={()=>void toggleSound()}>{soundOn?<Volume2 size={19}/>:<VolumeX size={19}/>}<span className={styles.soundText}>{soundPending?'声音开启中':soundOn?'环境音开启':'声音关闭'}</span></button>
         {room&&<button className={styles.toolButton} type="button" aria-label="房间物件" aria-expanded={showList} aria-controls="cozy-room-items" disabled={blocked} onClick={()=>setListOpen(!showList)}><List size={19}/><span>物件</span></button>}
+        {props.onOpenCalendar&&<button className={styles.toolButton} type="button" aria-label="工作台日历" disabled={disabled} onClick={()=>{stopSound();props.onOpenCalendar?.();}}><CalendarDays size={19}/><span>日历</span></button>}
+        {props.onOpenGameHall&&<button className={styles.toolButton} type="button" aria-label="游戏大厅" disabled={disabled} onClick={()=>{stopSound();props.onOpenGameHall?.();}}><Gamepad2 size={19}/><span>游戏大厅</span></button>}
         <button className={styles.toolButton} type="button" aria-label="目录" disabled={disabled} onClick={()=>{stopSound();onExplore();}}><Search size={19}/><span>目录</span></button>
       </div>
     </header>
