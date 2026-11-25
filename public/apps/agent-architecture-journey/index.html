@@ -1,1 +1,1321 @@
-<!doctype html><html lang="zh-CN"><head><script src="/hub-storage.js" data-module="agent-architecture-journey"></script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="丁康的 Agent 架构学习笔记：逐章阅读、代码阅读与架构路线图。"><meta name="theme-color" content="#f5f3ee"><title>阅读首页 · 从零搭建 Agent</title><link rel="stylesheet" href="/apps/agent-architecture-journey/assets/notes.css"><link rel="stylesheet" href="/apps/agent-architecture-journey/assets/syntax.css"><script defer src="/apps/agent-architecture-journey/assets/notes.js"></script><link rel="stylesheet" href="/apps/hub-workbench-unified.css"></head><body><div class="reading-progress" id="progress" aria-hidden="true"></div><div class="site-frame"><aside class="sidebar" aria-label="笔记目录"><a class="side-brand" href="/apps/agent-architecture-journey/index.html">AGENT LEARNING NOTES</a><p class="side-title">先理解，<br>再增加功能。</p><nav><a class="stage-link active" href="/apps/agent-architecture-journey/index.html">阅读首页</a><a class="stage-link " href="/apps/agent-architecture-journey/stage/00/index.html">00 · 定义与最小循环</a><details class="stage-group"><summary>01 · 模型的工具</summary><div class="stage-children"><a class="chapter-link" href="/apps/agent-architecture-journey/stage/01/index.html">章节概览</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/01/why-tools/index.html"><span>01</span>为什么需要工具</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/01/tool-contract/index.html"><span>02</span>工具定义与结果消息</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/01/read/index.html"><span>03</span>Read：读取指定范围的文本</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/01/write-edit/index.html"><span>04</span>Write 与 Edit</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/01/bash/index.html"><span>05</span>Bash 与沙箱</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/01/agent-loop/index.html"><span>06</span>把工具接回 Agent</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/01/run/index.html"><span>07</span>运行与验证</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/01/typescript/index.html"><span>08</span>TypeScript 与 Python</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/01/boundary/index.html"><span>09</span>本阶段边界</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/01/sources/index.html"><span>10</span>来源与代码索引</a></div></details><details class="stage-group"><summary>02 · 记忆与上下文</summary><div class="stage-children"><a class="chapter-link" href="/apps/agent-architecture-journey/stage/02/index.html">章节概览</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/02/why-memory/index.html"><span>01</span>为什么需要记忆</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/02/context-window/index.html"><span>02</span>上下文窗口是什么</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/02/sliding-window/index.html"><span>03</span>滑动窗口</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/02/large-results/index.html"><span>04</span>大内容移出 Context</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/02/context-sources/index.html"><span>05</span>Context 的组成</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/02/microcompact/index.html"><span>06</span>Microcompact</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/02/compact/index.html"><span>07</span>Compact</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/02/beyond-summary/index.html"><span>08</span>为什么不能只保留 Summary</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/02/session-memory/index.html"><span>09</span>Session Memory</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/02/memory-model/index.html"><span>10</span>对 Memory 的理解</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/02/teaching-code/index.html"><span>11</span>Python 教学版</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/02/scope/index.html"><span>12</span>本章边界</a></div></details><a class="stage-link " href="/apps/agent-architecture-journey/code/index.html">代码阅读</a></nav><div class="side-meta">丁康 · Agent 架构学习日志<br>笔记随学习过程更新</div></aside><div class="page-column"><header class="topbar"><a class="wordmark" href="/apps/agent-architecture-journey/index.html">◈ 从零搭建 Agent</a><nav aria-label="主要导航"><a href="/apps/agent-architecture-journey/journey/index.html">笔记</a><a href="/apps/agent-architecture-journey/code/index.html">代码阅读</a><a href="/apps/agent-architecture-journey/architecture/index.html">架构画布</a></nav></header><div class="mobile-chapters"><button type="button" id="chapter-menu" aria-expanded="false" aria-controls="chapter-drawer">目录与章节 <span>⌄</span></button><nav id="chapter-drawer" hidden><details class="stage-group"><summary>01 · 模型的工具</summary><div class="stage-children"><a class="chapter-link" href="/apps/agent-architecture-journey/stage/01/index.html">章节概览</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/01/why-tools/index.html"><span>01</span>为什么需要工具</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/01/tool-contract/index.html"><span>02</span>工具定义与结果消息</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/01/read/index.html"><span>03</span>Read：读取指定范围的文本</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/01/write-edit/index.html"><span>04</span>Write 与 Edit</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/01/bash/index.html"><span>05</span>Bash 与沙箱</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/01/agent-loop/index.html"><span>06</span>把工具接回 Agent</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/01/run/index.html"><span>07</span>运行与验证</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/01/typescript/index.html"><span>08</span>TypeScript 与 Python</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/01/boundary/index.html"><span>09</span>本阶段边界</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/01/sources/index.html"><span>10</span>来源与代码索引</a></div></details><details class="stage-group"><summary>02 · 记忆与上下文</summary><div class="stage-children"><a class="chapter-link" href="/apps/agent-architecture-journey/stage/02/index.html">章节概览</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/02/why-memory/index.html"><span>01</span>为什么需要记忆</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/02/context-window/index.html"><span>02</span>上下文窗口是什么</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/02/sliding-window/index.html"><span>03</span>滑动窗口</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/02/large-results/index.html"><span>04</span>大内容移出 Context</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/02/context-sources/index.html"><span>05</span>Context 的组成</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/02/microcompact/index.html"><span>06</span>Microcompact</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/02/compact/index.html"><span>07</span>Compact</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/02/beyond-summary/index.html"><span>08</span>为什么不能只保留 Summary</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/02/session-memory/index.html"><span>09</span>Session Memory</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/02/memory-model/index.html"><span>10</span>对 Memory 的理解</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/02/teaching-code/index.html"><span>11</span>Python 教学版</a><a class="chapter-link " href="/apps/agent-architecture-journey/stage/02/scope/index.html"><span>12</span>本章边界</a></div></details></nav></div><div class="content-grid"><main id="main"><header class="chapter-head home-head"><h1>从零搭建 Agent</h1></header><section class="stage-cards"><a href="/apps/agent-architecture-journey/stage/00/index.html"><span>00 / 知识起点</span><h2>定义与最小循环</h2><b>阅读第 0 阶段 →</b></a><a href="/apps/agent-architecture-journey/stage/01/index.html"><span>01 / 工具</span><h2>模型的工具</h2><b>进入第一阶段 →</b></a><a class="featured" href="/apps/agent-architecture-journey/stage/02/index.html"><span>02 / 当前笔记</span><h2>记忆与上下文</h2><b>阅读第二章 →</b></a></section><section class="section-heading"><h2>先从工具读起，再进入记忆。</h2></section><div class="toc-list"><a class="toc-row" href="/apps/agent-architecture-journey/stage/01/why-tools/index.html"><span class="toc-num">01</span><span><strong>为什么需要工具</strong></span><span aria-hidden="true">↗</span></a><a class="toc-row" href="/apps/agent-architecture-journey/stage/01/tool-contract/index.html"><span class="toc-num">02</span><span><strong>工具定义与结果消息</strong></span><span aria-hidden="true">↗</span></a><a class="toc-row" href="/apps/agent-architecture-journey/stage/01/read/index.html"><span class="toc-num">03</span><span><strong>Read：读取指定范围的文本</strong></span><span aria-hidden="true">↗</span></a><a class="toc-row" href="/apps/agent-architecture-journey/stage/01/write-edit/index.html"><span class="toc-num">04</span><span><strong>Write 与 Edit</strong></span><span aria-hidden="true">↗</span></a><a class="toc-row" href="/apps/agent-architecture-journey/stage/01/bash/index.html"><span class="toc-num">05</span><span><strong>Bash 与沙箱</strong></span><span aria-hidden="true">↗</span></a><a class="toc-row" href="/apps/agent-architecture-journey/stage/01/agent-loop/index.html"><span class="toc-num">06</span><span><strong>把工具接回 Agent</strong></span><span aria-hidden="true">↗</span></a><a class="toc-row" href="/apps/agent-architecture-journey/stage/01/run/index.html"><span class="toc-num">07</span><span><strong>运行与验证</strong></span><span aria-hidden="true">↗</span></a><a class="toc-row" href="/apps/agent-architecture-journey/stage/01/typescript/index.html"><span class="toc-num">08</span><span><strong>TypeScript 与 Python</strong></span><span aria-hidden="true">↗</span></a><a class="toc-row" href="/apps/agent-architecture-journey/stage/01/boundary/index.html"><span class="toc-num">09</span><span><strong>本阶段边界</strong></span><span aria-hidden="true">↗</span></a><a class="toc-row" href="/apps/agent-architecture-journey/stage/01/sources/index.html"><span class="toc-num">10</span><span><strong>来源与代码索引</strong></span><span aria-hidden="true">↗</span></a><a class="toc-row" href="/apps/agent-architecture-journey/stage/02/index.html"><span class="toc-num">02</span><span><strong>第二章 · 记忆与上下文</strong></span><span aria-hidden="true">↗</span></a></div></main><aside class="context-rail"><div class="context-sticky"><div class="context-card"><div class="context-label">本阶段路线图</div><ol class="roadmap"><li><span>01</span>先弄清工具协议</li><li><span>02</span>分别实现文件与命令工具</li><li><span>03</span>接回模型并检查验证边界</li></ol></div><div class="context-card"><div class="context-label">架构画布</div><div class="flow-canvas" role="img" aria-label="用户任务进入 LLM；模型提出工具调用，注册表分发 Read、Write、Edit 或 Bash；Tool Result 回到 LLM"><div class="flow-line"><span class="flow-input">用户任务</span><span class="flow-arrow">→</span><div class="flow-node"><b>LLM</b><small>判断下一步</small></div><span class="flow-arrow">→</span><div class="flow-node on"><b>工具分发</b><small>名称与参数</small></div></div><div class="flow-down">↓ 按名称调用</div><div class="flow-tools"><div class="flow-node on"><b>Read</b><small>读取文本</small></div><div class="flow-node on"><b>Write</b><small>整体写入</small></div><div class="flow-node on"><b>Edit</b><small>局部替换</small></div><div class="flow-node on"><b>Bash</b><small>沙箱执行</small></div></div><div class="flow-down">↓ 执行结果</div><div class="flow-line flow-end"><div class="flow-node"><b>Tool Result</b><small>内容与 is_error</small></div><span class="flow-return">↺ 返回 LLM 再判断</span></div></div><a class="text-link" href="/apps/agent-architecture-journey/architecture/index.html">查看完整画布 →</a></div><div class="context-card brief"><div class="context-label">代码阅读</div><p>按文件和章节浏览完整代码，按需加载、复制。</p><a class="text-link" href="/apps/agent-architecture-journey/code/index.html">打开代码阅读 →</a></div></div></aside></div><footer class="site-footer"><span>丁康 · 从零搭建 Agent</span><a href="https://github.com/Adversit/dk_learn_agent" target="_blank" rel="noopener noreferrer">GitHub ↗</a></footer></div></div><div class="toast" id="toast" role="status" aria-live="polite"></div></body></html>
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <script src="/hub-storage.js" data-module="agent-architecture-journey"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="丁康的 Agent 核心架构互动实验室：5 大核心机制、可视化运行沙盘与生产级代码蓝图。">
+  <title>Agent 架构实验室 · 核心原理与运行推演沙盘</title>
+  <link rel="stylesheet" href="/apps/hub-workbench-unified.css">
+  <style>
+    :root {
+      --ag-bg: #f6f8fb;
+      --ag-surface: #ffffff;
+      --ag-surface-soft: #eef2f8;
+      --ag-ink: #0f172a;
+      --ag-muted: #475569;
+      --ag-line: #dbe3ef;
+      --ag-primary: #1d4ed8;
+      --ag-primary-soft: #e0e7ff;
+      --ag-emerald: #047857;
+      --ag-emerald-soft: #d1fae5;
+      --ag-amber: #b45309;
+      --ag-amber-soft: #fef3c7;
+      --ag-radius: 16px;
+      --ag-font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      --ag-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--ag-bg);
+      color: var(--ag-ink);
+      font-family: var(--ag-font);
+      font-size: 16px;
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button, input, textarea, select {
+      font: inherit;
+      color: inherit;
+    }
+
+    button {
+      cursor: pointer;
+      border: 0;
+      background: none;
+    }
+
+    .ag-shell {
+      max-width: 1520px;
+      margin: 0 auto;
+      padding: 24px 28px 60px;
+    }
+
+    /* Top Bar */
+    .ag-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+      background: var(--ag-surface);
+      border: 1px solid var(--ag-line);
+      border-radius: var(--ag-radius);
+      padding: 20px 26px;
+      margin-bottom: 18px;
+      box-shadow: 0 4px 20px rgba(15, 23, 42, 0.04);
+    }
+
+    .ag-brand {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .ag-logo {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #1e40af, #3b82f6);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .ag-title-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .ag-title-row h1 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .ag-pill {
+      font-size: 14px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 999px;
+      background: var(--ag-primary-soft);
+      color: var(--ag-primary);
+    }
+
+    .ag-pill.is-green {
+      background: var(--ag-emerald-soft);
+      color: var(--ag-emerald);
+    }
+
+    .ag-subtitle {
+      margin: 4px 0 0;
+      font-size: 14px;
+      color: var(--ag-muted);
+    }
+
+    .ag-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .ag-progress-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--ag-surface-soft);
+      padding: 8px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .ag-progress-bar {
+      width: 110px;
+      height: 8px;
+      background: #cbd5e1;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .ag-progress-fill {
+      height: 100%;
+      background: var(--ag-primary);
+      width: 40%;
+      transition: width 0.25s ease;
+    }
+
+    .ag-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-radius: 10px;
+      border: 1px solid var(--ag-line);
+      background: var(--ag-surface);
+      font-size: 15px;
+      font-weight: 600;
+      text-decoration: none;
+      color: var(--ag-ink);
+      transition: all 0.15s ease;
+    }
+
+    .ag-btn:hover {
+      background: var(--ag-surface-soft);
+      border-color: #b8c7dc;
+    }
+
+    .ag-btn.is-primary {
+      background: var(--ag-primary);
+      border-color: var(--ag-primary);
+      color: #ffffff;
+    }
+
+    .ag-btn.is-primary:hover {
+      background: #1e40af;
+    }
+
+    /* 5-Node Interactive Architecture Pipeline Bar */
+    .ag-pipeline-card {
+      background: var(--ag-surface);
+      border: 1px solid var(--ag-line);
+      border-radius: var(--ag-radius);
+      padding: 20px 24px;
+      margin-bottom: 18px;
+    }
+
+    .ag-pipeline-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .ag-pipeline-top h2 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .ag-pipeline-top span {
+      font-size: 14px;
+      color: var(--ag-muted);
+    }
+
+    .ag-node-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .ag-node-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 16px;
+      border-radius: 14px;
+      border: 1px solid var(--ag-line);
+      background: #fbfcfe;
+      text-align: left;
+      transition: all 0.16s ease;
+      position: relative;
+    }
+
+    .ag-node-btn:hover {
+      border-color: var(--ag-primary);
+      background: #ffffff;
+      transform: translateY(-1px);
+    }
+
+    .ag-node-btn.is-active {
+      border-color: var(--ag-primary);
+      background: #eff6ff;
+      box-shadow: 0 6px 20px rgba(29, 78, 216, 0.1);
+    }
+
+    .ag-node-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+    }
+
+    .ag-node-num {
+      font-family: var(--ag-mono);
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--ag-primary);
+      background: var(--ag-primary-soft);
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+
+    .ag-node-done {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--ag-emerald);
+    }
+
+    .ag-node-btn strong {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--ag-ink);
+    }
+
+    .ag-node-btn p {
+      margin: 0;
+      font-size: 14px;
+      color: var(--ag-muted);
+      line-height: 1.45;
+    }
+
+    /* Main Two-Column Bento */
+    .ag-bento-main {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(380px, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .ag-card {
+      background: var(--ag-surface);
+      border: 1px solid var(--ag-line);
+      border-radius: var(--ag-radius);
+      padding: 24px;
+      box-shadow: 0 2px 12px rgba(15, 23, 42, 0.03);
+    }
+
+    .ag-card-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      padding-bottom: 16px;
+      margin-bottom: 18px;
+      border-bottom: 1px solid var(--ag-line);
+    }
+
+    .ag-card-head h3 {
+      margin: 0 0 6px;
+      font-size: 21px;
+      font-weight: 800;
+    }
+
+    .ag-card-head p {
+      margin: 0;
+      font-size: 15px;
+      color: var(--ag-muted);
+    }
+
+    .ag-section-block {
+      margin-bottom: 22px;
+    }
+
+    .ag-section-block h4 {
+      margin: 0 0 10px;
+      font-size: 17px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .ag-principle-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .ag-principle-item {
+      background: var(--ag-surface-soft);
+      border: 1px solid var(--ag-line);
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+
+    .ag-principle-item strong {
+      display: block;
+      font-size: 16px;
+      margin-bottom: 6px;
+      color: var(--ag-ink);
+    }
+
+    .ag-principle-item p {
+      margin: 0;
+      font-size: 14px;
+      color: var(--ag-muted);
+      line-height: 1.55;
+    }
+
+    .ag-code-wrap {
+      background: #0f172a;
+      color: #e2e8f0;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid #1e293b;
+    }
+
+    .ag-code-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      background: #1e293b;
+      font-size: 14px;
+      color: #94a3b8;
+    }
+
+    .ag-code-bar button {
+      color: #e2e8f0;
+      background: #334155;
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .ag-code-bar button:hover {
+      background: #475569;
+    }
+
+    .ag-code-wrap pre {
+      margin: 0;
+      padding: 18px;
+      overflow-x: auto;
+      font-family: var(--ag-mono);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    /* Right Column: Interactive Sandbox & Personal Notes */
+    .ag-right-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .ag-sandbox-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .ag-sandbox-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .ag-sandbox-row select {
+      flex: 1;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--ag-line);
+      background: #fff;
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .ag-trace-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .ag-trace-step {
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px solid var(--ag-line);
+      background: #fbfcfe;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .ag-trace-step.is-current {
+      border-color: var(--ag-primary);
+      background: #eff6ff;
+      box-shadow: 0 4px 14px rgba(29, 78, 216, 0.08);
+    }
+
+    .ag-trace-step-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .ag-trace-step-top strong {
+      font-size: 15px;
+    }
+
+    .ag-trace-step-top span {
+      font-family: var(--ag-mono);
+      font-size: 14px;
+      color: var(--ag-primary);
+      font-weight: 600;
+    }
+
+    .ag-trace-step p {
+      margin: 0;
+      font-size: 14px;
+      color: var(--ag-muted);
+    }
+
+    .ag-payload-viewer {
+      background: #0f172a;
+      color: #a7f3d0;
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-family: var(--ag-mono);
+      font-size: 14px;
+      line-height: 1.6;
+      max-height: 260px;
+      overflow: auto;
+      white-space: pre-wrap;
+    }
+
+    .ag-note-area {
+      width: 100%;
+      border: 1px solid var(--ag-line);
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 15px;
+      line-height: 1.65;
+      resize: vertical;
+      margin-bottom: 12px;
+    }
+
+    .ag-note-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .ag-toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--ag-ink);
+      color: #ffffff;
+      padding: 12px 20px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+      z-index: 100;
+      display: none;
+    }
+
+    .ag-toast.is-visible {
+      display: block;
+    }
+
+    @media (max-width: 1140px) {
+      .ag-node-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .ag-bento-main {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .ag-shell {
+        padding: 14px 14px 40px;
+      }
+      .ag-node-grid,
+      .ag-principle-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="ag-shell">
+    <!-- Top Header -->
+    <header class="ag-header">
+      <div class="ag-brand">
+        <div class="ag-logo">AG</div>
+        <div>
+          <div class="ag-title-row">
+            <h1>Agent 架构实验室</h1>
+            <span class="ag-pill">5 大核心模块 + 实时推演沙盘</span>
+          </div>
+          <p class="ag-subtitle">用可交互的工程蓝图与状态流沙盘，真正看懂生产级 AI Agent 是如何循环运转的</p>
+        </div>
+      </div>
+
+      <div class="ag-header-actions">
+        <div class="ag-progress-box">
+          <span>掌握进度</span>
+          <div class="ag-progress-bar">
+            <div class="ag-progress-fill" id="progress-fill"></div>
+          </div>
+          <strong id="progress-label">0 / 5</strong>
+        </div>
+        <a class="ag-btn" href="https://github.com/Adversit/dk_learn_agent" target="_blank" rel="noopener noreferrer">
+          配套源码仓库 ↗
+        </a>
+        <a class="ag-btn" href="/" target="_top">
+          返回工作空间
+        </a>
+      </div>
+    </header>
+
+    <!-- 5 Core Architecture Modules Pipeline -->
+    <section class="ag-pipeline-card" aria-label="Agent 五大核心架构模块">
+      <div class="ag-pipeline-top">
+        <h2>Agent 核心架构五步闭环（点击任意模块深入架构原理与代码实现）</h2>
+        <span>Input Spec → Context & Memory → Plan & Tasks → Tool Use / MCP → Eval & Reflection</span>
+      </div>
+      <div class="ag-node-grid" id="module-tabs"></div>
+    </section>
+
+    <!-- Main Content Bento: Left Architecture Deep Dive + Right Execution Sandbox -->
+    <div class="ag-bento-main">
+      <!-- Left: Module Deep Dive & Code Blueprint -->
+      <section class="ag-card">
+        <div class="ag-card-head">
+          <div>
+            <span class="ag-pill" id="mod-badge">MODULE 01</span>
+            <h3 id="mod-title">规格与上下文窗口 (Spec & Context)</h3>
+            <p id="mod-summary"></p>
+          </div>
+          <button class="ag-btn is-primary" id="toggle-mastered-btn" type="button">
+            标记为已掌握
+          </button>
+        </div>
+
+        <div class="ag-section-block">
+          <h4>核心工程要点与避坑指南</h4>
+          <div class="ag-principle-grid" id="mod-principles"></div>
+        </div>
+
+        <div class="ag-section-block">
+          <h4>极简生产级代码蓝图 (TypeScript / Python 核心循环)</h4>
+          <div class="ag-code-wrap">
+            <div class="ag-code-bar">
+              <span id="mod-code-title">agent-loop.ts</span>
+              <button type="button" id="copy-code-btn">复制代码</button>
+            </div>
+            <pre><code id="mod-code-body"></code></pre>
+          </div>
+        </div>
+
+        <div class="ag-section-block">
+          <h4>我的架构学习笔记（自动持久化到云端工作台）</h4>
+          <textarea
+            id="module-note-input"
+            class="ag-note-area"
+            rows="4"
+            placeholder="记录你对本模块的思考、在自己项目中踩过的坑或改进想法…"
+          ></textarea>
+          <div class="ag-note-footer">
+            <span style="font-size: 14px; color: var(--ag-muted);" id="save-status">已自动同步到你的工作区</span>
+            <button class="ag-btn is-primary" type="button" id="save-note-btn">保存当前模块笔记</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right: Live Agent Execution Trace Sandbox -->
+      <aside class="ag-right-stack">
+        <section class="ag-card">
+          <div class="ag-card-head">
+            <div>
+              <h3>Agent 运行推演沙盘 (Live Trace)</h3>
+              <p>选择真实工程场景，单步推演 Agent 从接收任务到工具调用与自我验证的完整 JSON 状态流</p>
+            </div>
+          </div>
+
+          <div class="ag-sandbox-controls">
+            <div class="ag-sandbox-row">
+              <select id="scenario-select" aria-label="选择推演场景">
+                <option value="bugfix">场景 A：自动定位并修复生产环境 TypeScript 空指针 Bug</option>
+                <option value="research">场景 B：多信源检索论文并交叉验证生成结构化简报</option>
+                <option value="speckit">场景 C：SpecKit 需求澄清 → 生成技术方案 → 拆解可执行任务</option>
+              </select>
+            </div>
+            <div class="ag-sandbox-row">
+              <button class="ag-btn" type="button" id="prev-step-btn">← 上一步</button>
+              <button class="ag-btn is-primary" type="button" id="next-step-btn">下一步推演 →</button>
+              <button class="ag-btn" type="button" id="auto-play-btn">自动播放</button>
+            </div>
+          </div>
+
+          <div class="ag-trace-steps" id="trace-steps-list"></div>
+
+          <div class="ag-section-block" style="margin-bottom: 0;">
+            <h4>当前步骤实时协议载荷 (Wire JSON Payload)</h4>
+            <div class="ag-payload-viewer" id="trace-payload-box"></div>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </div>
+
+  <div class="ag-toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (() => {
+      const STORAGE_KEY = 'dk_agent_lab_v3_state';
+
+      const MODULES = [
+        {
+          id: 'spec-context',
+          num: '01',
+          title: '规格与上下文 (Spec & Context)',
+          short: '定义系统边界、指令分层与上下文预算',
+          summary: 'Agent 不是靠“玄学长提示词”工作的。高可靠的 Agent 首先通过清晰的 Spec 定义角色边界、可用工具契约与禁止事项，并将上下文窗口严格划分为系统层、持久工作状态层与滚动消息层。',
+          codeTitle: '01-context-assembler.ts',
+          principles: [
+            {
+              title: '指令与不可信数据严格隔离',
+              text: '用户输入、网页抓取内容和文件返回值必须封装在独立数据标签或 tool_result 中，防止提示词注入覆盖系统边界。'
+            },
+            {
+              title: '固定前缀以最大化 KV Cache 命中',
+              text: '保持 System Prompt 和 Tool Schema 顺序恒定；严禁在 System Prompt 头部塞入每秒变化的动态时间戳。'
+            },
+            {
+              title: '大结果外置 (Offloading Large Outputs)',
+              text: '当工具返回超过阈值（如 40KB 日志），只向 Context 注入摘要与文件引用路径，按行号范围按需二次读取。'
+            },
+            {
+              title: '明确完成条件 (Completion Contract)',
+              text: '在进入循环前明确定义“什么算任务完成”，避免模型无限自我发散或提前半途而废。'
+            }
+          ],
+          code: `export interface AgentContextInput {
+  systemConstitution: string;
+  activeSpecSummary: string;
+  recentMessages: Array<{ role: 'user' | 'assistant' | 'tool'; content: string }>;
+}
+
+export function buildBoundedContext(input: AgentContextInput, maxChars = 48000) {
+  // 1. 固定前缀：确保 LLM KV-Cache 高命中率
+  const pinnedHeader = [
+    { role: 'system' as const, content: input.systemConstitution },
+    { role: 'system' as const, content: \`[ACTIVE_SPEC]\\n\${input.activeSpecSummary}\` },
+  ];
+
+  // 2. 滑动窗口 + 超长工具输出截断保护
+  let used = pinnedHeader.reduce((acc, m) => acc + m.content.length, 0);
+  const tail: typeof input.recentMessages = [];
+
+  for (let i = input.recentMessages.length - 1; i >= 0; i--) {
+    const msg = input.recentMessages[i];
+    const safeContent =
+      msg.content.length > 8000
+        ? msg.content.slice(0, 8000) + '\\n...[输出已截断，请使用 read_file 分段读取]'
+        : msg.content;
+    if (used + safeContent.length > maxChars) break;
+    used += safeContent.length;
+    tail.unshift({ ...msg, content: safeContent });
+  }
+
+  return [...pinnedHeader, ...tail];
+}`
+        },
+        {
+          id: 'memory-rag',
+          num: '02',
+          title: '记忆与上下文压缩 (Memory & Compact)',
+          short: 'Microcompact、结构化工作记忆与跨会话持久化',
+          summary: '当任务跨越几十轮工具调用时，无脑保留全部历史会迅速撑爆上下文并导致注意力退化。生产级 Agent 采用“微压缩 (Microcompact) + 结构化工作状态快照 (Session Memory)”双层机制。',
+          codeTitle: '02-memory-compact.ts',
+          principles: [
+            {
+              title: '为什么不能只留一段自然语言 Summary？',
+              text: '纯文本摘要极易丢失精确的文件路径、错误码、已修改函数名和未完成检查项。必须配合结构化 JSON 状态。'
+            },
+            {
+              title: 'Microcompact（旧工具输出折叠）',
+              text: '对于 5 轮之前的历史 read_file / grep 大块输出，在上下文中替换为“[已读文件 path，关键结论已写入工作记忆]”。'
+            },
+            {
+              title: '乐观并发与版本校验 (CAS)',
+              text: '跨端或跨会话写入持久记忆时，必须携带 expectedRevision，防止多个标签页或子 Agent 静默覆盖状态。'
+            },
+            {
+              title: '按需检索而非全量灌入',
+              text: '让 Agent 通过精确搜索工具（Grep / AST / SQL）主动拉取所需片段，而不是预加载整个代码库。'
+            }
+          ],
+          code: `export interface SessionCheckpoint {
+  goal: string;
+  completedSteps: string[];
+  modifiedFiles: string[];
+  openIssues: string[];
+}
+
+export function microcompactHistory(
+  messages: Array<{ role: string; content: string; toolName?: string }>,
+  keepRecentTurns = 4
+) {
+  const cutoff = Math.max(0, messages.length - keepRecentTurns);
+  return messages.map((msg, index) => {
+    if (index < cutoff && msg.role === 'tool' && msg.content.length > 600) {
+      return {
+        ...msg,
+        content: \`[已折叠历史工具输出 (\${msg.toolName || 'tool'})，原始长度 \${msg.content.length} 字符]\`,
+      };
+    }
+    return msg;
+  });
+}`
+        },
+        {
+          id: 'plan-tasks',
+          num: '03',
+          title: '规划与任务拆解 (Plan & Tasks)',
+          short: 'Spec → Plan → Tasks 状态机与动态重规划',
+          summary: '复杂工程任务不能靠一步生成。通过显式维护一张可更新的任务清单（pending / in_progress / done / failed），Agent 能够在每轮观察到新事实后动态修正后续步骤。',
+          codeTitle: '03-task-planner.ts',
+          principles: [
+            {
+              title: 'SpecKit 三段式主线',
+              text: '先澄清需求边界 (Spec)，再确定技术架构与改动范围 (Plan)，最后拆解为可独立验证的原子任务 (Tasks)。'
+            },
+            {
+              title: '同一时刻聚焦单一核心阻塞点',
+              text: '将大任务拆解为 3~7 个可验证检查点，每完成一步立即通过编译器或测试确认，不把错误累积到最后。'
+            },
+            {
+              title: '支持基于反馈的 Re-plan',
+              text: '当工具返回报错或发现架构假设不成立时，优先更新 Plan 与 Tasks，而不是盲目重试同一条失败命令。'
+            },
+            {
+              title: '人机协同审批点 (Approval Gate)',
+              text: '涉及破坏性变更、外部发布或架构级调整时，在 Plan 阶段暂停并交由人类审批确认版本。'
+            }
+          ],
+          code: `export type StepStatus = 'pending' | 'in_progress' | 'done' | 'failed';
+
+export interface PlanStep {
+  id: string;
+  title: string;
+  verifyCommand: string;
+  status: StepStatus;
+}
+
+export function advancePlan(steps: PlanStep[], finishedId: string, passed: boolean): PlanStep[] {
+  const updated = steps.map((s) =>
+    s.id === finishedId ? { ...s, status: (passed ? 'done' : 'failed') as StepStatus } : s
+  );
+  if (!passed) return updated;
+
+  const nextPending = updated.find((s) => s.status === 'pending');
+  return updated.map((s) =>
+    nextPending && s.id === nextPending.id ? { ...s, status: 'in_progress' } : s
+  );
+}`
+        },
+        {
+          id: 'tool-mcp',
+          num: '04',
+          title: '工具调用与 MCP (Tool Use & MCP)',
+          short: '强类型 Schema、沙箱边界与幂等错误回传',
+          summary: '工具是大模型连接真实世界的双手。优秀的工具设计遵循最小权限、参数自解释、错误结构化回传（将报错作为 Tool Result 返回给模型自愈，而非直接抛出崩溃）。',
+          codeTitle: '04-tool-dispatcher.ts',
+          principles: [
+            {
+              title: '错误也是模型的观察信号 (is_error: true)',
+              text: '当文件不存在或参数校验失败时，返回清晰的错误提示给 LLM，让模型自行修正参数，而不是中断整个进程。'
+            },
+            {
+              title: '读写分离与路径沙箱校验',
+              text: '只读检索工具可并行批量调用；写入与命令执行工具必须校验工作区路径边界与超时上限。'
+            },
+            {
+              title: '精确局部编辑优于全文件覆盖',
+              text: 'Edit 工具通过精确匹配 Target 块进行替换，既节省输出 Token，又避免意外删改无关代码。'
+            },
+            {
+              title: 'MCP (Model Context Protocol) 标准化扩展',
+              text: '通过统一的 JSON Schema 注册外部数据源与专业工具，实现按需懒加载 (Lazy Tool Loading)。'
+            }
+          ],
+          code: `export interface ToolCall {
+  id: string;
+  name: string;
+  args: Record<string, unknown>;
+}
+
+export async function dispatchToolSafely(
+  call: ToolCall,
+  registry: Record<string, (args: Record<string, unknown>) => Promise<string>>
+) {
+  const handler = registry[call.name];
+  if (!handler) {
+    return { toolCallId: call.id, isError: true, content: \`未知工具: \${call.name}\` };
+  }
+  try {
+    const output = await handler(call.args);
+    return { toolCallId: call.id, isError: false, content: output };
+  } catch (err) {
+    // 将异常转化为模型可读的结构化反馈，交由下一轮推理自我修正
+    const message = err instanceof Error ? err.message : String(err);
+    return { toolCallId: call.id, isError: true, content: \`工具执行失败: \${message}\` };
+  }
+}`
+        },
+        {
+          id: 'eval-loop',
+          num: '05',
+          title: '评估与反思闭环 (Eval & Reflection)',
+          short: '客观验证器驱动、回归测试与停止条件',
+          summary: '“代码写完”不等于“任务完成”。真正可靠的 Agent 在结束循环前，必须通过外部客观验证器（TypeScript 类型检查、单元测试、页面真实渲染检查）形成闭环。',
+          codeTitle: '05-verification-loop.ts',
+          principles: [
+            {
+              title: '永远用客观验证器代替模型自我感觉',
+              text: '不要问模型“你觉得改对了吗？”，而是直接运行 tsc --noEmit、node --test 或实际请求 API 检查状态码。'
+            },
+            {
+              title: '最大迭代预算与熔断保护',
+              text: '设置明确的最大步数与连续失败熔断机制，当连续两次修复同一错误未果时，主动汇报阻塞原因。'
+            },
+            {
+              title: '可追溯的证据锚定',
+              text: '无论是回答研究问题还是交付代码变更，最终结论都必须绑定具体的文件行号、测试回执或命令输出。'
+            },
+            {
+              title: '端到端验收 (E2E Verification)',
+              text: '不仅检查编译通过，还要验证真实路由响应、数据库迁移状态以及前端交互是否符合 Spec 验收标准。'
+            }
+          ],
+          code: `export async function runVerifiedAgentLoop(
+  stepOnce: () => Promise<{ done: boolean; summary: string }>,
+  verifyGate: () => Promise<{ ok: boolean; diagnostics: string }>,
+  injectFeedback: (msg: string) => void,
+  maxSteps = 12
+) {
+  for (let step = 1; step <= maxSteps; step++) {
+    const turn = await stepOnce();
+    if (!turn.done) continue;
+
+    // 模型声称已完成时，强制执行客观验收门禁
+    const check = await verifyGate();
+    if (check.ok) {
+      return { status: 'verified', stepsUsed: step, summary: turn.summary };
+    }
+    injectFeedback(\`验收未通过，请修复以下问题后重试：\\n\${check.diagnostics}\`);
+  }
+  return { status: 'budget_exceeded', stepsUsed: maxSteps };
+}`
+        }
+      ];
+
+      const SCENARIOS = {
+        bugfix: [
+          {
+            stage: '01 Spec & Context',
+            title: '接收任务与组装边界上下文',
+            desc: '注入工作区规范与用户 Bug 报告，锁定目标模块。',
+            payload: {
+              role: 'user',
+              task: '修复 WorkspaceCalendar 跨月顺延计划时目标月份列表未刷新的问题',
+              constraints: ['保留乐观并发 expectedRevision', '补充单元测试'],
+              activeContextTokens: 3420
+            }
+          },
+          {
+            stage: '04 Tool Use (Read / Grep)',
+            title: '定位核心状态转换函数',
+            desc: '调用只读检索工具读取 lib/hub/workspace-calendar.ts。',
+            payload: {
+              tool_call: 'read_file',
+              arguments: { path: 'lib/hub/workspace-calendar.ts', startLine: 1, endLine: 140 },
+              tool_result: {
+                status: 'ok',
+                finding: 'reschedulePlan 跨越自然月时需同时返回 sourceDoc 与 targetDoc 并在 Hook 中同步更新缓存'
+              }
+            }
+          },
+          {
+            stage: '03 Plan & Tasks',
+            title: '制定修改与验证计划',
+            desc: '更新任务状态机：先写失败用例，再改纯函数与 Hook，最后跑回归测试。',
+            payload: {
+              plan_steps: [
+                { id: 'T1', title: '更新 reschedulePlan 跨月双文档保存逻辑', status: 'in_progress' },
+                { id: 'T2', title: '在 tests/workspace-calendar.test.mjs 添加跨月断言', status: 'pending' },
+                { id: 'T3', title: '运行 tsc 与 node --test 验证', status: 'pending' }
+              ]
+            }
+          },
+          {
+            stage: '04 Tool Use (Edit)',
+            title: '执行精确代码块替换',
+            desc: '通过 edit_file 修改目标逻辑并更新对应测试。',
+            payload: {
+              tool_call: 'edit_file',
+              arguments: {
+                path: 'lib/hub/use-workspace-calendar.ts',
+                target: 'await saveMonthDoc(sourceMonthKey, nextSourceDoc);',
+                replacement: 'await saveMonthDoc(sourceMonthKey, nextSourceDoc);\nawait saveMonthDoc(targetMonthKey, nextTargetDoc);'
+              },
+              result: ' Applied 1 edit cleanly.'
+            }
+          },
+          {
+            stage: '05 Eval & Reflection',
+            title: '执行客观测试门禁并闭合循环',
+            desc: '运行 TypeScript 类型检查与单元测试，全部通过后输出交付结论。',
+            payload: {
+              verification_gate: 'node --experimental-strip-types --test tests/workspace-calendar.test.mjs',
+              exit_code: 0,
+              tests_passed: 8,
+              final_decision: 'VERIFIED_COMPLETE'
+            }
+          }
+        ],
+        research: [
+          {
+            stage: '01 Spec & Context',
+            title: '明确研究课题与证据纪律',
+            desc: '设定“仅依据已检索文献元数据与原文摘录回答，严禁虚构引用”边界。',
+            payload: {
+              research_topic: '多 Agent 评估系统的覆盖率与一致性权衡',
+              evidence_rule: '所有结论必须绑定 [paper:id] 或 [evidence:id]'
+            }
+          },
+          {
+            stage: '04 Tool Use (Crossref Search)',
+            title: '检索 Crossref 学术元数据并去重入库',
+            desc: '调用学术检索接口拉取候选文献并按 DOI 规范化合并。',
+            payload: {
+              endpoint: 'GET /api/m/zhizheng-research/search?q=Multi-Agent+Evaluation',
+              imported_papers: 4,
+              deduplicated: 1
+            }
+          },
+          {
+            stage: '02 Memory & Compact',
+            title: '提取结构化精读卡与原文锚点',
+            desc: '将长篇 PDF 原文压缩为“问题/方法/数据/局限”结构化精读卡，释放上下文空间。',
+            payload: {
+              reading_card: {
+                paperId: 'p-01',
+                status: 'done',
+                method: '引入独立参考集与弃权机制 (Abstain)',
+                limitations: '高弃权率下选择性一致率会虚高，需同时报告覆盖率'
+              }
+            }
+          },
+          {
+            stage: '03 Plan & Tasks',
+            title: '按 5 大维度对齐跨论文比较矩阵',
+            desc: '构建研究问题、方法、数据、结果、局限五维交叉对比表。',
+            payload: {
+              synthesis_dimensions: ['question', 'method', 'data', 'result', 'limitation'],
+              matched_evidence_count: 11
+            }
+          },
+          {
+            stage: '05 Eval & Reflection',
+            title: '核验引用完整性并导出综述',
+            desc: '检查正文内每一个定量论断是否都有对应的原文证据或实验运行哈希支撑。',
+            payload: {
+              dangling_claims: 0,
+              unverified_numbers: 0,
+              exported_artifact: '跨论文研究综述.md'
+            }
+          }
+        ],
+        speckit: [
+          {
+            stage: '01 Spec (/speckit.specify)',
+            title: '从用户原始反馈痛点提炼需求规格 (Spec)',
+            desc: '将碎片化的用户原话聚类为反馈簇，编写用户故事与明确的验收标准。',
+            payload: {
+              cluster: '用户看不懂复杂的多级菜单，希望主流程一目了然',
+              spec_artifact: 'specs/001-frontend-workspace-v1/spec.md',
+              acceptance_criteria: ['主工作台收敛为 6 个核心应用 + 1 个游戏大厅入口', '正文 >= 16px']
+            }
+          },
+          {
+            stage: '02 Memory & Constitution',
+            title: '对齐项目宪章 (Constitution) 与架构约束',
+            desc: '加载 .specify/memory/constitution.md，校验身份鉴权与 CAS 版本控制红线。',
+            payload: {
+              constitution_checks: {
+                server_identity_authoritative: true,
+                cas_expected_revision: true,
+                preserve_module_api_contracts: true
+              }
+            }
+          },
+          {
+            stage: '03 Plan & Tasks (/speckit.plan & /speckit.tasks)',
+            title: '输出技术方案与可并行任务列表',
+            desc: '确定修改的文件边界、回滚方案，并拆解为带编号的执行任务。',
+            payload: {
+              plan_artifact: 'specs/001-frontend-workspace-v1/plan.md',
+              tasks_artifact: 'specs/001-frontend-workspace-v1/tasks.md',
+              stages: ['Catalog 归档收敛', '知流/知证/Agent 实验室重构', 'SpecKit 工作台合并', '全量测试与构建']
+            }
+          },
+          {
+            stage: '04 Tool Use (/speckit.implement)',
+            title: '按阶段执行代码重构与文档同步',
+            desc: '在保持后端 API 与存储契约不变的前提下，替换前端视图层。',
+            payload: {
+              modified_modules: ['zhiliu-radar', 'zhizheng-research', 'agent-architecture-journey', 'evopm-workbench', 'novel-studio'],
+              api_breaking_changes: 0
+            }
+          },
+          {
+            stage: '05 Eval & Delivery',
+            title: '全量回归测试、构建校验与上线回执',
+            desc: '通过 tsc、82 项单元测试与 Vercel 构建验证，生成可导出 SpecKit 交付包。',
+            payload: {
+              tsc_no_emit: 'PASS',
+              unit_tests: '82 / 82 PASS',
+              vercel_build: 'PASS'
+            }
+          }
+        ]
+      };
+
+      let state = {
+        activeModuleId: MODULES[0].id,
+        mastered: ['spec-context'],
+        notes: {},
+        scenario: 'bugfix',
+        traceIndex: 0
+      };
+      let autoPlayTimer = null;
+
+      function loadState() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            state = {
+              ...state,
+              ...parsed,
+              mastered: Array.isArray(parsed.mastered) ? parsed.mastered : state.mastered,
+              notes: parsed.notes && typeof parsed.notes === 'object' ? parsed.notes : {}
+            };
+          }
+        } catch {}
+      }
+
+      function saveState(toastMsg) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+          if (window.HubStorage && typeof window.HubStorage.flush === 'function') {
+            window.HubStorage.flush();
+          }
+        } catch {}
+        if (toastMsg) showToast(toastMsg);
+      }
+
+      function showToast(msg) {
+        const el = document.getElementById('toast');
+        if (!el) return;
+        el.textContent = msg;
+        el.classList.add('is-visible');
+        clearTimeout(el._timer);
+        el._timer = setTimeout(() => el.classList.remove('is-visible'), 3000);
+      }
+
+      function renderProgress() {
+        const count = state.mastered.length;
+        const pct = Math.round((count / MODULES.length) * 100);
+        document.getElementById('progress-fill').style.width = pct + '%';
+        document.getElementById('progress-label').textContent = `${count} / ${MODULES.length} 已掌握`;
+      }
+
+      function renderPipelineTabs() {
+        const container = document.getElementById('module-tabs');
+        container.innerHTML = MODULES.map((m) => {
+          const isActive = m.id === state.activeModuleId;
+          const isDone = state.mastered.includes(m.id);
+          return `
+            <button type="button" class="ag-node-btn ${isActive ? 'is-active' : ''}" data-mod-id="${m.id}">
+              <div class="ag-node-head">
+                <span class="ag-node-num">STAGE ${m.num}</span>
+                ${isDone ? '<span class="ag-node-done">✓ 已掌握</span>' : ''}
+              </div>
+              <strong>${m.title}</strong>
+              <p>${m.short}</p>
+            </button>
+          `;
+        }).join('');
+
+        container.querySelectorAll('[data-mod-id]').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            state.activeModuleId = btn.getAttribute('data-mod-id');
+            saveState();
+            renderAll();
+          });
+        });
+      }
+
+      function renderActiveModule() {
+        const mod = MODULES.find((m) => m.id === state.activeModuleId) || MODULES[0];
+        const isMastered = state.mastered.includes(mod.id);
+
+        document.getElementById('mod-badge').textContent = `STAGE ${mod.num} · 核心架构模块`;
+        document.getElementById('mod-title').textContent = mod.title;
+        document.getElementById('mod-summary').textContent = mod.summary;
+
+        const masterBtn = document.getElementById('toggle-mastered-btn');
+        masterBtn.textContent = isMastered ? '✓ 已掌握（点击取消）' : '标记为已掌握';
+        masterBtn.className = isMastered ? 'ag-btn' : 'ag-btn is-primary';
+
+        document.getElementById('mod-principles').innerHTML = mod.principles
+          .map(
+            (p) => `
+            <div class="ag-principle-item">
+              <strong>${p.title}</strong>
+              <p>${p.text}</p>
+            </div>
+          `
+          )
+          .join('');
+
+        document.getElementById('mod-code-title').textContent = mod.codeTitle;
+        document.getElementById('mod-code-body').textContent = mod.code;
+
+        const noteInput = document.getElementById('module-note-input');
+        noteInput.value = state.notes[mod.id] || '';
+      }
+
+      function renderSandbox() {
+        const steps = SCENARIOS[state.scenario] || SCENARIOS.bugfix;
+        if (state.traceIndex >= steps.length) state.traceIndex = 0;
+
+        document.getElementById('scenario-select').value = state.scenario;
+
+        const listEl = document.getElementById('trace-steps-list');
+        listEl.innerHTML = steps
+          .map(
+            (s, idx) => `
+            <div class="ag-trace-step ${idx === state.traceIndex ? 'is-current' : ''}" data-step-idx="${idx}">
+              <div class="ag-trace-step-top">
+                <strong>Step ${idx + 1}: ${s.title}</strong>
+                <span>${s.stage}</span>
+              </div>
+              <p>${s.desc}</p>
+            </div>
+          `
+          )
+          .join('');
+
+        listEl.querySelectorAll('[data-step-idx]').forEach((item) => {
+          item.addEventListener('click', () => {
+            state.traceIndex = Number(item.getAttribute('data-step-idx')) || 0;
+            renderSandbox();
+          });
+        });
+
+        const currentStep = steps[state.traceIndex];
+        document.getElementById('trace-payload-box').textContent = JSON.stringify(
+          currentStep.payload,
+          null,
+          2
+        );
+      }
+
+      function renderAll() {
+        renderProgress();
+        renderPipelineTabs();
+        renderActiveModule();
+        renderSandbox();
+      }
+
+      // Event Listeners
+      document.getElementById('toggle-mastered-btn').addEventListener('click', () => {
+        const id = state.activeModuleId;
+        if (state.mastered.includes(id)) {
+          state.mastered = state.mastered.filter((x) => x !== id);
+          saveState('已取消掌握标记');
+        } else {
+          state.mastered.push(id);
+          saveState('已标记该架构模块为已掌握');
+        }
+        renderAll();
+      });
+
+      document.getElementById('copy-code-btn').addEventListener('click', async () => {
+        const mod = MODULES.find((m) => m.id === state.activeModuleId) || MODULES[0];
+        try {
+          await navigator.clipboard.writeText(mod.code);
+          showToast('代码蓝图已复制到剪贴板');
+        } catch {
+          showToast('请选中代码后按 Ctrl+C 复制');
+        }
+      });
+
+      document.getElementById('save-note-btn').addEventListener('click', () => {
+        const val = document.getElementById('module-note-input').value;
+        state.notes[state.activeModuleId] = val;
+        saveState('当前模块学习笔记已保存');
+      });
+
+      document.getElementById('scenario-select').addEventListener('change', (e) => {
+        state.scenario = e.target.value;
+        state.traceIndex = 0;
+        saveState();
+        renderSandbox();
+      });
+
+      document.getElementById('prev-step-btn').addEventListener('click', () => {
+        const steps = SCENARIOS[state.scenario] || SCENARIOS.bugfix;
+        state.traceIndex = (state.traceIndex - 1 + steps.length) % steps.length;
+        renderSandbox();
+      });
+
+      document.getElementById('next-step-btn').addEventListener('click', () => {
+        const steps = SCENARIOS[state.scenario] || SCENARIOS.bugfix;
+        state.traceIndex = (state.traceIndex + 1) % steps.length;
+        renderSandbox();
+      });
+
+      document.getElementById('auto-play-btn').addEventListener('click', (e) => {
+        const btn = e.currentTarget;
+        if (autoPlayTimer) {
+          clearInterval(autoPlayTimer);
+          autoPlayTimer = null;
+          btn.textContent = '自动播放';
+          return;
+        }
+        btn.textContent = '停止播放';
+        autoPlayTimer = setInterval(() => {
+          const steps = SCENARIOS[state.scenario] || SCENARIOS.bugfix;
+          state.traceIndex = (state.traceIndex + 1) % steps.length;
+          renderSandbox();
+        }, 2200);
+      });
+
+      loadState();
+      renderAll();
+    })();
+  </script>
+</body>
+</html>

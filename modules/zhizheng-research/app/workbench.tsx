@@ -1,95 +1,1754 @@
 'use client';
-import React,{useState,useEffect,useRef,useMemo} from 'react';
-import { ArrowUpRight,ArrowRight,ArrowLeft,BookOpen,BookMarked,ChartNoAxesCombined,Check,CheckCheck,ChevronDown,ChevronRight,CircleHelp,Clock3,Download,Ellipsis,FileCheck2,FilePenLine,FilePlus2,Files,FlaskConical,FolderOpen,History,LayoutDashboard,Link2,LoaderCircle,LogIn,Menu,Network,Plus,Quote,Search,Settings2,ShieldCheck,Sparkles,Trash2,Upload,X,AlertTriangle,CheckCircle2,ExternalLink,Save,PanelRightClose,RotateCcw,ScanLine,Layers,Target,FileText } from 'lucide-react';
-import { Project,ResearchState,Paper,Evidence,Question,Protocol,Run,Claim,SourceFile,Metric,emptyState,uid,now,normalizeDOI,duplicatePaper,mergePaper,kindNames,dimensions,analyzeResults,formatMetric,reviewState,exportMarkdown,csvEscape } from '@/modules/zhizheng-research/lib/domain';
-import { demoState,demoFiles,sampleCSV } from '@/modules/zhizheng-research/lib/demo';
-import PDFReader,{inspectPDF} from './pdf-reader';
-import { ReadingDesk, ReadingCardEditor, SynthesisWorkspace, ReproductionWorkspace, KnowledgeWorkspace, DirectionWorkspace, StudyAIModal } from './study-workspace';
-import { paperContext } from '@/modules/zhizheng-research/lib/study';
-const navItems=[{id:'overview',label:'阅读桌',icon:BookMarked},{id:'library',label:'论文阅读',icon:BookOpen},{id:'synthesis',label:'论文汇总',icon:Files},{id:'reproduce',label:'实验复刻',icon:FlaskConical},{id:'graph',label:'知识图谱',icon:Network},{id:'explore',label:'方向探索',icon:Sparkles}];
-function download(name:string,text:string,type='text/plain;charset=utf-8'){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
-async function request(url:string,options:RequestInit={}){const res=await fetch(url,options);const data:any=await res.json();if(!res.ok)throw new Error(data.error||'请求失败');return data;}
-function Field({label,children,hint}:{label:string;children:React.ReactNode;hint?:string}){return <label className="field"><span>{label}</span>{children}{hint&&<small>{hint}</small>}</label>}
-function Empty({icon:Icon=BookOpen,title,text,action}:{icon?:any;title:string;text:string;action?:React.ReactNode}){return <div className="empty"><span className="empty-icon"><Icon size={26}/></span><h3>{title}</h3><p>{text}</p>{action}</div>}
-function Badge({children,tone='neutral'}:{children:React.ReactNode;tone?:string}){return <span className={'badge '+tone}>{children}</span>}
-function Modal({title,subtitle,children,onClose,wide=false}:{title:string;subtitle?:string;children:React.ReactNode;onClose:()=>void;wide?:boolean}){return <div className="modal-overlay" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}><section role="dialog" aria-modal="true" aria-label={title} className={'modal '+(wide?'wide':'')}><header><div><h2>{title}</h2>{subtitle&&<p>{subtitle}</p>}</div><button aria-label="关闭弹窗" onClick={onClose}><X size={20}/></button></header>{children}</section></div>}
-const initialEvidence=(paperId:string,file?:SourceFile,page=1):Evidence=>({id:uid(),paperId,fileId:file?.id??'',fileHash:file?.hash??'',page,printedPage:'',section:'',quote:'',note:'',kind:'fact',dimension:'method',selector:'',version:1,updatedAt:now(),publishedAt:'',cutoff:'',period:'',currency:'',unit:''});
-export default function Workbench(){
- const [section,setSection]=useState('overview'),[projects,setProjects]=useState<any[]>([]),[project,setProject]=useState<Project|null>(null),[files,setFiles]=useState<SourceFile[]>([]),[versions,setVersions]=useState<any[]>([]),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[saving,setSaving]=useState(false),[auth,setAuth]=useState(true),[error,setError]=useState(''),[toast,setToast]=useState(''),[demo,setDemo]=useState(false),[mobile,setMobile]=useState(false),[modal,setModal]=useState(''),[dirty,setDirty]=useState(false),[model,setModel]=useState<any>({configured:false}),[aiResult,setAIResult]=useState<any>(null);
- const [paperId,setPaperId]=useState(''),[anchorFileId,setAnchorFileId]=useState(''),[page,setPage]=useState(1),[libraryQuery,setLibraryQuery]=useState(''),[searchQuery,setSearchQuery]=useState(''),[searchResults,setSearchResults]=useState<Paper[]>([]),[pendingPapers,setPendingPapers]=useState<Paper[]>([]),[evidenceDraft,setEvidenceDraft]=useState<Evidence|null>(null),[selectedEvidence,setSelectedEvidence]=useState(''),[selectedRun,setSelectedRun]=useState(''),[matrixFilter,setMatrixFilter]=useState('all'),[editorText,setEditorText]=useState(''),[leftPanel,setLeftPanel]=useState(true),[runRaw,setRunRaw]=useState(''),[runFile,setRunFile]=useState<File|null>(null),[runLog,setRunLog]=useState(''),[claimDraft,setClaimDraft]=useState<Claim|null>(null);
- const [studyDirty,setStudyDirty]=useState(false),[aiTask,setAITask]=useState('reading'),[aiMaterial,setAIMaterial]=useState('');
- const createRequest=useRef('');if(!createRequest.current)createRequest.current=uid();const projectRef=useRef(project);projectRef.current=project;const editorRef=useRef(editorText);editorRef.current=editorText;const inFlight=useRef(false),bibInput=useRef<HTMLInputElement>(null),pdfInput=useRef<HTMLInputElement>(null),resultInput=useRef<HTMLInputElement>(null);
- const state=project?.state??emptyState();const selectedPaper=state.papers.find(p=>p.id===paperId)??state.papers[0],currentFile=files.find(f=>f.id===(anchorFileId||selectedPaper?.fileId));const run=state.runs.find(r=>r.id===selectedRun)??state.runs[0];const analysis=useMemo(()=>run?analyzeResults(run.raw):null,[run]);const issues=useMemo(()=>reviewState(state,files),[state,files]);
- const originalEvidence=evidenceDraft&&state.evidence.find(e=>e.id===evidenceDraft.id);const evidenceDirty=!!evidenceDraft&&(originalEvidence?JSON.stringify(evidenceDraft)!==JSON.stringify(originalEvidence):!!(evidenceDraft.quote.trim()||evidenceDraft.note.trim()));
- const notify=(message:string)=>{setToast(message);setTimeout(()=>setToast(''),4500)};
- const go=(id:string)=>{if((studyDirty||evidenceDirty)&&!confirm('当前内容尚未保存，离开会丢弃修改。继续吗？'))return;setStudyDirty(false);setEvidenceDraft(null);setSection(id);setMobile(false);setError('')};
- useEffect(()=>{loadProjects();request('/api/m/zhizheng-research/ai').then(setModel).catch(()=>{});},[]);
- useEffect(()=>{const handler=(e:BeforeUnloadEvent)=>{if(dirty||studyDirty||evidenceDirty){e.preventDefault();e.returnValue=''}};window.addEventListener('beforeunload',handler);return()=>window.removeEventListener('beforeunload',handler)},[dirty,studyDirty,evidenceDirty]);
- async function loadProjects(){setLoading(true);try{const data=await request('/api/m/zhizheng-research/workspace');setProjects(data.projects);setAuth(true);if(data.projects.length)await loadProject(data.projects[0].id)}catch(e){setAuth(false);setError((e as Error).message)}finally{setLoading(false)}}
- async function loadProject(id:string,force=false){if(!force&&(busy||inFlight.current)){notify('保存中，请稍后切换项目');return;}if((dirty||studyDirty||evidenceDirty)&&!confirm('有未保存的笔记，切换论文集会丢弃这些修改。继续吗？'))return;setBusy(true);try{const data=await request('/api/m/zhizheng-research/workspace?id='+id);setProject(data.project);setFiles(data.files);setVersions(data.versions);setEditorText(data.project.state.chapter);setEvidenceDraft(null);setStudyDirty(false);setDemo(false);setDirty(false);setPaperId('');setAnchorFileId('');setSelectedRun('');setError('')}catch(e){setError((e as Error).message)}finally{setBusy(false)}}
- function openDemo(){if(busy||inFlight.current){notify('保存中，请稍后切换项目');return;}if((dirty||studyDirty||evidenceDirty)&&!confirm('放弃当前未保存内容并打开示例？'))return;const s=demoState();setProject({id:'demo',revision:1,updatedAt:now(),state:s});setFiles(demoFiles);setEditorText(s.chapter);setDemo(true);setDirty(false);setEvidenceDraft(null);setStudyDirty(false);setSection('overview');setError('');setPaperId('');setAnchorFileId('');notify('已进入临时示例，刷新后重置；不会写入正式研究')}
- async function persist(next:ResearchState){if(!projectRef.current)throw new Error('请先创建论文集');const target=projectRef.current;if(inFlight.current)throw new Error('上一项修改正在保存，请稍候');inFlight.current=true;setSaving(true);try{if(target.id==='demo'){setProject(current=>current?.id===target.id?{...target,state:next,revision:target.revision+1,updatedAt:now()}:current);return;}const data=await request('/api/m/zhizheng-research/workspace',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'save',id:target.id,revision:target.revision,state:next})});setProject(current=>current?.id===target.id?{...target,state:next,revision:data.revision,updatedAt:data.updatedAt}:current);}finally{inFlight.current=false;setSaving(false)}}
- async function action(fn:()=>Promise<void>){setError('');setBusy(true);try{await fn()}catch(e){setError((e as Error).message)}finally{setBusy(false)}}
- function openPaper(id:string,card=false){if((studyDirty||evidenceDirty)&&!confirm('当前内容尚未保存，是否离开？'))return;if(!state.papers.some(p=>p.id===id)){notify('这篇来源论文已移除');return;}setStudyDirty(false);setEvidenceDraft(null);setModal(card?'reading-card':'');setPaperId(id);setAnchorFileId('');setPage(state.readingCards.find(c=>c.paperId===id)?.lastPage??1);setSection('library');setMobile(false);}
- function openAI(task:string,ids:string[]){if(studyDirty){notify('请先保存当前阅读卡或草稿，再使用论文助手');return;}setAITask(task);setAIMaterial(paperContext(state,ids));setModal('study-ai');}
- const studyProps={state,onSave:persist,onPaper:openPaper,onEvidence:(id:string)=>{if((studyDirty||evidenceDirty)&&!confirm('当前内容尚未保存，是否离开？'))return;setStudyDirty(false);setModal('');setEvidenceDraft(null);updateEvidence(id,true)},onAI:openAI,onDirty:setStudyDirty,busy:busy||saving,notify};
- function updateEvidence(id:string,confirmed=false){if(!confirmed&&evidenceDirty&&!confirm('放弃当前未保存摘录并跳转？'))return;const e=state.evidence.find(x=>x.id===id);if(!e)return;setPaperId(e.paperId);setAnchorFileId(e.fileId);setPage(e.page);setSelectedEvidence(id);setEvidenceDraft({...e});setSection('library');setMobile(false)}
- async function stageReferences(papers:Paper[]){setPendingPapers(papers);setModal('merge')}
- async function commitReferences(){const merged=[...state.papers];let duplicates=0;for(const p of pendingPapers){const old=duplicatePaper(merged,p);if(old){merged[merged.indexOf(old)]=mergePaper(old,p);duplicates++;}else merged.push(p);}await persist({...state,papers:merged});setModal('');notify(`已导入 ${pendingPapers.length-duplicates} 条文献，合并 ${duplicates} 条重复记录`)}
- async function upload(file:File,kind:string,extra:any={}){if(demo)throw new Error('示例模式不能持久上传，请先创建正式项目');const form=new FormData();form.set('file',file);form.set('kind',kind);form.set('projectId',project!.id);Object.entries(extra).forEach(([k,v])=>form.set(k,String(v)));const data=await request('/api/m/zhizheng-research/files',{method:'POST',body:form});setFiles(prev=>prev.some(f=>f.id===data.file.id)?prev:[...prev,data.file]);return data.file as SourceFile}
- async function handlePDF(file:File){if(evidenceDirty&&!confirm('上传后将离开当前未保存摘录，继续吗？'))return;if(!selectedPaper)throw new Error('请先添加一条文献');const meta=await inspectPDF(file);const f=await upload(file,'pdf',meta);await persist({...state,papers:state.papers.map(p=>p.id===selectedPaper.id?{...p,fileId:f.id,readStatus:'fulltext',updatedAt:now()}:p)});setAnchorFileId('');setPage(1);setEvidenceDraft(null);notify(meta.status==='no-text'?`已上传；前 ${meta.checked} 页未检测到文本层，可人工摘录`:`已上传 ${meta.pages} 页 PDF；检查了前 ${meta.checked} 页文本层`)}
- async function saveEvidence(){if(!evidenceDraft?.quote.trim())throw new Error('请填写证据原文');if(currentFile&&evidenceDraft.page>(currentFile.pages??5000))throw new Error('物理页码超出文件页数');const old=state.evidence.find(e=>e.id===evidenceDraft.id);const e={...evidenceDraft,version:old?old.version+1:1,updatedAt:now(),selector:evidenceDraft.quote.slice(0,500)};await persist({...state,evidence:old?state.evidence.map(x=>x.id===e.id?e:x):[...state.evidence,e]});setEvidenceDraft(null);notify(old?'摘录已更新，可继续整理阅读卡':'摘录已保存，可用于阅读汇总')}
- async function exportAll(type:string){const b=await import('@/modules/zhizheng-research/lib/bibliography');if(type==='md')download('章节与证据.md',exportMarkdown({...state,chapter:dirty?editorText:state.chapter},files));if(type==='bib')download('references.bib',b.toBibtex(state.papers));if(type==='csl')download('references.csl.json',JSON.stringify(b.toCSL(state.papers),null,2),'application/json');if(type==='matrix')download('evidence-matrix.csv',[['evidence_id','paper','dimension','kind','quote','interpretation','physical_page','file_sha256','version','published_at','cutoff','period','currency','unit'],...state.evidence.map(e=>[e.id,state.papers.find(p=>p.id===e.paperId)?.title,dimensions[e.dimension],kindNames[e.kind],e.quote,e.note,e.fileId?e.page:'',e.fileHash,e.version,e.publishedAt,e.cutoff,e.period,e.currency,e.unit])].map(row=>row.map(csvEscape).join(',')).join('\n'),'text/csv;charset=utf-8');if(type==='source')download('research-sources.json',JSON.stringify({exportedAt:now(),project:state.title,isDemo:demo,files,protocols:state.protocols,runs:state.runs.map(r=>({...r,analysis:analyzeResults(r.raw)})),claims:state.claims,issues},null,2),'application/json');if(type==='backup')download('研究项目备份.json',JSON.stringify({project,files,chapterDraft:dirty?editorText:null,exportedAt:now()},null,2),'application/json');notify('文件已导出')}
- function beginClaim(c?:Claim){setClaimDraft(c??{id:uid(),text:'',evidenceIds:[],evidenceVersions:{},runId:'',metricKey:'',metricValue:null,runHash:'',scope:''});setModal('claim')}
- async function saveClaim(){if(!claimDraft?.text.trim())throw new Error('请填写论断');const r=state.runs.find(x=>x.id===claimDraft.runId),m=r&&analyzeResults(r.raw).metrics.find(x=>x.key===claimDraft.metricKey);if(claimDraft.runId&&(!m||m.value===null))throw new Error('请选择一个可计算的指标');const c={...claimDraft,evidenceVersions:Object.fromEntries(claimDraft.evidenceIds.map(id=>[id,state.evidence.find(e=>e.id===id)?.version??0])),metricValue:m?.value??null,runHash:r?.fileHash??''};await persist({...state,claims:state.claims.some(x=>x.id===c.id)?state.claims.map(x=>x.id===c.id?c:x):[...state.claims,c]});setModal('');notify('论断已绑定来源；可插入章节')}
- const sectionTitle=navItems.find(n=>n.id===section)?.label??'项目设置';
- return <div className="app-shell">
- <aside className={'sidebar '+(mobile?'open':'')}><a className="brand" href="#" onClick={e=>{e.preventDefault();go('overview')}}><span className="brand-mark"><BookMarked size={25}/></span><div><strong>知证</strong></div></a><div className="workspace-picker"><span className="workspace-avatar">研</span><div><strong>我的论文空间</strong><small><span className="status-dot"/>私有工作空间</small></div><ChevronDown size={15}/></div><div className="nav-heading">阅读与探索</div><nav>{navItems.map(n=><button key={n.id} onClick={()=>go(n.id)} className={section===n.id?'selected':''}><n.icon size={19}/><span>{n.label}</span>{n.id==='matrix'&&state.evidence.length>0&&<em>{state.evidence.length}</em>}{n.id==='writing'&&issues.filter(x=>x.severity==='error').length>0&&<i className="notice-dot"/>}</button>)}</nav><div className="sidebar-bottom"><button onClick={()=>go('settings')} className={section==='settings'?'selected':''}><Settings2 size={18}/>论文集与设置</button><button onClick={()=>setModal('guide')}><CircleHelp size={18}/>使用指南</button><div className="account"><span className="account-avatar">{auth?'我':'访'}</span><div><strong>{auth?'个人研究者':'欢迎来到知证'}</strong><small>{demo?'临时示例模式':auth?'研究资料仅本人可见':'登录后保存研究资料'}</small></div><ShieldCheck size={15}/></div></div></aside>
- <div className="main-shell"><header className="topbar"><div className="breadcrumb"><button className="mobile-menu" aria-label="菜单" onClick={()=>setMobile(!mobile)}><Menu size={21}/></button><span>我的论文空间</span><ChevronRight size={14}/><strong>{sectionTitle}</strong></div><div className="topbar-right"><span className="save-state">{saving?<LoaderCircle size={13} className="spin"/>:dirty?<span className="orange-dot"/>:<CheckCheck size={14}/>} {demo?'示例 · 刷新后重置':saving?'保存中':(dirty||studyDirty||evidenceDirty)?'笔记待保存':project?`已保存 · v${project.revision}`:'准备就绪'}</span><button className="icon-button" title="版本历史" onClick={()=>action(async()=>{if(!project)throw new Error('请先创建项目');if(!demo){const d=await request('/api/m/zhizheng-research/workspace?id='+project.id);setVersions(d.versions)}setModal('history')})}><History size={18}/></button><button className="button small" onClick={()=>setModal('export')} disabled={!project}><Download size={15}/>导出</button></div></header>
- {demo&&<div className="demo-banner"><FlaskConical size={15}/><span>阅读与探索示例 · 原创测试资料，修改不会保存到你的论文集。</span><button onClick={()=>{setModal('new')}}>创建我的项目 <ArrowRight size={14}/></button></div>}
- <main className={section==='library'?'main-content reading-layout':'main-content'}>
- {error&&<div role="alert" className="alert error"><AlertTriangle size={18}/><span>{error}</span>{!auth&&!demo&&<a href="/signin-with-chatgpt?return_to=%2Fm%2Fzhizheng-research" target="_top">使用 ChatGPT 登录</a>}<button aria-label="关闭提示" onClick={()=>setError('')}><X size={16}/></button></div>}
- {loading?<Empty icon={LoaderCircle} title="正在打开研究空间" text="读取项目和最近保存的版本…"/>:<>
- {section==='overview'&&<ReadingDesk state={state} project={project} projects={projects} onOpenProject={loadProject} onNew={()=>setModal('new')} onDemo={openDemo} onPaper={openPaper} onSection={go}/>}
- {project&&section==='synthesis'&&<SynthesisWorkspace key={project.id} {...studyProps}/>}
- {project&&section==='reproduce'&&<ReproductionWorkspace key={project.id} {...studyProps}/>}
- {project&&section==='graph'&&<KnowledgeWorkspace key={project.id} {...studyProps}/>}
- {project&&section==='explore'&&<DirectionWorkspace key={project.id} {...studyProps}/>}
- {section!=='overview'&&!project&&<Empty icon={FolderOpen} title="先建立一个论文集" text="把同一主题的论文、阅读笔记、复刻记录和探索方向放在一起。" action={<div className="button-row"><button className="button primary" onClick={()=>setModal('new')}><Plus size={16}/>新建项目</button><button className="button" onClick={openDemo}>先体验示例</button></div>}/>}
- {project&&section==='library'&&<>
- <div className="page-heading compact"><div><h1>论文阅读<span className="count">{state.papers.length}</span></h1></div><div className="button-row"><button className="button" disabled={!selectedPaper} onClick={()=>setModal('reading-card')}><FilePenLine size={16}/>阅读卡</button><button className="button" disabled={!selectedPaper} onClick={()=>openAI('reading',[selectedPaper.id])}><Sparkles size={16}/>解释与提问</button><button className="button" onClick={()=>bibInput.current?.click()}><Upload size={16}/>导入文献</button><button className="button primary" onClick={()=>setModal('search')}><Search size={16}/>发现文献</button></div></div>
- <input ref={bibInput} type="file" accept=".bib,.ris,.json" hidden onChange={e=>{const f=e.target.files?.[0];if(f)action(async()=>{if(f.size>1500000)throw new Error('文献文件限 1.5 MB');const {importReferences}=await import('@/modules/zhizheng-research/lib/bibliography');await stageReferences(importReferences(await f.text(),f.name))});e.target.value=''}}/>
- <div className={'reader-grid '+(!leftPanel?'collapsed':'')}>
- {leftPanel&&<section className="paper-list panel"><div className="paper-list-toolbar"><div className="search-input"><Search size={15}/><input aria-label="过滤文献" placeholder="搜索题名 / 作者" value={libraryQuery} onChange={e=>setLibraryQuery(e.target.value)}/></div><button className="text-button" onClick={()=>setModal('manual')}><Plus size={15}/>手动添加</button></div><div className="paper-list-items">{state.papers.filter(p=>(p.title+p.authors).toLowerCase().includes(libraryQuery.toLowerCase())).map((p,i)=><button className={'paper-item '+(selectedPaper?.id===p.id?'active':'')} key={p.id} onClick={()=>{if(evidenceDirty&&!confirm('放弃未保存的摘录并切换论文？'))return;setPaperId(p.id);setAnchorFileId('');setPage(state.readingCards.find(c=>c.paperId===p.id)?.lastPage??1);setEvidenceDraft(null)}}><div className="paper-item-top"><span>{String(i+1).padStart(2,'0')}</span><Badge tone={p.fileId?'green':'neutral'}>{p.fileId?'已有全文':p.readStatus==='abstract'?'仅摘要':'仅元数据'}</Badge></div><strong>{p.title}</strong><p>{p.authors||'作者待核实'}</p><small>{p.year||'年份未知'} · {p.verified?'来源元数据已核验':'元数据待核验'}</small></button>)}</div><div className="paper-list-footer"><ShieldCheck size={13}/>摘录与阅读卡会进入汇总和图谱</div></section>}
- <section className="reader-panel panel"><div className="reader-heading"><button aria-label={leftPanel?'收起文献列表':'展开文献列表'} onClick={()=>setLeftPanel(!leftPanel)}><PanelRightClose size={17}/></button><strong>{selectedPaper?.title??'选择或添加文献'}</strong><button className="icon-button" title="文献详情" onClick={()=>setModal('paper-detail')} disabled={!selectedPaper}><Ellipsis size={19}/></button></div>{selectedPaper?(currentFile?<PDFReader key={currentFile.id} url={demo?'/assets/zhizheng-research/demo-evidence.pdf':'/api/m/zhizheng-research/files?id='+currentFile.id} page={page} onPage={setPage} onSelect={quote=>{if(busy||saving)return;if(evidenceDirty&&!confirm('用新选段替换未保存的摘录？'))return;setEvidenceDraft({...initialEvidence(selectedPaper.id,currentFile,page),quote})}}/>:<div className="no-pdf"><FileText size={40}/><h3>打开论文，开始阅读</h3><p>为这篇文献上传你有权使用的 PDF，<br/>边读边摘录关键段落。</p><button className="button primary" onClick={()=>pdfInput.current?.click()}><Upload size={15}/>上传 PDF</button><small>最大 15 MB · 最多 500 页 · 文件默认私有</small>{selectedPaper.abstract&&<div className="abstract"><Badge>仅摘要，尚未精读全文</Badge><p>{selectedPaper.abstract}</p><button className="text-button" onClick={()=>setEvidenceDraft({...initialEvidence(selectedPaper.id),quote:selectedPaper.abstract,section:'摘要（无全文页码）'})}>保存摘要摘录</button></div>}</div>):<Empty title="文献库还是空的" text="通过题名、DOI 或 BibTeX / RIS / CSL-JSON 添加文献。"/>}</section>
- <section className="evidence-panel panel"><div className="panel-heading"><h2><Quote size={17}/>原文摘录</h2><button aria-label="新建证据" disabled={!selectedPaper||busy||saving} onClick={()=>{if(evidenceDirty&&!confirm('放弃当前摘录，重新创建？'))return;setEvidenceDraft(initialEvidence(selectedPaper.id,currentFile,page))}}><Plus size={18}/></button></div>{evidenceDraft?<fieldset disabled={busy||saving} className="evidence-form study-fieldset">{anchorFileId&&anchorFileId!==selectedPaper?.fileId&&<div className="alert warning">正在查看此证据绑定的旧文件版本；当前文献已有新版本，请重新核对关联。</div>}<div className="inline-note"><ScanLine size={15}/>{evidenceDraft.fileId?`物理页 ${evidenceDraft.page} · 文件版本已记录`:'摘要证据 · 无全文页码定位'}</div><Field label="原文摘录"><textarea rows={5} value={evidenceDraft.quote} onChange={e=>setEvidenceDraft({...evidenceDraft,quote:e.target.value})} placeholder="选取阅读器文本，或对照页面手动摘录…"/></Field><div className="form-grid two"><Field label="物理页码"><input type="number" min="1" max={currentFile?.pages??5000} value={evidenceDraft.page} onChange={e=>setEvidenceDraft({...evidenceDraft,page:Number(e.target.value)})}/></Field><Field label="内容类型"><select value={evidenceDraft.kind} onChange={e=>setEvidenceDraft({...evidenceDraft,kind:e.target.value as any})}>{Object.entries(kindNames).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></Field></div><Field label="章节 / 表格位置"><input value={evidenceDraft.section} onChange={e=>setEvidenceDraft({...evidenceDraft,section:e.target.value})} placeholder="如 3.2 实验设置 / 表 4"/></Field><Field label="我的解释"><textarea rows={3} value={evidenceDraft.note} onChange={e=>setEvidenceDraft({...evidenceDraft,note:e.target.value})} placeholder="这段证据说明了什么？适用边界是什么？"/></Field><Field label="笔记归类"><select value={evidenceDraft.dimension} onChange={e=>setEvidenceDraft({...evidenceDraft,dimension:e.target.value as any})}>{Object.entries(dimensions).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></Field><details><summary>金融时点与口径</summary><div className="form-grid two"><Field label="材料发布时间"><input type="date" value={evidenceDraft.publishedAt} onChange={e=>setEvidenceDraft({...evidenceDraft,publishedAt:e.target.value})}/></Field><Field label="问题截止时点"><input type="date" value={evidenceDraft.cutoff} onChange={e=>setEvidenceDraft({...evidenceDraft,cutoff:e.target.value})}/></Field><Field label="报告期间"><input value={evidenceDraft.period} onChange={e=>setEvidenceDraft({...evidenceDraft,period:e.target.value})}/></Field><Field label="币种 / 单位"><input value={evidenceDraft.currency} onChange={e=>setEvidenceDraft({...evidenceDraft,currency:e.target.value})} placeholder="CNY"/><input value={evidenceDraft.unit} onChange={e=>setEvidenceDraft({...evidenceDraft,unit:e.target.value})} placeholder="万元"/></Field></div></details><div className="button-row"><button className="button primary" disabled={busy||saving} onClick={()=>action(saveEvidence)}><Save size={15}/>保存摘录</button><button className="button" onClick={()=>setEvidenceDraft(null)}>取消</button></div></fieldset>:<>{state.evidence.filter(e=>e.paperId===selectedPaper?.id).map(e=><div key={e.id} className={'evidence-note '+(selectedEvidence===e.id?'highlight':'')}><div><Badge tone="green">{dimensions[e.dimension]}</Badge><small>{e.fileId?`p. ${e.page}`:'摘要'} · v{e.version}</small></div><blockquote>{e.quote}</blockquote><p>{e.note}</p><footer><span>{kindNames[e.kind]}</span><button className="text-button" onClick={()=>updateEvidence(e.id)}>回到原文 <ArrowUpRight size={13}/></button><button title="删除证据" aria-label="删除证据" onClick={()=>{if(confirm('删除证据后，相关论断会提示悬空引用。继续？'))action(async()=>{await persist({...state,evidence:state.evidence.filter(x=>x.id!==e.id)})})}}><Trash2 size={13}/></button></footer></div>)}{!state.evidence.some(e=>e.paperId===selectedPaper?.id)&&<Empty icon={Quote} title="留下第一段摘录" text="点击 +，或打开阅读器文本面板并选择原文。"/>}</> }</section></div>
- <input ref={pdfInput} type="file" accept="application/pdf,.pdf" hidden onChange={e=>{const f=e.target.files?.[0];if(f)action(()=>handlePDF(f));e.target.value=''}}/>
- </>}
- {project&&section==='matrix'&&<>
- <div className="page-heading compact"><div><h1>让文献之间，开始对话。</h1></div><button className="button primary" onClick={()=>go('library')}><Plus size={16}/>摘录证据</button></div><div className="view-toolbar"><div className="tabs">{['all','fact','author','ai','inference'].map(k=><button key={k} onClick={()=>setMatrixFilter(k)} className={matrixFilter===k?'active':''}>{k==='all'?'全部证据':kindNames[k as keyof typeof kindNames]}</button>)}</div><button className="button small" onClick={()=>action(()=>exportAll('matrix'))}><Download size={14}/>导出矩阵</button></div>
- {state.papers.length?<div className="matrix-wrap panel"><table className="matrix-table"><thead><tr><th>文献 / 来源</th>{Object.values(dimensions).map(v=><th key={v}>{v}</th>)}</tr></thead><tbody>{state.papers.map(p=><tr key={p.id}><th><strong>{p.title}</strong><small>{p.authors} · {p.year||'未知年份'}</small><Badge>{p.fileId?'已有全文':'尚无全文'}</Badge></th>{Object.keys(dimensions).map(k=><td key={k}>{state.evidence.filter(e=>e.paperId===p.id&&e.dimension===k&&(matrixFilter==='all'||e.kind===matrixFilter)).map(e=><button key={e.id} className="matrix-evidence" onClick={()=>updateEvidence(e.id)}><Badge tone={e.kind==='fact'?'green':e.kind==='inference'?'amber':'neutral'}>{kindNames[e.kind]}</Badge><p>{e.note||e.quote}</p><small><Link2 size={12}/>{e.fileId?`物理页 ${e.page}`:'摘要'} · v{e.version} <ArrowUpRight size={12}/></small></button>)}{!state.evidence.some(e=>e.paperId===p.id&&e.dimension===k)&&<button className="matrix-empty" onClick={()=>{if(evidenceDirty&&!confirm('放弃未保存的摘录并切换论文？'))return;setPaperId(p.id);setAnchorFileId('');setEvidenceDraft({...initialEvidence(p.id,files.find(f=>f.id===p.fileId)),dimension:k as any});go('library')}}><Plus size={13}/>补充证据</button>}</td>)}</tr>)}</tbody></table></div>:<Empty icon={Network} title="证据矩阵从文献开始" text="先导入文献，再摘录证据；这里会把它们按维度连接起来。" action={<button className="button" onClick={()=>go('library')}>前往文献库</button>}/>}
- <div className="info-strip"><ShieldCheck size={17}/><p>来源存在、元数据正确、正文支持与适用范围是四件不同的事。内容支持和适用性仍需作者逐条核实。</p></div>
- </>}
- {project&&section==='settings'&&<><div className="study-page-heading"><div><h1>论文集与设置</h1></div><button className="button" onClick={()=>setModal('new')}><Plus size={16}/>新建论文集</button></div><div className="settings-grid"><section className="panel settings-panel"><h2>当前论文集</h2><form key={project.id+':'+project.revision} onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);action(async()=>{await persist({...state,title:String(f.get('title')),topic:String(f.get('topic')),scope:String(f.get('scope'))});notify('论文集资料已保存')})}}><Field label="论文集名称"><input name="title" required defaultValue={state.title}/></Field><Field label="关注的主题"><textarea name="topic" defaultValue={state.topic} rows={3}/></Field><Field label="这轮想读懂什么？"><textarea name="scope" defaultValue={state.scope} rows={3}/></Field><button className="button primary" disabled={busy||saving}><Save size={15}/>保存资料</button></form><details className="legacy-tools"><summary>已有研究资料</summary><p>旧版本的协议、实验结果和章节数据仍保留，可从完整备份导出。</p><button className="button small" onClick={()=>setModal('export')}>导出已有资料</button></details></section><section className="panel connections"><h2>能力连接</h2>{[{title:'论文与笔记保存',note:demo?'示例修改仅保存在当前页面':'个人论文集与原始文件',ok:auth&&!demo,label:demo?'临时示例':'已接入'},{title:'Crossref 文献发现',note:'按 DOI 或题名查询真实元数据',ok:true,label:'可使用'},{title:'论文阅读助手',note:model.configured?model.model:'配置模型后支持选段解释、综合分析和方向讨论',ok:!!model.configured,label:model.configured?'已配置':'未配置'},{title:'PDF OCR',note:'当前支持有文本层PDF与人工摘录',ok:false,label:'未连接'},{title:'实验执行器',note:'当前在本地运行，在此保存步骤、日志与结果对照',ok:false,label:'未连接'}].map(c=><div className="connection" key={c.title}><span className={'connection-dot '+(c.ok?'online':'')}/><div><strong>{c.title}</strong><p>{c.note}</p></div><Badge tone={c.ok?'green':'neutral'}>{c.label}</Badge></div>)}<p className="study-help">模型只接收你明确提交的材料。图谱标注、规则汇总与复刻记录不依赖模型。</p></section></div></>}
 
- </>}
- </main></div>
- {error&&modal&&<div className="modal-error" role="alert"><AlertTriangle size={17}/>{error}<button aria-label="关闭错误" onClick={()=>setError('')}><X size={16}/></button></div>}{busy&&<div className="busy-indicator"><LoaderCircle className="spin" size={16}/>正在处理，请稍候…</div>}{toast&&<div className="toast" role="status"><CheckCircle2 size={18}/>{toast}</div>}
- {modal==='new'&&<Modal title="建立一个新的论文集" subtitle="把同一主题的论文、阅读卡与复刻记录放在一起。" onClose={()=>setModal('')}><form onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);action(async()=>{if((dirty||studyDirty||evidenceDirty)&&!confirm('当前内容尚未保存。新建论文集会离开当前草稿，是否继续？'))return;if(inFlight.current)throw new Error('保存中，请稍后创建项目');if(!auth)throw new Error('请先使用 ChatGPT 登录后创建项目');const d=await request('/api/m/zhizheng-research/workspace',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'create',requestId:createRequest.current,title:f.get('title'),topic:f.get('topic'),scope:f.get('scope'),researchType:f.get('researchType'),materials:f.get('materials'),unresolved:f.get('unresolved')})});createRequest.current=uid();setProject(d.project);setFiles([]);setVersions([]);setEditorText('');setEvidenceDraft(null);setStudyDirty(false);setDemo(false);setDirty(false);setProjects(prev=>[{id:d.project.id,title:d.project.state.title,revision:1,updated_at:d.project.updatedAt},...prev]);setModal('');setSection('overview');notify('论文集已创建')})}}><Field label="项目名称"><input autoFocus name="title" required maxLength={200} defaultValue="金融 Agent 的多 Agent 评估系统设计"/></Field><Field label="研究问题"><textarea name="topic" rows={2} placeholder="你希望回答什么问题？"/></Field><div className="form-grid two"><Field label="研究类型"><select name="researchType"><option>待确认</option><option>实证研究</option><option>系统设计与验证</option><option>理论研究</option><option>文献综述</option></select></Field><Field label="范围与边界"><input name="scope" placeholder="研究对象、适用场景、暂不研究什么"/></Field><Field label="已有材料"><textarea name="materials" rows={2}/></Field><Field label="未解决事项"><textarea name="unresolved" rows={2}/></Field></div><div className="modal-actions">{!auth&&<a className="button" href="/signin-with-chatgpt?return_to=%2Fm%2Fzhizheng-research" target="_top"><LogIn size={15}/>登录 ChatGPT</a>}<button className="button primary" disabled={busy||!auth}><Plus size={16}/>创建论文集</button></div></form></Modal>}
- {modal==='search'&&<Modal title="发现文献" subtitle="直接查询 Crossref 元数据；检索到文献不代表已取得或阅读全文。" onClose={()=>setModal('')} wide><form className="search-form" onSubmit={e=>{e.preventDefault();action(async()=>{if(demo)throw new Error('真实检索需登录并进入正式项目；示例只展示测试资料');const r=await request('/api/m/zhizheng-research/search?q='+encodeURIComponent(searchQuery));setSearchResults(r.papers)})}}><div className="search-input"><Search size={18}/><input autoFocus placeholder="输入论文题名或 DOI，如 10.18653/v1/2021.emnlp-main.300" value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} required maxLength={400}/></div><button className="button primary" disabled={busy}>{busy?<LoaderCircle size={16} className="spin"/>:'检索'}</button></form><div className="search-results">{searchResults.map(p=><div key={p.id}><h3>{p.title}</h3><p>{p.authors} · {p.year}</p><small>{p.doi}</small><button className="button small" onClick={()=>stageReferences([p])}><Plus size={14}/>加入文献库</button></div>)}</div>{!searchResults.length&&<div className="inline-note">也可以导入 BibTeX / RIS / CSL-JSON，或手动添加文献；这些操作不需要第三方账户。</div>}</Modal>}
- {modal==='manual'&&<Modal title="手动添加文献" subtitle="新条目保存为“元数据待核验”，不会自动标记精读。" onClose={()=>setModal('')}><form onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);stageReferences([{id:uid(),title:String(f.get('title')),doi:normalizeDOI(String(f.get('doi'))),authors:String(f.get('authors')),year:String(f.get('year')),abstract:String(f.get('abstract')),source:'作者手动录入 / '+now(),verified:false,fileId:'',readStatus:f.get('abstract')?'abstract':'metadata',updatedAt:now()}])}}><Field label="题名"><input name="title" required autoFocus/></Field><div className="form-grid two"><Field label="作者"><input name="authors"/></Field><Field label="年份"><input name="year" maxLength={4}/></Field></div><Field label="DOI（可选）"><input name="doi"/></Field><Field label="摘要（可选）"><textarea name="abstract" rows={4}/></Field><div className="modal-actions"><button className="button primary">检查并添加</button></div></form></Modal>}
- {modal==='merge'&&<Modal title="确认导入与重复合并" subtitle="重复 DOI 或规范化题名将合并；保留已有笔记、文件、元数据与核验状态。新来源不会覆盖旧字段。" onClose={()=>setModal('')}><div className="merge-list">{pendingPapers.map(p=>{const old=duplicatePaper(state.papers,p);return <div key={p.id}><strong>{p.title}</strong><Badge tone={old?'amber':'green'}>{old?'发现重复 · 合并来源':'新增文献'}</Badge>{old&&<p>现有：{old.title}</p>}</div>})}</div><div className="modal-actions"><button className="button" onClick={()=>setModal('')}>取消</button><button className="button primary" disabled={busy||saving} onClick={()=>action(commitReferences)}>确认导入 {pendingPapers.length} 条</button></div></Modal>}
- {modal==='paper-detail'&&selectedPaper&&<Modal title="文献详情与来源" onClose={()=>setModal('')}><h3>{selectedPaper.title}</h3><dl className="detail-list"><dt>作者 / 年份</dt><dd>{selectedPaper.authors} / {selectedPaper.year}</dd><dt>DOI</dt><dd>{selectedPaper.doi?<a href={'https://doi.org/'+encodeURIComponent(selectedPaper.doi)} target="_blank" rel="noreferrer">{selectedPaper.doi} <ExternalLink size={12}/></a>:'未提供'}</dd><dt>元数据来源</dt><dd>{selectedPaper.source}</dd><dt>核验状态</dt><dd>{selectedPaper.verified?'从 Crossref 返回的元数据；仍需作者复核':'元数据待核验'}。正文支持与适用性未自动核验。</dd><dt>全文状态</dt><dd>{currentFile?`${currentFile.name} · ${currentFile.pages} 页`:'尚无全文'}</dd><dt>文件 hash</dt><dd className="mono">{currentFile?.hash??'无'}</dd><dt>解析状态</dt><dd>{currentFile?({text:'前 20 页内抽检发现文本层',mixed:'前 20 页内部分页面无文本层', 'no-text':'前 20 页内未检测到文本层，可能扫描'} as any)[currentFile.status]??currentFile.status:'未上传'}</dd></dl><div className="button-row"><button className="button" onClick={()=>{setModal('');pdfInput.current?.click()}}><Upload size={15}/>{currentFile?'上传新文件版本':'上传 PDF'}</button><button className="button danger" onClick={()=>{if(confirm('删除文献后，相关证据和论断会提示待复核；原文件仍保留。继续？'))action(async()=>{await persist({...state,papers:state.papers.filter(x=>x.id!==selectedPaper.id)});setModal('')})}}><Trash2 size={15}/>删除文献条目</button></div><p className="help-text">替换 PDF 会保留旧文件及旧证据锚点。请核对哪些论断需要迁移到新来源。</p></Modal>}
- {modal==='question'&&<Modal title="提出研究问题与假设" subtitle="假设只是待验证主张，不代表创新点已经成立。" onClose={()=>setModal('')}><form onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);action(async()=>{const q:Question={id:uid(),text:String(f.get('text')),hypothesis:String(f.get('hypothesis')),evidenceIds:f.getAll('evidence').map(String)};await persist({...state,questions:[...state.questions,q]});setModal('');notify('研究问题已保存')})}}><Field label="研究问题"><textarea name="text" required rows={3} autoFocus/></Field><Field label="待验证假设"><textarea name="hypothesis" rows={3}/></Field><Field label="关联已有证据"><div className="check-list">{state.evidence.map(e=><label key={e.id}><input type="checkbox" name="evidence" value={e.id}/><span>{e.quote.slice(0,160)}</span></label>)}{!state.evidence.length&&<p>暂无证据，可稍后通过新的研究问题关联。</p>}</div></Field><div className="modal-actions"><button className="button primary" disabled={busy||saving}>保存问题</button></div></form></Modal>}
- {modal==='protocol'&&<Modal title="保存实验协议新版本" subtitle="保存后保留此版本；运行记录始终引用具体协议。未知字段请留空。" onClose={()=>setModal('')} wide><form onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);action(async()=>{const p:any={id:uid(),version:state.protocols.length+1,createdAt:now()};for(const k of ['questionId','name','dataset','splitHash','baselines','ablations','metrics','unit','budget','stopRule','codeCommit','modelVersion','promptVersion'])p[k]=String(f.get(k)??'');await persist({...state,protocols:[...state.protocols,p as Protocol]});setModal('');notify('实验协议已保存；尚未产生运行结果')})}}><div className="form-grid two"><Field label="协议名称"><input name="name" required defaultValue="金融 Agent 评估器对照实验"/></Field><Field label="对应研究问题"><select name="questionId"><option value="">暂不关联</option>{state.questions.map(q=><option key={q.id} value={q.id}>{q.text}</option>)}</select></Field><Field label="数据集及版本"><textarea name="dataset" rows={2} required placeholder="数据来源、版本、独立参考的形成过程"/></Field><Field label="划分 hash"><input name="splitHash" placeholder="未知可留空"/></Field><Field label="对照基线"><textarea name="baselines" rows={2} placeholder="单 Agent / 等预算重复 / 规则校验器"/></Field><Field label="消融方案"><textarea name="ablations" rows={2} placeholder="去角色 / 去证据 / 更换聚合器"/></Field><Field label="指标与口径"><textarea name="metrics" rows={2} required placeholder="coverage / agreement / recall / fpr；弃权策略"/></Field><Field label="统计单位"><input name="unit" defaultValue="task_id" required/></Field><Field label="预算与等预算约束"><input name="budget" placeholder="调用数、token 或货币预算"/></Field><Field label="停止规则"><input name="stopRule" placeholder="预先定义，避免依据结果择优停止"/></Field><Field label="代码 commit"><input name="codeCommit"/></Field><Field label="模型版本"><input name="modelVersion"/></Field><Field label="提示词版本"><input name="promptVersion"/></Field></div><div className="modal-actions"><button className="button primary" disabled={busy||saving}>保存协议 v{state.protocols.length+1}</button></div></form></Modal>}
- {modal==='run'&&<Modal title="导入实验结果" subtitle="支持最多 3000 行 CSV / JSON。文件导入不表示系统执行了实验。" onClose={()=>setModal('')} wide><form onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);action(async()=>{if(!state.protocols.length)throw new Error('请先保存实验协议');const a=analyzeResults(runRaw);if(a.issues.some(x=>x.severity==='error'))throw new Error('结果存在格式或数据问题，请先修正下方提示');const source=await upload(new File([runRaw],runFile?.name??'results.csv',{type:'text/plain'}),'result');const logFile=runLog?await upload(new File([runLog],'experiment-log.txt',{type:'text/plain'}),'log'):null;const r:Run={id:uid(),name:String(f.get('name')),protocolId:String(f.get('protocolId')),fileId:source.id,fileHash:source.hash,raw:runRaw,log:runLog+(logFile?`\n[原始日志文件 ${logFile.id} / SHA-256 ${logFile.hash}]`:''),createdAt:now(),kind:String(f.get('kind')) as any,codeCommit:String(f.get('codeCommit')),modelVersion:String(f.get('modelVersion')),promptVersion:String(f.get('promptVersion')),datasetVersion:String(f.get('datasetVersion')),splitHash:String(f.get('splitHash')),executedAt:String(f.get('executedAt'))};await persist({...state,runs:[...state.runs,r]});setSelectedRun(r.id);setModal('');notify('原始结果已保存，统计计算完成')})}}><div className="form-grid two"><Field label="实验记录名称"><input name="name" required placeholder="如 首轮保留集评估"/></Field><Field label="对应协议版本"><select name="protocolId" required><option value="">请选择协议</option>{state.protocols.map(p=><option key={p.id} value={p.id}>v{p.version} · {p.name}</option>)}</select></Field><Field label="资料性质"><select name="kind"><option value="real">真实实验产物（由作者确认）</option><option value="test">功能测试数据</option></select></Field><Field label="实际执行时间"><input name="executedAt" placeholder="未知留空"/></Field></div><div className="upload-zone"><Upload size={22}/><span>{runFile?.name??'选择 CSV / JSON，或在下方粘贴结果'}</span><button type="button" className="button small" onClick={()=>resultInput.current?.click()}>选择文件</button><button type="button" className="text-button" onClick={()=>download('结果格式_测试样例.csv',sampleCSV,'text/csv')}>下载格式样例</button></div><input ref={resultInput} hidden type="file" accept=".csv,.json" onChange={e=>{const f=e.target.files?.[0];if(f)action(async()=>{if(f.size>30000)throw new Error('首版结果文本限 30,000 字节，请先按分析范围拆分');setRunRaw(await f.text());setRunFile(f)});e.target.value=''}}/><Field label="结果原文" hint="必填列：task_id, system, reference (error/ok), judgment (error/ok/abstain)。可选 latency_ms + unit=ms、cost_usd + currency=USD、task_success=0/1、published_at、cutoff。"><textarea rows={5} maxLength={30000} required value={runRaw} onChange={e=>{setRunRaw(e.target.value);setRunFile(null)}} className="mono"/></Field>{runRaw&&<div className="validation-results">{analyzeResults(runRaw).issues.map((i,n)=><p key={n} className={i.severity}>{i.location}：{i.reason}</p>)}{!analyzeResults(runRaw).issues.some(i=>i.severity==='error')&&<p className="success"><Check size={14}/>格式通过 · {analyzeResults(runRaw).rows.length} 行，保存后保留原始文件</p>}</div>}<details><summary>复现字段与日志（未知可留空）</summary><div className="form-grid two">{[['datasetVersion','数据集版本'],['splitHash','数据划分 hash'],['codeCommit','代码 commit'],['modelVersion','模型版本'],['promptVersion','提示词版本']].map(([k,v])=><Field key={k} label={v}><input name={k}/></Field>)}</div><Field label="原始运行日志"><textarea rows={3} maxLength={25000} value={runLog} onChange={e=>setRunLog(e.target.value)}/><input type="file" accept=".txt,.log,.json" onChange={e=>{const f=e.target.files?.[0];if(f)action(async()=>{if(f.size>25000)throw new Error('日志限 25 KB，请按本次运行拆分');setRunLog(await f.text())})}}/></Field></details><div className="modal-actions"><button type="button" className="button" onClick={()=>{setModal('protocol')}}>先制定协议</button><button className="button primary" disabled={busy||saving}>校验并导入</button></div></form></Modal>}
- {modal==='run-source'&&run&&<Modal title="实验原始来源" onClose={()=>setModal('')} wide><dl className="detail-list"><dt>结果 SHA-256</dt><dd className="mono">{run.fileHash}</dd><dt>协议</dt><dd>{state.protocols.find(p=>p.id===run.protocolId)?.name??'缺失'}</dd><dt>结果原文</dt><dd><pre>{run.raw}</pre></dd><dt>运行日志</dt><dd><pre>{run.log||'尚未提供'}</pre></dd></dl><button className="button" onClick={()=>download('实验原始结果.csv',run.raw,'text/csv')}><Download size={15}/>导出原始结果</button></Modal>}
- {modal==='claim'&&claimDraft&&<Modal title="论断与证据关联" subtitle="绑定具体证据版本与实验数字。保存表示作者重新核对关联，不代表自动证实论断。" onClose={()=>setModal('')} wide><Field label="论断句子"><textarea value={claimDraft.text} onChange={e=>setClaimDraft({...claimDraft,text:e.target.value})} rows={3}/></Field><Field label="适用范围与局限"><textarea value={claimDraft.scope} onChange={e=>setClaimDraft({...claimDraft,scope:e.target.value})} rows={2}/></Field><Field label="关联文献证据"><div className="check-list">{state.evidence.map(e=><label key={e.id}><input type="checkbox" checked={claimDraft.evidenceIds.includes(e.id)} onChange={ev=>setClaimDraft({...claimDraft,evidenceIds:ev.target.checked?[...claimDraft.evidenceIds,e.id]:claimDraft.evidenceIds.filter(id=>id!==e.id)})}/><span><Badge>{kindNames[e.kind]}</Badge>{e.quote.slice(0,180)} <small>{e.fileId?`p. ${e.page}`:'摘要'} · v{e.version}</small><button type="button" className="text-button" onClick={ev=>{ev.preventDefault();setModal('');updateEvidence(e.id)}}>回溯原文 <ArrowUpRight size={13}/></button></span></label>)}</div></Field><div className="form-grid two"><Field label="关联实验"><select value={claimDraft.runId} onChange={e=>setClaimDraft({...claimDraft,runId:e.target.value,metricKey:''})}><option value="">不关联实验</option>{state.runs.map(r=><option value={r.id} key={r.id}>{r.name}{r.kind==='test'?'（测试数据）':''}</option>)}</select></Field><Field label="计算指标"><select value={claimDraft.metricKey} onChange={e=>setClaimDraft({...claimDraft,metricKey:e.target.value})}><option value="">请选择指标</option>{(state.runs.find(r=>r.id===claimDraft.runId)?analyzeResults(state.runs.find(r=>r.id===claimDraft.runId)!.raw).metrics:[]).filter(m=>m.value!==null).map(m=><option key={m.key} value={m.key}>{m.system} · {m.label} {formatMetric(m)}</option>)}</select></Field></div><div className="modal-actions"><button className="button primary" disabled={busy||saving} onClick={()=>action(saveClaim)}><Link2 size={15}/>核对并保存关联</button></div></Modal>}
- {modal==='export'&&<Modal title="导出论文与阅读资料" subtitle="阅读卡、汇总与复刻记录可在各自页面导出；完整备份保留所有内容。" onClose={()=>setModal('')}><div className="export-options">{[['backup','完整论文集 JSON','论文、摘录、阅读卡、汇总、复刻、图谱与方向'],['md','旧版章节 Markdown','正文、论断与完整来源清单'],['bib','BibTeX','参考文献交换格式'],['csl','CSL-JSON','结构化文献元数据'],['matrix','证据矩阵 CSV','原文、理解、页码、hash 与金融口径'],['source','实验来源清单 JSON','协议、原始结果、指标、来源行与核查问题']].map(([k,title,desc])=><button key={k} onClick={()=>action(()=>exportAll(k))}><FileText size={20}/><div><strong>{title}</strong><p>{desc}</p></div><Download size={17}/></button>)}</div></Modal>}
- {modal==='history'&&<Modal title="版本历史" subtitle="每次成功修改保留前一版项目；恢复会创建新版本，便于再次撤销。" onClose={()=>setModal('')}><div className="history-list">{demo?<p>示例不保存版本历史。</p>:versions.length?versions.map(v=><div key={v.revision}><span><strong>版本 {v.revision}</strong><small>{new Date(v.created_at).toLocaleString('zh-CN')}</small></span><button className="button small" onClick={()=>{if(confirm(`恢复项目到版本 ${v.revision}？当前内容将保留在历史中。`))action(async()=>{await request('/api/m/zhizheng-research/workspace',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'restore',id:project!.id,version:v.revision,revision:project!.revision})});setDirty(false);await loadProject(project!.id,true);setModal('');notify('已恢复历史版本')})}}><RotateCcw size={14}/>恢复</button></div>):<p>首次修改保存后，将在这里看到历史版本。</p>}</div></Modal>}
- {modal==='reading-card'&&selectedPaper&&<Modal title="我的阅读卡" subtitle="理解问题与方法，留下还想继续追问的地方。" onClose={()=>{if(studyDirty&&!confirm('放弃未保存的阅读卡？'))return;setStudyDirty(false);setModal('')}} wide><ReadingCardEditor key={selectedPaper.id} {...studyProps} paper={selectedPaper} page={page}/></Modal>}
- {modal==='study-ai'&&project&&<StudyAIModal task={aiTask} context={aiMaterial} projectId={project.id} configured={model.configured} model={model.model} demo={demo} onClose={()=>setModal('')}/>}
- {modal==='guide'&&<Modal title="从读懂论文，到发现下一步" onClose={()=>setModal('')}><ol className="guide-list"><li><strong>加入想读的论文</strong><p>搜索 DOI、导入书目或手动添加，上传 PDF 后开始阅读。</p></li><li><strong>边读边摘录，写一张阅读卡</strong><p>记录问题、方法、数据、发现与局限；主题、方法和数据集标注会进入图谱。</p></li><li><strong>把几篇论文放在一起读</strong><p>选择论文，按维度比较已有笔记，整理并保存跨论文汇总。</p></li><li><strong>复刻一个具体实验</strong><p>记录代码、环境、数据与步骤，在本地运行后导入通用指标和日志，对照原论文结果。</p></li><li><strong>沿着图谱探索新方向</strong><p>点击概念与连线回到来源。根据已记录的局限、疑问和跨论文组合生成线索，修改后保存或转为探索实验。</p></li></ol></Modal>}
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  AlertTriangle,
+  ArrowRight,
+  ArrowUpRight,
+  BookMarked,
+  BookOpen,
+  CheckCheck,
+  CheckCircle2,
+  Download,
+  ExternalLink,
+  FilePenLine,
+  Files,
+  FileText,
+  FlaskConical,
+  FolderOpen,
+  History,
+  LoaderCircle,
+  LogIn,
+  Plus,
+  Quote,
+  Save,
+  Search,
+  Sparkles,
+  Trash2,
+  Upload,
+  X,
+} from 'lucide-react';
+import {
+  dimensions,
+  duplicatePaper,
+  emptyState,
+  Evidence,
+  exportMarkdown,
+  kindNames,
+  mergePaper,
+  normalizeDOI,
+  now,
+  Paper,
+  Project,
+  ResearchState,
+  SourceFile,
+  uid,
+} from '@/modules/zhizheng-research/lib/domain';
+import { demoFiles, demoState } from '@/modules/zhizheng-research/lib/demo';
+import {
+  blankCard,
+  cardFields,
+  paperContext,
+  readingStatus,
+  sourceSignature,
+  splitTerms,
+  synthesize,
+} from '@/modules/zhizheng-research/lib/study';
+import type { ReadingCard } from '@/modules/zhizheng-research/lib/study-schema';
+import PDFReader, { inspectPDF } from './pdf-reader';
 
- </div>;
+type ActiveTab = 'library' | 'reading' | 'synthesis';
+
+function download(name: string, text: string, type = 'text/plain;charset=utf-8') {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+async function request(url: string, options: RequestInit = {}) {
+  const res = await fetch(url, options);
+  const data: any = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || '请求失败');
+  return data;
+}
+
+const initialEvidence = (paperId: string, file?: SourceFile, page = 1): Evidence => ({
+  id: uid(),
+  paperId,
+  fileId: file?.id ?? '',
+  fileHash: file?.hash ?? '',
+  page,
+  printedPage: '',
+  section: '',
+  quote: '',
+  note: '',
+  kind: 'fact',
+  dimension: 'method',
+  selector: '',
+  version: 1,
+  updatedAt: now(),
+  publishedAt: '',
+  cutoff: '',
+  period: '',
+  currency: '',
+  unit: '',
+});
+
+export default function Workbench() {
+  const [activeTab, setActiveTab] = useState<ActiveTab>('library');
+  const [projects, setProjects] = useState<any[]>([]);
+  const [project, setProject] = useState<Project | null>(null);
+  const [files, setFiles] = useState<SourceFile[]>([]);
+  const [versions, setVersions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [auth, setAuth] = useState(true);
+  const [error, setError] = useState('');
+  const [toast, setToast] = useState('');
+  const [demo, setDemo] = useState(false);
+  const [modal, setModal] = useState('');
+  const [model, setModel] = useState<any>({ configured: false });
+
+  // Library & Search state
+  const [paperId, setPaperId] = useState('');
+  const [page, setPage] = useState(1);
+  const [libraryQuery, setLibraryQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Paper[]>([]);
+  const [pendingPapers, setPendingPapers] = useState<Paper[]>([]);
+
+  // Reading & Evidence state
+  const [cardDraft, setCardDraft] = useState<ReadingCard | null>(null);
+  const [cardTopicsText, setCardTopicsText] = useState('');
+  const [cardMethodsText, setCardMethodsText] = useState('');
+  const [cardDatasetsText, setCardDatasetsText] = useState('');
+  const [evidenceDraft, setEvidenceDraft] = useState<Evidence | null>(null);
+  const [readingPaneMode, setReadingPaneMode] = useState<'card' | 'evidence'>('card');
+
+  // Synthesis & AI state
+  const [selectedSynthesisPapers, setSelectedSynthesisPapers] = useState<string[]>([]);
+  const [synthesisTitle, setSynthesisTitle] = useState('跨论文研究综述');
+  const [synthesisBody, setSynthesisBody] = useState('');
+  const [aiQuestion, setAiQuestion] = useState('');
+  const [aiTask, setAiTask] = useState<'reading' | 'synthesis' | 'directions' | 'replication'>('synthesis');
+  const [aiOutput, setAiOutput] = useState('');
+
+  const createRequest = useRef('');
+  if (!createRequest.current) createRequest.current = uid();
+  const projectRef = useRef(project);
+  projectRef.current = project;
+  const inFlight = useRef(false);
+  const bibInput = useRef<HTMLInputElement>(null);
+  const pdfInput = useRef<HTMLInputElement>(null);
+
+  const state = project?.state ?? emptyState();
+  const selectedPaper = useMemo(
+    () => state.papers.find((p) => p.id === paperId) ?? state.papers[0] ?? null,
+    [state.papers, paperId],
+  );
+  const currentFile = useMemo(
+    () => files.find((f) => f.id === selectedPaper?.fileId),
+    [files, selectedPaper],
+  );
+  const paperEvidence = useMemo(
+    () => state.evidence.filter((e) => e.paperId === selectedPaper?.id),
+    [state.evidence, selectedPaper],
+  );
+
+  const notify = (message: string) => {
+    setToast(message);
+    setTimeout(() => setToast(''), 4200);
+  };
+
+  useEffect(() => {
+    loadProjects();
+    request('/api/m/zhizheng-research/ai')
+      .then(setModel)
+      .catch(() => {});
+  }, []);
+
+  // Keep ReadingCard draft synced when switching papers
+  useEffect(() => {
+    if (!selectedPaper) {
+      setCardDraft(null);
+      return;
+    }
+    const existing = state.readingCards.find((c) => c.paperId === selectedPaper.id) ?? blankCard(selectedPaper.id);
+    setCardDraft({ ...existing });
+    setCardTopicsText((existing.topics ?? []).join(', '));
+    setCardMethodsText((existing.methods ?? []).join(', '));
+    setCardDatasetsText((existing.datasets ?? []).join(', '));
+    setPage(existing.lastPage ?? 1);
+  }, [selectedPaper?.id, project?.id]);
+
+  // Keep synthesis selection synced
+  useEffect(() => {
+    if (state.papers.length && selectedSynthesisPapers.length === 0) {
+      setSelectedSynthesisPapers(state.papers.slice(0, 5).map((p) => p.id));
+    }
+    if (state.syntheses.length && !synthesisBody) {
+      setSynthesisTitle(state.syntheses[0].title);
+      setSynthesisBody(state.syntheses[0].body);
+    }
+  }, [state.papers.length, project?.id]);
+
+  async function loadProjects() {
+    setLoading(true);
+    try {
+      const data = await request('/api/m/zhizheng-research/workspace');
+      setProjects(data.projects || []);
+      setAuth(true);
+      if (data.projects?.length) {
+        await loadProject(data.projects[0].id, true);
+      }
+    } catch (e) {
+      setAuth(false);
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadProject(id: string, force = false) {
+    if (!force && (busy || inFlight.current)) {
+      notify('正在保存，请稍候切换课题');
+      return;
+    }
+    setBusy(true);
+    try {
+      const data = await request('/api/m/zhizheng-research/workspace?id=' + id);
+      setProject(data.project);
+      setFiles(data.files || []);
+      setVersions(data.versions || []);
+      setDemo(false);
+      setPaperId(data.project?.state?.papers?.[0]?.id || '');
+      setEvidenceDraft(null);
+      setSynthesisBody(data.project?.state?.syntheses?.[0]?.body || '');
+      setSynthesisTitle(data.project?.state?.syntheses?.[0]?.title || '跨论文研究综述');
+      setError('');
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function openDemo() {
+    const s = demoState();
+    setProject({ id: 'demo', revision: 1, updatedAt: now(), state: s });
+    setFiles(demoFiles);
+    setDemo(true);
+    setPaperId(s.papers[0]?.id || '');
+    setEvidenceDraft(null);
+    setSynthesisBody(s.syntheses[0]?.body || synthesize(s, s.papers.map((p) => p.id)));
+    setSynthesisTitle(s.syntheses[0]?.title || '示例课题跨论文综述');
+    setSelectedSynthesisPapers(s.papers.map((p) => p.id));
+    setError('');
+    notify('已载入示例课题（包含论文、摘录与综述）');
+  }
+
+  async function persist(next: ResearchState) {
+    if (!projectRef.current) throw new Error('请先创建或打开研究课题');
+    const target = projectRef.current;
+    if (inFlight.current) throw new Error('上一项修改正在保存，请稍候');
+    inFlight.current = true;
+    setSaving(true);
+    try {
+      if (target.id === 'demo') {
+        setProject((current) =>
+          current?.id === target.id
+            ? { ...target, state: next, revision: target.revision + 1, updatedAt: now() }
+            : current,
+        );
+        return;
+      }
+      const data = await request('/api/m/zhizheng-research/workspace', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'save',
+          id: target.id,
+          revision: target.revision,
+          state: next,
+        }),
+      });
+      setProject((current) =>
+        current?.id === target.id
+          ? { ...target, state: next, revision: data.revision, updatedAt: data.updatedAt }
+          : current,
+      );
+    } finally {
+      inFlight.current = false;
+      setSaving(false);
+    }
+  }
+
+  async function runAction(fn: () => Promise<void>) {
+    setError('');
+    setBusy(true);
+    try {
+      await fn();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function addPapersToLibrary(incoming: Paper[]) {
+    if (!project) {
+      openDemo();
+      return;
+    }
+    const merged = [...state.papers];
+    let duplicates = 0;
+    for (const p of incoming) {
+      const old = duplicatePaper(merged, p);
+      if (old) {
+        merged[merged.indexOf(old)] = mergePaper(old, p);
+        duplicates++;
+      } else {
+        merged.push(p);
+      }
+    }
+    await persist({ ...state, papers: merged });
+    if (!paperId && merged.length) setPaperId(merged[0].id);
+    setModal('');
+    setPendingPapers([]);
+    notify(`已加入文献库（新增 ${incoming.length - duplicates} 篇，合并重复 ${duplicates} 篇）`);
+  }
+
+  async function uploadFile(file: File, kind: string, extra: Record<string, unknown> = {}) {
+    if (demo) throw new Error('示例模式不支持上传文件到服务器，请先点击右上角「+ 新建课题」');
+    const form = new FormData();
+    form.set('file', file);
+    form.set('kind', kind);
+    form.set('projectId', project!.id);
+    Object.entries(extra).forEach(([k, v]) => form.set(k, String(v)));
+    const data = await request('/api/m/zhizheng-research/files', {
+      method: 'POST',
+      body: form,
+    });
+    setFiles((prev) => (prev.some((f) => f.id === data.file.id) ? prev : [...prev, data.file]));
+    return data.file as SourceFile;
+  }
+
+  async function handlePDFUpload(file: File) {
+    if (!selectedPaper) throw new Error('请先选择一篇文献');
+    const meta = await inspectPDF(file);
+    const uploaded = await uploadFile(file, 'pdf', meta);
+    await persist({
+      ...state,
+      papers: state.papers.map((p) =>
+        p.id === selectedPaper.id
+          ? { ...p, fileId: uploaded.id, readStatus: 'fulltext', updatedAt: now() }
+          : p,
+      ),
+    });
+    setPage(1);
+    notify(`已绑定 PDF 全文（共 ${meta.pages} 页）`);
+  }
+
+  async function saveReadingCard() {
+    if (!selectedPaper || !cardDraft) return;
+    const nextCard: ReadingCard = {
+      ...cardDraft,
+      paperId: selectedPaper.id,
+      id: selectedPaper.id,
+      topics: splitTerms(cardTopicsText),
+      methods: splitTerms(cardMethodsText),
+      datasets: splitTerms(cardDatasetsText),
+      lastPage: page,
+      updatedAt: now(),
+    };
+    const others = state.readingCards.filter((c) => c.paperId !== selectedPaper.id);
+    await persist({
+      ...state,
+      readingCards: [...others, nextCard],
+    });
+    setCardDraft(nextCard);
+    notify('精读笔记卡已保存');
+  }
+
+  async function saveEvidence() {
+    if (!selectedPaper || !evidenceDraft) return;
+    if (!evidenceDraft.quote.trim()) throw new Error('请填写原文摘录内容');
+    const old = state.evidence.find((e) => e.id === evidenceDraft.id);
+    const item: Evidence = {
+      ...evidenceDraft,
+      paperId: selectedPaper.id,
+      version: old ? old.version + 1 : 1,
+      updatedAt: now(),
+      selector: evidenceDraft.quote.slice(0, 500),
+    };
+    await persist({
+      ...state,
+      evidence: old ? state.evidence.map((x) => (x.id === item.id ? item : x)) : [...state.evidence, item],
+    });
+    setEvidenceDraft(null);
+    notify(old ? '原文证据已更新' : '原文证据已保存');
+  }
+
+  function handleRuleSynthesize() {
+    const ids = selectedSynthesisPapers.length ? selectedSynthesisPapers : state.papers.map((p) => p.id);
+    if (!ids.length) {
+      notify('请先在文献库中添加至少一篇论文');
+      return;
+    }
+    const generated = synthesize(state, ids);
+    setSynthesisBody(generated);
+    notify('已按精读卡与原文证据生成结构化对比综述');
+  }
+
+  async function saveSynthesisDoc() {
+    const ids = selectedSynthesisPapers.length ? selectedSynthesisPapers : state.papers.map((p) => p.id);
+    if (!ids.length) throw new Error('请至少勾选一篇文献');
+    if (!synthesisBody.trim()) throw new Error('综述内容不能为空');
+    const item = {
+      id: state.syntheses[0]?.id || uid(),
+      title: synthesisTitle.trim() || '跨论文研究综述',
+      paperIds: ids,
+      body: synthesisBody,
+      origin: 'manual' as const,
+      sourceSignature: sourceSignature(state, ids),
+      updatedAt: now(),
+    };
+    await persist({
+      ...state,
+      syntheses: [item, ...state.syntheses.filter((s) => s.id !== item.id)],
+    });
+    notify('研究综述已保存到当前课题');
+  }
+
+  async function askAI() {
+    if (!project || demo) {
+      throw new Error('AI 学术助手需要正式课题。请先点击右上角「+ 新建课题」再调用模型。');
+    }
+    const ids = selectedSynthesisPapers.length
+      ? selectedSynthesisPapers
+      : selectedPaper
+        ? [selectedPaper.id]
+        : state.papers.map((p) => p.id);
+    if (!ids.length) throw new Error('请先选择至少一篇文献作为上下文');
+    const material = paperContext(state, ids);
+    const res = await request('/api/m/zhizheng-research/ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        projectId: project.id,
+        task: aiTask,
+        question: aiQuestion.trim() || '请归纳这些论文的核心问题、方法异同与研究局限。',
+        text: material || '尚无详细摘录，请结合论文题目分析。',
+        consent: true,
+        requestId: uid(),
+      }),
+    });
+    setAiOutput(res.text || '');
+    notify('AI 研究分析已完成');
+  }
+
+  async function handleExport(kind: 'md' | 'bib' | 'backup') {
+    if (kind === 'md') {
+      const content =
+        synthesisBody.trim() ||
+        exportMarkdown(state, files);
+      download(`${state.title || '知证研究综述'}.md`, content);
+    } else if (kind === 'bib') {
+      const b = await import('@/modules/zhizheng-research/lib/bibliography');
+      download('references.bib', b.toBibtex(state.papers));
+    } else {
+      download(
+        `${state.title || '知证课题备份'}.json`,
+        JSON.stringify({ project, files, exportedAt: now() }, null, 2),
+        'application/json',
+      );
+    }
+    notify('文件已导出');
+  }
+
+  const filteredPapers = useMemo(
+    () =>
+      state.papers.filter((p) =>
+        `${p.title} ${p.authors} ${p.year} ${p.doi}`.toLowerCase().includes(libraryQuery.toLowerCase()),
+      ),
+    [state.papers, libraryQuery],
+  );
+
+  return (
+    <div className="zz-shell">
+      {/* Top Header */}
+      <header className="zz-header">
+        <div className="zz-brand">
+          <span className="zz-brand-icon">
+            <BookMarked size={22} />
+          </span>
+          <div>
+            <div className="zz-brand-title">
+              <h1>知证</h1>
+              <span className="zz-badge">学术文献精读与证据综述工作台</span>
+            </div>
+            <p className="zz-brand-sub">检索导入文献 → 结构化精读与原文证据锚定 → 跨论文对比综述</p>
+          </div>
+        </div>
+
+        <div className="zz-header-controls">
+          <div className="zz-project-switcher">
+            <FolderOpen size={16} />
+            <select
+              aria-label="切换研究课题"
+              value={project?.id || ''}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === 'demo') openDemo();
+                else if (val) loadProject(val);
+              }}
+            >
+              {!project && <option value="">选择或新建课题…</option>}
+              {demo && <option value="demo">示例课题：{state.title}</option>}
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.title} (v{p.revision})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button className="zz-btn" onClick={() => setModal('new')}>
+            <Plus size={16} />
+            新建课题
+          </button>
+
+          {!demo && (
+            <button className="zz-btn" onClick={openDemo}>
+              <FlaskConical size={16} />
+              加载示例课题
+            </button>
+          )}
+
+          <button
+            className="zz-btn"
+            disabled={!project}
+            onClick={() => setModal('export')}
+          >
+            <Download size={16} />
+            导出
+          </button>
+        </div>
+      </header>
+
+      {/* Main 3-Step Pipeline Navigation Bar */}
+      <div className="zz-nav-bar">
+        <div className="zz-tabs" role="tablist" aria-label="研究流程步骤">
+          <button
+            role="tab"
+            aria-selected={activeTab === 'library'}
+            className={`zz-tab ${activeTab === 'library' ? 'is-active' : ''}`}
+            onClick={() => setActiveTab('library')}
+          >
+            <span className="zz-step-num">01</span>
+            <BookOpen size={17} />
+            <span>文献库与检索</span>
+            <em className="zz-count">{state.papers.length}</em>
+          </button>
+
+          <button
+            role="tab"
+            aria-selected={activeTab === 'reading'}
+            className={`zz-tab ${activeTab === 'reading' ? 'is-active' : ''}`}
+            onClick={() => setActiveTab('reading')}
+          >
+            <span className="zz-step-num">02</span>
+            <FilePenLine size={17} />
+            <span>精读与证据笔记</span>
+            <em className="zz-count">{state.evidence.length}</em>
+          </button>
+
+          <button
+            role="tab"
+            aria-selected={activeTab === 'synthesis'}
+            className={`zz-tab ${activeTab === 'synthesis' ? 'is-active' : ''}`}
+            onClick={() => setActiveTab('synthesis')}
+          >
+            <span className="zz-step-num">03</span>
+            <Files size={17} />
+            <span>跨论文综述与 AI 问答</span>
+            <em className="zz-count">{state.syntheses.length}</em>
+          </button>
+        </div>
+
+        <div className="zz-status-pill">
+          {saving ? (
+            <>
+              <LoaderCircle size={15} className="zz-spin" />
+              <span>正在保存…</span>
+            </>
+          ) : (
+            <>
+              <CheckCheck size={15} />
+              <span>
+                {demo
+                  ? '示例模式（本地临时预览）'
+                  : project
+                    ? `已同步 · 版本 v${project.revision}`
+                    : '未选择课题'}
+              </span>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Alerts */}
+      {error && (
+        <div className="zz-alert is-error" role="alert">
+          <AlertTriangle size={18} />
+          <span>{error}</span>
+          {!auth && !demo && (
+            <a className="zz-btn is-small" href="/signin-with-chatgpt?return_to=%2Fm%2Fzhizheng-research" target="_top">
+              <LogIn size={14} /> 登录账号
+            </a>
+          )}
+          <button aria-label="关闭错误提示" onClick={() => setError('')}>
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
+      {demo && (
+        <div className="zz-alert is-demo">
+          <FlaskConical size={17} />
+          <span>
+            当前正在浏览<strong>示例课题</strong>（含预置论文、精读卡与证据摘录）。需要持久保存自己的研究时，请点击右上角「新建课题」。
+          </span>
+          <button className="zz-btn is-small is-primary" onClick={() => setModal('new')}>
+            创建正式课题 <ArrowRight size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* Hidden File Inputs */}
+      <input
+        ref={bibInput}
+        type="file"
+        accept=".bib,.ris,.json"
+        hidden
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) {
+            runAction(async () => {
+              if (f.size > 1500000) throw new Error('文献文件上限 1.5 MB');
+              const { importReferences } = await import('@/modules/zhizheng-research/lib/bibliography');
+              const parsed = importReferences(await f.text(), f.name);
+              await addPapersToLibrary(parsed);
+            });
+          }
+          e.target.value = '';
+        }}
+      />
+      <input
+        ref={pdfInput}
+        type="file"
+        accept="application/pdf,.pdf"
+        hidden
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) runAction(() => handlePDFUpload(f));
+          e.target.value = '';
+        }}
+      />
+
+      {/* Empty Project Onboarding */}
+      {loading ? (
+        <div className="zz-empty-stage">
+          <LoaderCircle size={32} className="zz-spin" />
+          <h2>正在读取知证研究工作区…</h2>
+          <p>同步课题、文献列表与精读笔记</p>
+        </div>
+      ) : !project ? (
+        <div className="zz-empty-stage">
+          <BookMarked size={40} />
+          <h2>开始你的第一个研究课题</h2>
+          <p>
+            把同一研究主题的文献检索、PDF 原文摘录、结构化精读卡和跨论文综述放在同一个清爽的工作台里。
+          </p>
+          <div className="zz-btn-row">
+            <button className="zz-btn is-primary" onClick={() => setModal('new')}>
+              <Plus size={16} /> 新建研究课题
+            </button>
+            <button className="zz-btn" onClick={openDemo}>
+              <FlaskConical size={16} /> 一键体验完整示例课题
+            </button>
+          </div>
+        </div>
+      ) : (
+        <main className="zz-main">
+          {/* Project Context Strip */}
+          <section className="zz-topic-strip">
+            <div className="zz-topic-info">
+              <span className="zz-topic-tag">{state.researchType || '研究课题'}</span>
+              <h2>{state.title}</h2>
+              {state.topic && <p>{state.topic}</p>}
+            </div>
+            <div className="zz-topic-metrics">
+              <div className="zz-metric-chip">
+                <span>收录文献</span>
+                <strong>{state.papers.length}</strong>
+              </div>
+              <div className="zz-metric-chip">
+                <span>精读笔记卡</span>
+                <strong>{state.readingCards.length}</strong>
+              </div>
+              <div className="zz-metric-chip">
+                <span>原文证据锚点</span>
+                <strong>{state.evidence.length}</strong>
+              </div>
+              <button className="zz-btn is-small" onClick={() => setModal('edit-project')}>
+                编辑课题信息
+              </button>
+            </div>
+          </section>
+
+          {/* TAB 1: LITERATURE LIBRARY & CROSSREF SEARCH */}
+          {activeTab === 'library' && (
+            <div className="zz-bento-two">
+              {/* Left Column: Current Papers in Project */}
+              <section className="zz-card">
+                <div className="zz-card-header">
+                  <div>
+                    <h3>课题文献库 ({state.papers.length})</h3>
+                    <p>点击任意论文即可进入精读、上传 PDF 全文或记录原文摘录</p>
+                  </div>
+                  <div className="zz-btn-row">
+                    <button className="zz-btn is-small" onClick={() => bibInput.current?.click()}>
+                      <Upload size={15} /> 导入 BibTeX / RIS
+                    </button>
+                    <button className="zz-btn is-small is-primary" onClick={() => setModal('manual')}>
+                      <Plus size={15} /> 手动录入文献
+                    </button>
+                  </div>
+                </div>
+
+                <div className="zz-filter-bar">
+                  <Search size={16} />
+                  <input
+                    aria-label="过滤课题内文献"
+                    placeholder="按论文标题、作者、年份或 DOI 筛选…"
+                    value={libraryQuery}
+                    onChange={(e) => setLibraryQuery(e.target.value)}
+                  />
+                </div>
+
+                {filteredPapers.length === 0 ? (
+                  <div className="zz-empty-box">
+                    <BookOpen size={28} />
+                    <h4>暂无匹配的文献</h4>
+                    <p>在右侧直接检索 Crossref 全球学术库，或手动录入 / 导入 BibTeX 文献。</p>
+                  </div>
+                ) : (
+                  <div className="zz-paper-grid">
+                    {filteredPapers.map((p, idx) => {
+                      const card = state.readingCards.find((c) => c.paperId === p.id);
+                      const evCount = state.evidence.filter((e) => e.paperId === p.id).length;
+                      const isSelected = selectedPaper?.id === p.id;
+                      return (
+                        <article
+                          key={p.id}
+                          className={`zz-paper-card ${isSelected ? 'is-selected' : ''}`}
+                          onClick={() => setPaperId(p.id)}
+                        >
+                          <div className="zz-paper-card-top">
+                            <span className="zz-paper-index">#{String(idx + 1).padStart(2, '0')}</span>
+                            <span className={`zz-pill ${p.fileId ? 'is-green' : 'is-neutral'}`}>
+                              {p.fileId ? '已绑定 PDF' : p.abstract ? '含摘要' : '元数据'}
+                            </span>
+                            {card && (
+                              <span className="zz-pill is-blue">
+                                {readingStatus[card.status] || '已建卡'}
+                              </span>
+                            )}
+                            <span className="zz-pill is-neutral">{evCount} 条证据</span>
+                          </div>
+
+                          <h4>{p.title}</h4>
+                          <p className="zz-paper-meta">
+                            {p.authors || '作者待补充'} · {p.year || '年份未知'}
+                            {p.doi ? ` · DOI: ${p.doi}` : ''}
+                          </p>
+
+                          {card?.summary ? (
+                            <p className="zz-paper-summary">“{card.summary}”</p>
+                          ) : (
+                            p.abstract && <p className="zz-paper-abstract">{p.abstract}</p>
+                          )}
+
+                          <div className="zz-paper-actions" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              className="zz-btn is-small is-primary"
+                              onClick={() => {
+                                setPaperId(p.id);
+                                setActiveTab('reading');
+                              }}
+                            >
+                              <FilePenLine size={14} /> 精读与摘录
+                            </button>
+                            <button
+                              className="zz-btn is-small"
+                              onClick={() => {
+                                setPaperId(p.id);
+                                pdfInput.current?.click();
+                              }}
+                            >
+                              <Upload size={14} /> {p.fileId ? '更新 PDF' : '上传 PDF'}
+                            </button>
+                            {p.doi && (
+                              <a
+                                className="zz-btn is-small"
+                                href={`https://doi.org/${encodeURIComponent(p.doi)}`}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                DOI <ExternalLink size={13} />
+                              </a>
+                            )}
+                            <button
+                              className="zz-btn is-small is-danger"
+                              aria-label="移除该文献"
+                              onClick={() => {
+                                if (confirm(`确定从当前课题移除《${p.title}》吗？`)) {
+                                  runAction(async () => {
+                                    await persist({
+                                      ...state,
+                                      papers: state.papers.filter((x) => x.id !== p.id),
+                                    });
+                                    notify('已移除该文献');
+                                  });
+                                }
+                              }}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+
+              {/* Right Column: Crossref Live Discovery */}
+              <aside className="zz-card">
+                <div className="zz-card-header">
+                  <div>
+                    <h3>Crossref 学术文献检索</h3>
+                    <p>按英文/中文题名关键词或 DOI 检索真实学术元数据并一键入库</p>
+                  </div>
+                </div>
+
+                <form
+                  className="zz-search-bar"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!searchQuery.trim()) return;
+                    runAction(async () => {
+                      const r = await request(
+                        '/api/m/zhizheng-research/search?q=' + encodeURIComponent(searchQuery.trim()),
+                      );
+                      setSearchResults(r.papers || []);
+                    });
+                  }}
+                >
+                  <input
+                    placeholder="输入论文标题或 DOI，如 Multi-Agent Evaluation..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    required
+                  />
+                  <button className="zz-btn is-primary" type="submit" disabled={busy}>
+                    {busy ? <LoaderCircle size={16} className="zz-spin" /> : <Search size={16} />}
+                    检索
+                  </button>
+                </form>
+
+                <div className="zz-search-list">
+                  {searchResults.length === 0 ? (
+                    <div className="zz-empty-box is-compact">
+                      <Search size={24} />
+                      <p>输入关键词或 DOI 检索 Crossref 数据库，或点击左上角导入 `.bib / .ris` 文件。</p>
+                    </div>
+                  ) : (
+                    searchResults.map((p) => {
+                      const alreadyIn = !!duplicatePaper(state.papers, p);
+                      return (
+                        <div key={p.id} className="zz-search-item">
+                          <div>
+                            <h4>{p.title}</h4>
+                            <p>
+                              {p.authors || '未知作者'} · {p.year || '未知年份'}
+                            </p>
+                            {p.doi && <small>DOI: {p.doi}</small>}
+                          </div>
+                          <button
+                            className={`zz-btn is-small ${alreadyIn ? '' : 'is-primary'}`}
+                            disabled={busy}
+                            onClick={() => runAction(() => addPapersToLibrary([p]))}
+                          >
+                            <Plus size={14} />
+                            {alreadyIn ? '合并更新' : '加入课题'}
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </aside>
+            </div>
+          )}
+
+          {/* TAB 2: SPLIT-VIEW READING & EVIDENCE WORKBENCH */}
+          {activeTab === 'reading' && (
+            <div className="zz-reading-workspace">
+              {/* Top Paper Selector Bar */}
+              <div className="zz-reading-toolbar">
+                <div className="zz-paper-select-wrap">
+                  <span>当前精读文献：</span>
+                  <select
+                    aria-label="选择要精读的文献"
+                    value={selectedPaper?.id || ''}
+                    onChange={(e) => {
+                      setPaperId(e.target.value);
+                      setEvidenceDraft(null);
+                    }}
+                  >
+                    {state.papers.length === 0 && <option value="">文献库为空，请先添加文献</option>}
+                    {state.papers.map((p, i) => (
+                      <option key={p.id} value={p.id}>
+                        #{String(i + 1).padStart(2, '0')} {p.title} ({p.year || '年份未知'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {selectedPaper && (
+                  <div className="zz-btn-row">
+                    <button className="zz-btn is-small" onClick={() => pdfInput.current?.click()}>
+                      <Upload size={15} />
+                      {currentFile ? `更换 PDF (${currentFile.pages} 页)` : '上传 PDF 全文'}
+                    </button>
+                    <button
+                      className="zz-btn is-small"
+                      onClick={() => {
+                        setSelectedSynthesisPapers([selectedPaper.id]);
+                        setAiTask('reading');
+                        setActiveTab('synthesis');
+                      }}
+                    >
+                      <Sparkles size={15} /> AI 解读此文
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {!selectedPaper ? (
+                <div className="zz-empty-stage">
+                  <BookOpen size={36} />
+                  <h3>请先在「文献库与检索」中添加至少一篇论文</h3>
+                  <button className="zz-btn is-primary" onClick={() => setActiveTab('library')}>
+                    前往文献库
+                  </button>
+                </div>
+              ) : (
+                <div className="zz-reading-split">
+                  {/* Left Pane: Paper Metadata, Abstract, or PDF Reader */}
+                  <section className="zz-card zz-reader-pane">
+                    <div className="zz-card-header">
+                      <div>
+                        <h3>{selectedPaper.title}</h3>
+                        <p>
+                          {selectedPaper.authors || '作者待核实'} · {selectedPaper.year || '年份未知'}
+                          {selectedPaper.doi ? ` · DOI: ${selectedPaper.doi}` : ''}
+                        </p>
+                      </div>
+                      <span className={`zz-pill ${currentFile ? 'is-green' : 'is-neutral'}`}>
+                        {currentFile ? `PDF 全文 · ${currentFile.pages} 页` : '摘要与元数据视图'}
+                      </span>
+                    </div>
+
+                    {currentFile ? (
+                      <div className="zz-pdf-container">
+                        <PDFReader
+                          key={currentFile.id}
+                          url={
+                            demo
+                              ? '/assets/zhizheng-research/demo-evidence.pdf'
+                              : '/api/m/zhizheng-research/files?id=' + currentFile.id
+                          }
+                          page={page}
+                          onPage={setPage}
+                          onSelect={(quote) => {
+                            if (busy || saving) return;
+                            setReadingPaneMode('evidence');
+                            setEvidenceDraft({
+                              ...initialEvidence(selectedPaper.id, currentFile, page),
+                              quote,
+                            });
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="zz-abstract-reader">
+                        <div className="zz-abstract-card">
+                          <div className="zz-abstract-head">
+                            <strong>论文摘要 (Abstract)</strong>
+                            {selectedPaper.abstract && (
+                              <button
+                                className="zz-btn is-small"
+                                onClick={() => {
+                                  setReadingPaneMode('evidence');
+                                  setEvidenceDraft({
+                                    ...initialEvidence(selectedPaper.id),
+                                    quote: selectedPaper.abstract,
+                                    section: '摘要 (Abstract)',
+                                  });
+                                }}
+                              >
+                                <Quote size={14} /> 一键引用摘要为证据
+                              </button>
+                            )}
+                          </div>
+                          <p>
+                            {selectedPaper.abstract ||
+                              '当前文献尚未录入摘要。你可以点击上方「上传 PDF 全文」开启 PDF 阅读器，或在右侧直接记录精读笔记与原文摘录。'}
+                          </p>
+                        </div>
+
+                        <div className="zz-upload-callout">
+                          <FileText size={30} />
+                          <div>
+                            <h4>上传 PDF 全文进行逐页阅读与划词摘录</h4>
+                            <p>支持最大 15 MB、500 页以内的 PDF 文档，自动校验 SHA-256 文件哈希与物理页码。</p>
+                          </div>
+                          <button className="zz-btn is-primary" onClick={() => pdfInput.current?.click()}>
+                            <Upload size={16} /> 上传 PDF
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </section>
+
+                  {/* Right Pane: Structured Reading Card & Evidence Notes */}
+                  <section className="zz-card zz-notes-pane">
+                    <div className="zz-subtabs">
+                      <button
+                        className={readingPaneMode === 'card' ? 'is-active' : ''}
+                        onClick={() => setReadingPaneMode('card')}
+                      >
+                        <FilePenLine size={16} />
+                        结构化精读卡
+                      </button>
+                      <button
+                        className={readingPaneMode === 'evidence' ? 'is-active' : ''}
+                        onClick={() => setReadingPaneMode('evidence')}
+                      >
+                        <Quote size={16} />
+                        原文证据摘录 ({paperEvidence.length})
+                      </button>
+                    </div>
+
+                    {readingPaneMode === 'card' && cardDraft && (
+                      <div className="zz-form-stack">
+                        <div className="zz-form-row-two">
+                          <label className="zz-field">
+                            <span>阅读状态</span>
+                            <select
+                              value={cardDraft.status}
+                              onChange={(e) =>
+                                setCardDraft({ ...cardDraft, status: e.target.value as ReadingCard['status'] })
+                              }
+                            >
+                              {Object.entries(readingStatus).map(([k, v]) => (
+                                <option key={k} value={k}>
+                                  {v}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className="zz-field">
+                            <span>当前阅读页码</span>
+                            <input
+                              type="number"
+                              min={1}
+                              max={5000}
+                              value={page}
+                              onChange={(e) => setPage(Number(e.target.value) || 1)}
+                            />
+                          </label>
+                        </div>
+
+                        {(Object.entries(cardFields) as [keyof typeof cardFields, string][]).map(
+                          ([fieldKey, label]) => (
+                            <label className="zz-field" key={fieldKey}>
+                              <span>{label}</span>
+                              <textarea
+                                rows={fieldKey === 'summary' ? 2 : 3}
+                                value={cardDraft[fieldKey] || ''}
+                                onChange={(e) =>
+                                  setCardDraft({ ...cardDraft, [fieldKey]: e.target.value })
+                                }
+                                placeholder={`记录该论文的${label}…`}
+                              />
+                            </label>
+                          ),
+                        )}
+
+                        <div className="zz-form-row-three">
+                          <label className="zz-field">
+                            <span>主题标签（逗号分隔）</span>
+                            <input
+                              value={cardTopicsText}
+                              onChange={(e) => setCardTopicsText(e.target.value)}
+                              placeholder="如：Multi-Agent, 评估基准"
+                            />
+                          </label>
+                          <label className="zz-field">
+                            <span>核心方法（逗号分隔）</span>
+                            <input
+                              value={cardMethodsText}
+                              onChange={(e) => setCardMethodsText(e.target.value)}
+                              placeholder="如：对抗评审, 证据锚定"
+                            />
+                          </label>
+                          <label className="zz-field">
+                            <span>涉及数据集（逗号分隔）</span>
+                            <input
+                              value={cardDatasetsText}
+                              onChange={(e) => setCardDatasetsText(e.target.value)}
+                              placeholder="如：FinEval, SWE-bench"
+                            />
+                          </label>
+                        </div>
+
+                        <div className="zz-form-footer">
+                          <button
+                            className="zz-btn is-primary"
+                            disabled={busy || saving}
+                            onClick={() => runAction(saveReadingCard)}
+                          >
+                            <Save size={16} /> 保存精读笔记卡
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {readingPaneMode === 'evidence' && (
+                      <div className="zz-evidence-stack">
+                        <div className="zz-evidence-header">
+                          <p>锚定原文句子、页码与你的个人批注，自动汇入跨论文综述。</p>
+                          <button
+                            className="zz-btn is-small is-primary"
+                            onClick={() =>
+                              setEvidenceDraft(initialEvidence(selectedPaper.id, currentFile, page))
+                            }
+                          >
+                            <Plus size={14} /> 新建摘录
+                          </button>
+                        </div>
+
+                        {evidenceDraft && (
+                          <div className="zz-evidence-editor">
+                            <div className="zz-form-row-three">
+                              <label className="zz-field">
+                                <span>归类维度</span>
+                                <select
+                                  value={evidenceDraft.dimension}
+                                  onChange={(e) =>
+                                    setEvidenceDraft({
+                                      ...evidenceDraft,
+                                      dimension: e.target.value as Evidence['dimension'],
+                                    })
+                                  }
+                                >
+                                  {Object.entries(dimensions).map(([k, v]) => (
+                                    <option key={k} value={k}>
+                                      {v}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                              <label className="zz-field">
+                                <span>证据性质</span>
+                                <select
+                                  value={evidenceDraft.kind}
+                                  onChange={(e) =>
+                                    setEvidenceDraft({
+                                      ...evidenceDraft,
+                                      kind: e.target.value as Evidence['kind'],
+                                    })
+                                  }
+                                >
+                                  {Object.entries(kindNames).map(([k, v]) => (
+                                    <option key={k} value={k}>
+                                      {v}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                              <label className="zz-field">
+                                <span>页码 / 章节位置</span>
+                                <input
+                                  value={evidenceDraft.section}
+                                  onChange={(e) =>
+                                    setEvidenceDraft({ ...evidenceDraft, section: e.target.value })
+                                  }
+                                  placeholder={`如 p.${page} / 3.2 实验设置`}
+                                />
+                              </label>
+                            </div>
+
+                            <label className="zz-field">
+                              <span>原文摘录 (Quote)</span>
+                              <textarea
+                                rows={4}
+                                value={evidenceDraft.quote}
+                                onChange={(e) =>
+                                  setEvidenceDraft({ ...evidenceDraft, quote: e.target.value })
+                                }
+                                placeholder="粘贴或从左侧 PDF 划词选取原文段落…"
+                              />
+                            </label>
+
+                            <label className="zz-field">
+                              <span>个人批注与边界分析 (Note)</span>
+                              <textarea
+                                rows={3}
+                                value={evidenceDraft.note}
+                                onChange={(e) =>
+                                  setEvidenceDraft({ ...evidenceDraft, note: e.target.value })
+                                }
+                                placeholder="这段证据说明了什么？适用前提或潜在局限是什么？"
+                              />
+                            </label>
+
+                            <div className="zz-btn-row">
+                              <button
+                                className="zz-btn is-primary"
+                                disabled={busy || saving}
+                                onClick={() => runAction(saveEvidence)}
+                              >
+                                <Save size={15} /> 保存证据摘录
+                              </button>
+                              <button className="zz-btn" onClick={() => setEvidenceDraft(null)}>
+                                取消
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {paperEvidence.length === 0 && !evidenceDraft ? (
+                          <div className="zz-empty-box is-compact">
+                            <Quote size={24} />
+                            <p>当前文献还没有摘录证据。点击右上角「+ 新建摘录」或从左侧摘要一键引用。</p>
+                          </div>
+                        ) : (
+                          <div className="zz-evidence-list">
+                            {paperEvidence.map((ev) => (
+                              <article key={ev.id} className="zz-evidence-item">
+                                <div className="zz-evidence-item-top">
+                                  <span className="zz-pill is-green">{dimensions[ev.dimension]}</span>
+                                  <span className="zz-pill is-neutral">{kindNames[ev.kind]}</span>
+                                  <small>
+                                    {ev.fileId ? `p.${ev.page}` : '摘要/无全文页码'}{' '}
+                                    {ev.section ? `· ${ev.section}` : ''} · v{ev.version}
+                                  </small>
+                                </div>
+                                <blockquote>{ev.quote}</blockquote>
+                                {ev.note && <p>{ev.note}</p>}
+                                <div className="zz-evidence-item-actions">
+                                  <button
+                                    className="zz-btn is-small"
+                                    onClick={() => setEvidenceDraft({ ...ev })}
+                                  >
+                                    编辑
+                                  </button>
+                                  <button
+                                    className="zz-btn is-small is-danger"
+                                    onClick={() => {
+                                      if (confirm('确定删除这条原文证据吗？')) {
+                                        runAction(async () => {
+                                          await persist({
+                                            ...state,
+                                            evidence: state.evidence.filter((x) => x.id !== ev.id),
+                                          });
+                                          notify('证据已删除');
+                                        });
+                                      }
+                                    }}
+                                  >
+                                    <Trash2 size={13} /> 删除
+                                  </button>
+                                </div>
+                              </article>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </section>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 3: CROSS-PAPER SYNTHESIS & AI QA */}
+          {activeTab === 'synthesis' && (
+            <div className="zz-bento-two">
+              {/* Left Column: Paper Selector & Rule/Markdown Synthesis Editor */}
+              <section className="zz-card">
+                <div className="zz-card-header">
+                  <div>
+                    <h3>跨论文对比综述工作台</h3>
+                    <p>勾选要对比的文献，一键汇整精读卡与原文证据，生成结构化 Markdown 综述</p>
+                  </div>
+                  <div className="zz-btn-row">
+                    <button className="zz-btn is-small" onClick={handleRuleSynthesize}>
+                      <Files size={15} /> 一键生成对比综述初稿
+                    </button>
+                    <button
+                      className="zz-btn is-small is-primary"
+                      disabled={busy || saving}
+                      onClick={() => runAction(saveSynthesisDoc)}
+                    >
+                      <Save size={15} /> 保存综述
+                    </button>
+                  </div>
+                </div>
+
+                {/* Paper Checkboxes */}
+                <div className="zz-paper-selector-chips">
+                  {state.papers.map((p) => {
+                    const checked = selectedSynthesisPapers.includes(p.id);
+                    return (
+                      <label key={p.id} className={`zz-check-chip ${checked ? 'is-checked' : ''}`}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() =>
+                            setSelectedSynthesisPapers((prev) =>
+                              checked ? prev.filter((id) => id !== p.id) : [...prev, p.id],
+                            )
+                          }
+                        />
+                        <span>{p.title}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+
+                {/* Comparison Matrix Table */}
+                {selectedSynthesisPapers.length > 0 && (
+                  <div className="zz-matrix-scroll">
+                    <table className="zz-matrix-table">
+                      <thead>
+                        <tr>
+                          <th>对比文献</th>
+                          <th>研究问题</th>
+                          <th>核心方法</th>
+                          <th>主要发现与局限</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {state.papers
+                          .filter((p) => selectedSynthesisPapers.includes(p.id))
+                          .map((p) => {
+                            const c = state.readingCards.find((x) => x.paperId === p.id);
+                            const evs = state.evidence.filter((e) => e.paperId === p.id);
+                            return (
+                              <tr key={p.id}>
+                                <td>
+                                  <strong>{p.title}</strong>
+                                  <small>
+                                    {p.authors} ({p.year || '未知'})
+                                  </small>
+                                </td>
+                                <td>{c?.problem || evs.find((e) => e.dimension === 'question')?.note || '待补充'}</td>
+                                <td>{c?.method || evs.find((e) => e.dimension === 'method')?.note || '待补充'}</td>
+                                <td>
+                                  {c?.findings || c?.limitations || evs.find((e) => e.dimension === 'result')?.note || '待补充'}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                <label className="zz-field">
+                  <span>综述标题</span>
+                  <input
+                    value={synthesisTitle}
+                    onChange={(e) => setSynthesisTitle(e.target.value)}
+                    placeholder="输入跨论文综述标题…"
+                  />
+                </label>
+
+                <label className="zz-field">
+                  <span>综述正文 (Markdown)</span>
+                  <textarea
+                    rows={14}
+                    className="zz-mono-editor"
+                    value={synthesisBody}
+                    onChange={(e) => setSynthesisBody(e.target.value)}
+                    placeholder="点击上方「一键生成对比综述初稿」，或在此直接撰写跨论文比较分析…"
+                  />
+                </label>
+              </section>
+
+              {/* Right Column: AI Research Assistant */}
+              <aside className="zz-card">
+                <div className="zz-card-header">
+                  <div>
+                    <h3>AI 学术问答与方向探索</h3>
+                    <p>仅基于你所勾选文献的精读卡与原文证据进行严格有据回答</p>
+                  </div>
+                  <span className={`zz-pill ${model.configured ? 'is-green' : 'is-neutral'}`}>
+                    {model.configured ? `模型已就绪 (${model.model})` : '规则模式可用'}
+                  </span>
+                </div>
+
+                <div className="zz-form-stack">
+                  <label className="zz-field">
+                    <span>分析任务模式</span>
+                    <select
+                      value={aiTask}
+                      onChange={(e) => setAiTask(e.target.value as typeof aiTask)}
+                    >
+                      <option value="synthesis">跨论文方法与结论对比综述</option>
+                      <option value="reading">单篇论文深度答疑与公式/机制解释</option>
+                      <option value="directions">基于现有局限生成下一步研究方向</option>
+                      <option value="replication">拆解实验复刻步骤与基线对照</option>
+                    </select>
+                  </label>
+
+                  <label className="zz-field">
+                    <span>你的研究问题</span>
+                    <textarea
+                      rows={4}
+                      value={aiQuestion}
+                      onChange={(e) => setAiQuestion(e.target.value)}
+                      placeholder="例如：这几篇论文在评估多 Agent 系统时各自采用了什么指标？它们的共同局限是什么？"
+                    />
+                  </label>
+
+                  <button
+                    className="zz-btn is-primary"
+                    disabled={busy}
+                    onClick={() => runAction(askAI)}
+                  >
+                    {busy ? <LoaderCircle size={16} className="zz-spin" /> : <Sparkles size={16} />}
+                    提交所选文献证据并提问
+                  </button>
+
+                  {aiOutput && (
+                    <div className="zz-ai-output">
+                      <div className="zz-ai-output-head">
+                        <strong>AI 研究分析报告</strong>
+                        <button
+                          className="zz-btn is-small"
+                          onClick={() => {
+                            setSynthesisBody((prev) =>
+                              prev ? `${prev}\n\n## AI 辅助分析补充\n\n${aiOutput}` : aiOutput,
+                            );
+                            notify('已追加至左侧综述正文');
+                          }}
+                        >
+                          追加到左侧综述
+                        </button>
+                      </div>
+                      <pre>{aiOutput}</pre>
+                    </div>
+                  )}
+                </div>
+              </aside>
+            </div>
+          )}
+        </main>
+      )}
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className="zz-toast" role="status">
+          <CheckCircle2 size={18} />
+          <span>{toast}</span>
+        </div>
+      )}
+
+      {/* Modals */}
+      {modal === 'new' && (
+        <div className="zz-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setModal('')}>
+          <section className="zz-modal" role="dialog" aria-modal="true" aria-label="新建研究课题">
+            <header className="zz-modal-head">
+              <div>
+                <h2>新建研究课题</h2>
+                <p>将同一方向的论文、PDF 全文、精读卡与综述集中管理</p>
+              </div>
+              <button aria-label="关闭弹窗" onClick={() => setModal('')}>
+                <X size={20} />
+              </button>
+            </header>
+            <form
+              className="zz-form-stack"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const f = new FormData(e.currentTarget);
+                runAction(async () => {
+                  if (!auth) throw new Error('请先登录账号后再创建持久化课题');
+                  const d = await request('/api/m/zhizheng-research/workspace', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      action: 'create',
+                      requestId: createRequest.current,
+                      title: f.get('title'),
+                      topic: f.get('topic'),
+                      scope: f.get('scope'),
+                      researchType: f.get('researchType'),
+                      materials: '',
+                      unresolved: '',
+                    }),
+                  });
+                  createRequest.current = uid();
+                  setProject(d.project);
+                  setFiles([]);
+                  setVersions([]);
+                  setDemo(false);
+                  setProjects((prev) => [
+                    {
+                      id: d.project.id,
+                      title: d.project.state.title,
+                      revision: 1,
+                      updated_at: d.project.updatedAt,
+                    },
+                    ...prev,
+                  ]);
+                  setModal('');
+                  setActiveTab('library');
+                  notify('新研究课题已创建');
+                });
+              }}
+            >
+              <label className="zz-field">
+                <span>课题名称</span>
+                <input
+                  name="title"
+                  required
+                  autoFocus
+                  maxLength={200}
+                  defaultValue="金融 Agent 的多 Agent 评估系统设计"
+                />
+              </label>
+              <label className="zz-field">
+                <span>核心研究问题</span>
+                <textarea
+                  name="topic"
+                  rows={3}
+                  placeholder="本课题希望回答什么核心科学或工程问题？"
+                />
+              </label>
+              <div className="zz-form-row-two">
+                <label className="zz-field">
+                  <span>研究类型</span>
+                  <select name="researchType">
+                    <option>文献综述</option>
+                    <option>系统设计与验证</option>
+                    <option>实证研究</option>
+                    <option>理论研究</option>
+                  </select>
+                </label>
+                <label className="zz-field">
+                  <span>研究范围与边界</span>
+                  <input name="scope" placeholder="研究对象与适用场景" />
+                </label>
+              </div>
+              <div className="zz-modal-actions">
+                <button type="button" className="zz-btn" onClick={() => setModal('')}>
+                  取消
+                </button>
+                <button type="submit" className="zz-btn is-primary" disabled={busy}>
+                  <Plus size={16} /> 创建课题
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
+
+      {modal === 'edit-project' && project && (
+        <div className="zz-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setModal('')}>
+          <section className="zz-modal" role="dialog" aria-modal="true" aria-label="编辑课题信息">
+            <header className="zz-modal-head">
+              <div>
+                <h2>编辑课题信息</h2>
+              </div>
+              <button aria-label="关闭弹窗" onClick={() => setModal('')}>
+                <X size={20} />
+              </button>
+            </header>
+            <form
+              className="zz-form-stack"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const f = new FormData(e.currentTarget);
+                runAction(async () => {
+                  await persist({
+                    ...state,
+                    title: String(f.get('title')),
+                    topic: String(f.get('topic')),
+                    scope: String(f.get('scope')),
+                  });
+                  setModal('');
+                  notify('课题信息已更新');
+                });
+              }}
+            >
+              <label className="zz-field">
+                <span>课题名称</span>
+                <input name="title" required defaultValue={state.title} />
+              </label>
+              <label className="zz-field">
+                <span>核心研究问题</span>
+                <textarea name="topic" rows={3} defaultValue={state.topic} />
+              </label>
+              <label className="zz-field">
+                <span>研究范围与边界</span>
+                <textarea name="scope" rows={2} defaultValue={state.scope} />
+              </label>
+              <div className="zz-modal-actions">
+                <button type="button" className="zz-btn" onClick={() => setModal('')}>
+                  取消
+                </button>
+                <button type="submit" className="zz-btn is-primary" disabled={busy || saving}>
+                  <Save size={16} /> 保存修改
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
+
+      {modal === 'manual' && (
+        <div className="zz-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setModal('')}>
+          <section className="zz-modal" role="dialog" aria-modal="true" aria-label="手动录入文献">
+            <header className="zz-modal-head">
+              <div>
+                <h2>手动录入文献</h2>
+                <p>支持直接填写论文标题、作者、DOI 与摘要</p>
+              </div>
+              <button aria-label="关闭弹窗" onClick={() => setModal('')}>
+                <X size={20} />
+              </button>
+            </header>
+            <form
+              className="zz-form-stack"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const f = new FormData(e.currentTarget);
+                runAction(() =>
+                  addPapersToLibrary([
+                    {
+                      id: uid(),
+                      title: String(f.get('title')),
+                      doi: normalizeDOI(String(f.get('doi') || '')),
+                      authors: String(f.get('authors') || ''),
+                      year: String(f.get('year') || ''),
+                      abstract: String(f.get('abstract') || ''),
+                      source: '作者手动录入 / ' + now(),
+                      verified: false,
+                      fileId: '',
+                      readStatus: f.get('abstract') ? 'abstract' : 'metadata',
+                      updatedAt: now(),
+                    },
+                  ]),
+                );
+              }}
+            >
+              <label className="zz-field">
+                <span>论文标题</span>
+                <input name="title" required autoFocus placeholder="输入论文完整标题" />
+              </label>
+              <div className="zz-form-row-two">
+                <label className="zz-field">
+                  <span>作者</span>
+                  <input name="authors" placeholder="如：Zhang et al." />
+                </label>
+                <label className="zz-field">
+                  <span>发表年份</span>
+                  <input name="year" maxLength={4} placeholder="如：2026" />
+                </label>
+              </div>
+              <label className="zz-field">
+                <span>DOI（可选）</span>
+                <input name="doi" placeholder="如：10.18653/v1/2021.emnlp-main.300" />
+              </label>
+              <label className="zz-field">
+                <span>论文摘要（可选）</span>
+                <textarea name="abstract" rows={4} placeholder="粘贴论文摘要，方便后续摘录与综述…" />
+              </label>
+              <div className="zz-modal-actions">
+                <button type="button" className="zz-btn" onClick={() => setModal('')}>
+                  取消
+                </button>
+                <button type="submit" className="zz-btn is-primary" disabled={busy}>
+                  <Plus size={16} /> 加入文献库
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
+
+      {modal === 'export' && (
+        <div className="zz-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setModal('')}>
+          <section className="zz-modal" role="dialog" aria-modal="true" aria-label="导出研究成果">
+            <header className="zz-modal-head">
+              <div>
+                <h2>导出研究资料</h2>
+                <p>将文献库、综述 Markdown 或完整课题 JSON 导出到本地</p>
+              </div>
+              <button aria-label="关闭弹窗" onClick={() => setModal('')}>
+                <X size={20} />
+              </button>
+            </header>
+            <div className="zz-export-list">
+              <button className="zz-export-item" onClick={() => handleExport('md')}>
+                <FileText size={20} />
+                <div>
+                  <strong>导出研究综述与证据报告 (.md)</strong>
+                  <p>包含当前跨论文综述正文、论断与原文证据锚点</p>
+                </div>
+                <ArrowUpRight size={18} />
+              </button>
+              <button className="zz-export-item" onClick={() => handleExport('bib')}>
+                <BookOpen size={20} />
+                <div>
+                  <strong>导出 BibTeX 参考文献 (.bib)</strong>
+                  <p>可用于 LaTeX、Overleaf 或 Zotero 文献管理</p>
+                </div>
+                <ArrowUpRight size={18} />
+              </button>
+              <button className="zz-export-item" onClick={() => handleExport('backup')}>
+                <History size={20} />
+                <div>
+                  <strong>导出课题完整 JSON 备份 (.json)</strong>
+                  <p>包含全部论文元数据、精读卡、原文摘录与版本状态</p>
+                </div>
+                <ArrowUpRight size={18} />
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+    </div>
+  );
 }

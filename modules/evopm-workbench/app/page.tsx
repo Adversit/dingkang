@@ -1,188 +1,1834 @@
 'use client';
 
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { ArrowDown, ArrowDownToLine, ArrowRight, ArrowUpRight, BarChart3, BookOpen, Boxes, Check, CheckCheck, CheckCircle2, ChevronDown, ChevronRight, Circle, CircleHelp, Clock3, Code2, Compass, ExternalLink, FileCheck2, FileText, Flag, GitBranch, GitCommitHorizontal, Inbox, Layers3, Link2, ListChecks, LoaderCircle, Menu, MessageSquare, MoreHorizontal, Plus, RefreshCw, Search, Settings2, ShieldCheck, SlidersHorizontal, Sparkles, SquareArrowOutUpRight, Upload, Workflow, X, XCircle } from 'lucide-react';
-import type { Action, Cluster, EvidenceLink, Plan, Product, Requirement, Run, Signal, Snapshot, State } from '@/modules/evopm-workbench/lib/contracts';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  AlertTriangle,
+  ArrowRight,
+  BarChart3,
+  BookOpen,
+  Check,
+  CheckCheck,
+  CheckCircle2,
+  ClipboardCopy,
+  Download,
+  FileCheck2,
+  FileCode2,
+  FileText,
+  FolderPlus,
+  GitBranch,
+  Inbox,
+  Layers3,
+  LoaderCircle,
+  LogIn,
+  Plus,
+  RefreshCw,
+  Rocket,
+  Save,
+  Search,
+  Settings2,
+  ShieldCheck,
+  Sparkles,
+  Upload,
+  X,
+} from 'lucide-react';
+import type {
+  Action,
+  Cluster,
+  EvidenceLink,
+  Plan,
+  Product,
+  Requirement,
+  Signal,
+  Snapshot,
+  State,
+} from '@/modules/evopm-workbench/lib/contracts';
 import { CSV_TEMPLATE, parseSignals } from '@/modules/evopm-workbench/components/workbench/import';
-import { FeedbackTrend } from '@/modules/evopm-workbench/components/workbench/feedback-trend';
 
-type ApiResponse = Snapshot & {error?:string;result?:{error?:string;productId?:string;filename?:string;changePackage?:unknown;[key:string]:unknown}};
-type Section = 'overview' | 'inbox' | 'decisions' | 'changes' | 'outcomes' | 'runs' | 'settings';
-type Field = {name:string;label:string;value?:string|number;placeholder?:string;required?:boolean;type?:'textarea'|'number'|'select'|'url';options?:{value:string;label:string}[];help?:string;min?:number;max?:number;wide?:boolean};
-type FormConfig = {title:string;description?:string;fields:Field[];submit?:string;save:(values:Record<string,string>)=>Promise<boolean>;extra?:ReactNode};
-type Detail = {type:'requirement'|'plan'|'run'|'signal';id:string}|null;
-const EMPTY:State={products:[],signals:[],clusters:[],requirements:[],plans:[],approvals:[],runs:[],jobs:[],evaluations:[],releases:[],outcomes:[],audit:[]};
-const NAV = [
- {id:'overview' as const,label:'工作台总览',icon:Compass},
- {id:'inbox' as const,label:'反馈收件箱',icon:Inbox},
- {id:'decisions' as const,label:'需求决策',icon:Layers3},
- {id:'changes' as const,label:'变更与执行',icon:GitBranch},
- {id:'outcomes' as const,label:'效果回看',icon:BarChart3},
- {id:'runs' as const,label:'运行记录',icon:Workflow},
- {id:'settings' as const,label:'产品设置',icon:Settings2},
-];
-const LABELS:Record<string,string>={draft:'待评审',needs_evidence:'待补证据',approved:'已通过',rejected:'已驳回',active:'待整理',discarded:'已淘汰',linked:'已关联需求',completed:'已完成',failed:'失败',waiting:'等待处理',blocked:'等待接入',exported:'已导出',submitted:'已提交',passed:'通过',pending:'待验证',manual:'人工记录',sample:'示例数据',live:'实时运行',replay:'回放数据',degraded:'降级运行'};
-const iso=(d:string)=>{try{return new Date(d).toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false})}catch{return d}};
-const download=(name:string,content:unknown,type='application/json')=>{const url=URL.createObjectURL(new Blob([typeof content==='string'?content:JSON.stringify(content,null,2)],{type}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),500)};
-const toggle=(ids:string[],id:string)=>ids.includes(id)?ids.filter(x=>x!==id):[...ids,id];
-function Badge({value,children}:{value?:string;children?:ReactNode}){return <span className={`badge badge-${value||'neutral'}`}>{value==='sample'&&<span className="dot"/>}{children??LABELS[value||'']??value}</span>}
-function Empty({title,text,action,icon:Icon=Inbox}:{title:string;text:string;action?:ReactNode;icon?:typeof Inbox}){return <div className="empty"><div className="empty-icon"><Icon size={24}/></div><h3>{title}</h3><p>{text}</p>{action}</div>}
-function Logo(){return <svg width="31" height="31" viewBox="0 0 32 32" aria-hidden="true"><g fill="none" stroke="currentColor" strokeWidth="2.3"><ellipse cx="16" cy="16" rx="6.3" ry="14" transform="rotate(35 16 16)"/><ellipse cx="16" cy="16" rx="6.3" ry="14" transform="rotate(-35 16 16)"/><ellipse cx="16" cy="16" rx="6.3" ry="14" transform="rotate(90 16 16)"/></g><circle cx="16" cy="16" r="3.7" fill="currentColor"/></svg>}
+type ApiResponse = Snapshot & {
+  error?: string;
+  result?: {
+    error?: string;
+    productId?: string;
+    filename?: string;
+    changePackage?: unknown;
+    [key: string]: unknown;
+  };
+};
 
-export default function Home(){
- const [snapshot,setSnapshot]=useState<Snapshot|null>(null);
- const [loading,setLoading]=useState(true);
- const [loadError,setLoadError]=useState('');
- const [needsLogin,setNeedsLogin]=useState(false);
- const [productId,setProductId]=useState('');
- const [section,setSection]=useState<Section>('overview');
- const [busy,setBusy]=useState(false);
- const [toast,setToast]=useState<{text:string;error?:boolean}|null>(null);
- const [form,setForm]=useState<FormConfig|null>(null);
- const [formError,setFormError]=useState('');
- const [detail,setDetail]=useState<Detail>(null);
- const [reqEditor,setReqEditor]=useState<{cluster:Cluster;requirement?:Requirement}|null>(null);
- const [importOpen,setImportOpen]=useState(false);
- const [importText,setImportText]=useState('');
- const [selectedSignals,setSelectedSignals]=useState<string[]>([]);
- const [selectedClusters,setSelectedClusters]=useState<string[]>([]);
- const [search,setSearch]=useState('');
- const [filter,setFilter]=useState('all');
- const [mobileNav,setMobileNav]=useState(false);
- const busyRef=useRef(false);
- const drawerRef=useRef<HTMLElement>(null);
- const revisionRef=useRef(0);
- const state=snapshot?.state??EMPTY;
- const product=state.products.find(p=>p.id===productId)??state.products[0];
- const pid=product?.id??'';
- const signals=state.signals.filter(x=>x.productId===pid);
- const filteredSignals=signals.filter(signal=>`${signal.text} ${signal.source}`.toLowerCase().includes(search.toLowerCase()));
- const clusters=state.clusters.filter(x=>x.productId===pid);
- const requirements=state.requirements.filter(x=>x.productId===pid);
- const plans=state.plans.filter(x=>x.productId===pid);
- const runs=state.runs.filter(x=>x.productId===pid);
- const outcomes=state.outcomes.filter(x=>x.productId===pid);
- const audit=state.audit.filter(x=>x.productId===pid);
- const pending=requirements.filter(r=>r.decision==='draft'||r.decision==='needs_evidence');
- const approved=requirements.filter(r=>r.decision==='approved');
- const connected=snapshot?.connections;
- const currentNav=NAV.find(n=>n.id===section)!;
- const dataKnown=!!snapshot&&!needsLogin&&!loadError;
- const writeDisabled=busy||loading||!dataKnown;
- const count=(value:number)=>dataKnown?value:'—';
- const sectionDescriptions:Record<Section,string>={overview:'查看反馈、需求、变更和效果，安排下一步工作。',inbox:'收集反馈原文与来源，整理相关反馈簇。',decisions:'审查需求、原始证据与优先级，记录人工决定。',changes:'审查变更方案，管理批准版本与执行回执。',outcomes:'对照发布前后的指标，记录观察窗口和证据。',runs:'查看分析步骤、检查点和操作轨迹。',settings:'管理产品资料，查看服务配置状态。'};
- const loginHref=`/signin-with-chatgpt?return_to=${encodeURIComponent('/m/evopm-workbench/#'+section)}`;
+type StageTab = 'signals' | 'specify' | 'plan-tasks' | 'delivery';
 
- const detailReq=detail?.type==='requirement'?requirements.find(r=>r.id===detail.id):undefined;
- const detailPlan=detail?.type==='plan'?plans.find(r=>r.id===detail.id):undefined;
- const detailRun=detail?.type==='run'?runs.find(r=>r.id===detail.id):undefined;
- const detailSignal=detail?.type==='signal'?signals.find(r=>r.id===detail.id):undefined;
+const EMPTY: State = {
+  products: [],
+  signals: [],
+  clusters: [],
+  requirements: [],
+  plans: [],
+  approvals: [],
+  runs: [],
+  jobs: [],
+  evaluations: [],
+  releases: [],
+  outcomes: [],
+  audit: [],
+};
 
- function clearLoadedData(){setSnapshot(null);setProductId('');setDetail(null);setForm(null);setReqEditor(null);setImportOpen(false);setSelectedSignals([]);setSelectedClusters([]);revisionRef.current=0;}
- async function refresh(){
-  setLoading(true);setLoadError('');
-  try{const res=await fetch('/api/m/evopm-workbench/workbench',{cache:'no-store'});const data=await res.json() as ApiResponse;
-   if(!res.ok){clearLoadedData();setNeedsLogin(res.status===401);throw new Error(data.error||(res.status===401?'请登录以打开你的工作区':'读取工作区失败，请重试'));}
-   setNeedsLogin(false);setSnapshot(data);revisionRef.current=data.revision;
-  }catch(error){clearLoadedData();setLoadError(error instanceof Error?error.message:'无法连接服务，请重试')}finally{setLoading(false)}
- }
- useEffect(()=>{void refresh()},[]);
- useEffect(()=>{const syncSection=()=>{const slug=window.location.hash.slice(1);const valid=NAV.some(item=>item.id===slug);setSection(valid?slug as Section:'overview');if(!valid)window.history.replaceState(null,'','#overview')};syncSection();window.addEventListener('hashchange',syncSection);window.addEventListener('popstate',syncSection);return()=>{window.removeEventListener('hashchange',syncSection);window.removeEventListener('popstate',syncSection)}},[]);
- useEffect(()=>{if(!toast)return;const timer=setTimeout(()=>setToast(null),toast.error?10000:4500);return()=>clearTimeout(timer)},[toast]);
- useEffect(()=>{setSelectedSignals([]);setSelectedClusters([]);setFilter('all');setSearch('');setDetail(null)},[pid,section]);
- useEffect(()=>{const close=(e:KeyboardEvent)=>{if(e.key==='Escape'&&!busyRef.current){setForm(null);setReqEditor(null);setImportOpen(false);setDetail(null);setMobileNav(false)}};window.addEventListener('keydown',close);return()=>window.removeEventListener('keydown',close)},[]);
- useEffect(()=>{const active=!!(detail||form||reqEditor||importOpen);const previous=document.body.style.overflow;if(active)document.body.style.overflow='hidden';return()=>{document.body.style.overflow=previous}},[detail,form,reqEditor,importOpen]);
- useEffect(()=>{if(!detail||form||reqEditor||importOpen)return;const el=drawerRef.current;const previous=document.activeElement as HTMLElement|null;el?.querySelector<HTMLElement>('button')?.focus();const trap=(event:KeyboardEvent)=>{if(event.key!=='Tab'||!el)return;const list=[...el.querySelectorAll<HTMLElement>('button:not([disabled]),a[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),summary')];if(!list.length)return;const first=list[0],last=list[list.length-1];if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus()}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus()}};el?.addEventListener('keydown',trap);return()=>{el?.removeEventListener('keydown',trap);previous?.focus()}},[detail?.id,form,reqEditor,importOpen]);
- async function mutate(action:Action):Promise<ApiResponse|null>{
-  if(busyRef.current){setToast({text:'正在保存上一项操作，请稍后重试。'});return null;}if(loading){setToast({text:'正在刷新工作区，请等待数据加载完成后重试。'});return null;}if(!dataKnown){setToast({text:needsLogin?'请先登录工作区，再执行此操作。':'工作区数据尚未加载，请刷新后重试。',error:true});return null;}busyRef.current=true;setBusy(true);setFormError('');
-  try{const res=await fetch('/api/m/evopm-workbench/workbench',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:revisionRef.current,requestId:crypto.randomUUID(),action})});const data=await res.json() as ApiResponse;if(res.status===401){clearLoadedData();setNeedsLogin(true);setLoadError('登录已失效，请重新登录工作区');}if(!res.ok)throw new Error((data.error||'保存失败，请重试')+(res.status===409?' 请核对当前版本，必要时刷新后重试。':''));setSnapshot(data);revisionRef.current=data.revision;if(action.type==='sample.load'&&data.result?.productId)setProductId(data.result.productId);setToast({text:data.result?.error||data.notice||'已保存到服务器',error:!!data.result?.error});if(data.result?.error)setFormError(data.result.error);return data;}catch(e){const message=e instanceof Error?e.message:'操作失败，请重试';setToast({text:message,error:true});setFormError(message);return null}finally{busyRef.current=false;setBusy(false)}
- }
- const save=async(action:Action)=>{const result=await mutate(action);return !!result&&!result.result?.error};
- function navigate(next:Section){setSection(next);setMobileNav(false);window.scrollTo(0,0);if(window.location.hash!==`#${next}`)window.history.pushState(null,'',`#${next}`)}
- function openForm(config:FormConfig){setFormError('');setForm(config)}
- function createProduct(edit?:Product){if(writeDisabled)return;openForm({title:edit?'编辑产品资料':'创建产品',description:'填写产品名称、目标用户和当前目标。',submit:edit?'保存产品':'创建产品',fields:[{name:'name',label:'产品名称',required:true,value:edit?.name,placeholder:'如：我的 AI 工作台'},{name:'description',label:'一句话介绍',value:edit?.description,placeholder:'它让什么事情变得更好？'},{name:'users',label:'目标用户',value:edit?.users,placeholder:'谁正在使用这个产品？'},{name:'goal',label:'当前产品目标',value:edit?.goal,placeholder:'你希望改善什么？'},{name:'metric',label:'核心观察指标',value:edit?.metric,placeholder:'如：首次任务完成率'},{name:'repository',label:'仓库地址（可选）',value:edit?.repository,placeholder:'https://github.com/owner/repo'}],save:async v=>{const r=await mutate({...v,type:edit?'product.update':'product.create',productId:edit?.id,name:v.name} as Action);if(r&&!edit)setProductId(r.state.products.at(-1)?.id??'');return !!r}})}
- function addSignal(){if(writeDisabled)return;if(!product){createProduct();return}openForm({title:'记录一条用户反馈',description:'保留用户原话和来源，方便后续决策追溯。请先移除手机号、邮箱等个人信息。',submit:'保存反馈',fields:[{name:'text',label:'反馈原文',type:'textarea',required:true,placeholder:'用户说了什么？尽量保留原话。',wide:true},{name:'redacted',label:'脱敏确认',type:'select',value:'false',options:[{value:'false',label:'尚未确认脱敏'},{value:'true',label:'我已移除个人敏感信息'}]},{name:'source',label:'反馈来源',value:'手动录入',placeholder:'如：用户访谈、产品评论'},{name:'userKey',label:'匿名用户标识',placeholder:'如：user-001（请勿填写真实姓名）'},{name:'sourceId',label:'来源记录 ID（可选）',placeholder:'用于去重和追溯'},{name:'occurredAt',label:'发生时间（可选）',placeholder:'2026-10-19T08:00:00Z'}],save:v=>save({type:'signals.import',productId:pid,items:[{text:v.text,source:v.source,userKey:v.userKey,sourceId:v.sourceId,occurredAt:v.occurredAt||undefined,redacted:v.redacted==='true'}]})})}
- function buildCluster(){openForm({title:'把相关反馈归为一簇',description:`已选择 ${selectedSignals.length} 条反馈。用一句话概括它们共同指向的问题。`,submit:'创建反馈簇',fields:[{name:'title',label:'反馈簇名称',required:true,placeholder:'如：新用户不清楚如何开始',wide:true}],save:async v=>{const ok=await save({type:'cluster.create',productId:pid,title:v.title,signalIds:selectedSignals});if(ok)setSelectedSignals([]);return ok}})}
- function mergeClusters(){openForm({title:'合并反馈簇',description:`将 ${selectedClusters.length} 个反馈簇合并，保留其反馈证据。`,fields:[{name:'title',label:'合并后的名称',required:true,wide:true}],save:async v=>{const ok=await save({type:'cluster.merge',productId:pid,clusterIds:selectedClusters,title:v.title});if(ok)setSelectedClusters([]);return ok}})}
- function discardCluster(cluster:Cluster){openForm({title:'淘汰反馈簇',description:'记录原因，方便未来重新审视这一判断。',fields:[{name:'reason',label:'淘汰原因',type:'textarea',required:true,wide:true}],submit:'确认淘汰',save:v=>save({type:'cluster.discard',productId:pid,clusterId:cluster.id,reason:v.reason})})}
- function splitCluster(cluster:Cluster){openForm({title:'拆分反馈簇',description:'输入要移入新簇的反馈编号（逗号分隔），下方列出当前证据。至少保留一条在原簇。',fields:[{name:'title',label:'新反馈簇名称',required:true,wide:true},{name:'numbers',label:'反馈编号',placeholder:'例如：1, 3',required:true,wide:true}],extra:<div className="evidence-list">{cluster.signalIds.map((id,i)=><div key={id} className="evidence"><strong>#{i+1}</strong><p>{signals.find(s=>s.id===id)?.text??'记录不可用'}</p></div>)}</div>,save:async v=>{const indexes=v.numbers.split(/[,，\s]+/).filter(Boolean).map(Number);if(indexes.some(n=>!Number.isInteger(n)||n<1||n>cluster.signalIds.length))throw new Error('反馈编号不在有效范围内');return save({type:'cluster.split',productId:pid,clusterId:cluster.id,title:v.title,signalIds:[...new Set(indexes)].map(n=>cluster.signalIds[n-1])})}})}
- function decideRequirement(r:Requirement,decision:'approved'|'rejected'|'needs_evidence'){openForm({title:decision==='approved'?'人工通过需求':decision==='rejected'?'驳回这项需求':'要求补充证据',description:'你的决定与原因会进入操作记录。通过后，才可以创建变更方案。',submit:LABELS[decision],fields:[{name:'note',label:'决策说明',type:'textarea',required:true,placeholder:decision==='approved'?'为什么现在值得做？':'还缺少什么，或为什么暂时不做？',wide:true}],save:v=>save({type:'requirement.decide',productId:pid,requirementId:r.id,decision,note:v.note})})}
- function editPlan(requirement:Requirement,plan?:Plan){openForm({title:plan?'编辑变更方案':'将需求转为可审查的变更方案',description:plan?'保存后会生成新版本，旧版本批准不会自动适用于新版本。':'明确边界、验收与回滚，交给人来批准执行。',submit:plan?'保存新版本':'创建方案',fields:[{name:'title',label:'方案名称',value:plan?.title??requirement.title,required:true,wide:true},{name:'goal',label:'变更目标',value:plan?.goal??requirement.story,required:true,type:'textarea',wide:true},{name:'scope',label:'修改范围',value:plan?.scope??requirement.scope,required:true,type:'textarea'},{name:'nonGoals',label:'明确不做',value:plan?.nonGoals,required:true,type:'textarea',placeholder:'哪些功能或模块不在本次范围内？'},{name:'acceptance',label:'验收标准',value:plan?.acceptance??requirement.acceptance,required:true,type:'textarea'},{name:'risks',label:'风险与防护',value:plan?.risks,required:true,type:'textarea'},{name:'rollback',label:'回滚方案',value:plan?.rollback,required:true,type:'textarea',wide:true},{name:'baseCommit',label:'基线 commit',value:plan?.baseCommit,required:true,placeholder:'完整 40 位 Git commit SHA'},{name:'budget',label:'执行预算',value:plan?.budget,required:true,placeholder:'如：2 小时 / 最多 20 次工具调用'}],save:v=>save({...v,productId:pid,...(plan?{type:'plan.update',planId:plan.id}:{type:'plan.create',requirementId:requirement.id})} as Action)})}
- function approvePlan(plan:Plan,decision:'approved'|'rejected'){openForm({title:decision==='approved'?'批准当前方案版本':'驳回当前方案版本',description:`仅对 v${plan.version} · 基线 ${plan.baseCommit} 有效。修改方案后需再次批准。`,fields:[{name:'note',label:'审批意见',required:true,type:'textarea',wide:true}],submit:decision==='approved'?'批准 v'+plan.version:'确认驳回',save:v=>save({type:'plan.approve',productId:pid,planId:plan.id,decision,note:v.note})})}
- async function exportPlan(plan:Plan){const r=await mutate({type:'job.export',productId:pid,planId:plan.id});if(r){const exported=r.result as {filename?:string;changePackage?:unknown}|undefined;download(exported?.filename??`EvoPM-${plan.title}-v${plan.version}.json`,exported?.changePackage??r.result)}}
- function recordEvaluation(plan:Plan){openForm({title:'记录 CI / 评测回执',description:'当前为人工回执。请填写来自真实执行环境的结果和证据链接。',submit:'保存回执',fields:[{name:'kind',label:'验证类型',type:'select',options:[{value:'ci',label:'CI 检查'},{value:'evaluation',label:'产品评测'}]},{name:'status',label:'执行结果',type:'select',options:[{value:'pending',label:'待验证'},{value:'passed',label:'通过'},{value:'failed',label:'失败'}]},{name:'commit',label:'验证 commit（完整 40 位 SHA）',required:true},{name:'url',label:'结果证据链接',placeholder:'https://...',required:true}, {name:'note',label:'回执说明',type:'textarea',required:true,wide:true}],save:v=>save({type:'evaluation.record',productId:pid,planId:plan.id,commit:v.commit,kind:v.kind as 'ci'|'evaluation',status:v.status as 'passed'|'failed'|'pending',url:v.url,note:v.note})})}
- function recordRelease(plan:Plan){openForm({title:'登记发布回执',description:'需先导出当前批准版本，且同一 commit 的 CI 和评测均通过。此操作仅登记回执，不触发部署。',fields:[{name:'commit',label:'已发布 commit（完整 40 位 SHA）',required:true},{name:'url',label:'部署 / 发布证据链接',required:true,placeholder:'https://...'},{name:'note',label:'发布说明',type:'textarea',required:true,wide:true}],submit:'登记发布',save:v=>save({type:'release.record',productId:pid,planId:plan.id,commit:v.commit,url:v.url,note:v.note})})}
- function recordOutcome(plan?:Plan){if(writeDisabled)return;if(!product){createProduct();return}if(!plans.length){setToast({text:'先创建变更方案，再记录其效果',error:true});return}openForm({title:'记录一次效果观察',description:'当前方案版本必须已有发布回执。记录前后数据、时间窗口与干扰因素，前后变化本身不等于因果。',submit:'保存观察',fields:[...(plan?[]:[{name:'planId',label:'关联方案',type:'select' as const,options:plans.map(p=>({value:p.id,label:p.title}))}]),{name:'metric',label:'观察指标',value:product?.metric,required:true},{name:'unit',label:'单位',placeholder:'如：%、秒、次',required:true},{name:'before',label:'变更前数值',type:'number',required:true},{name:'after',label:'变更后数值',type:'number',required:true},{name:'beforeWindow',label:'变更前观察窗口',required:true,placeholder:'如：2026-10-01 至 2026-10-07'},{name:'afterWindow',label:'变更后观察窗口',required:true,placeholder:'如：2026-10-08 至 2026-10-14'},{name:'sampleSize',label:'样本量',type:'number',min:1,required:true},{name:'source',label:'数据来源 / 链接',required:true},{name:'confounders',label:'可能的干扰因素',type:'textarea',required:true,wide:true,placeholder:'同期渠道、流量、其他功能变化等；若无已知因素也请说明。'}],save:v=>save({type:'outcome.record',productId:pid,planId:plan?.id??v.planId,metric:v.metric,before:Number(v.before),after:Number(v.after),unit:v.unit,beforeWindow:v.beforeWindow,afterWindow:v.afterWindow,sampleSize:Number(v.sampleSize),source:v.source,confounders:v.confounders})})}
- function importAgent(cluster:Cluster){openForm({title:'导入 Agent 分析结果',description:'导入只保留分析记录，不自动创建或通过需求。证据须引用当前反馈簇中的真实 ID。',fields:[{name:'result',label:'结果 JSON',required:true,type:'textarea',wide:true,placeholder:'粘贴结构化分析结果',value:JSON.stringify({schemaVersion:'1.0',summary:'请替换为真实分析总结',evidence:cluster.signalIds.map(signalId=>({signalId,relation:'insufficient',note:'请根据原始反馈说明关系'})),recommendations:[]},null,2)}],save:v=>save({type:'run.import',productId:pid,clusterId:cluster.id,result:JSON.parse(v.result)})})}
+const LABELS: Record<string, string> = {
+  draft: '待评审 Spec',
+  needs_evidence: '待补证据',
+  approved: '已批准',
+  rejected: '已驳回',
+  active: '活跃痛点簇',
+  discarded: '已归档',
+  linked: '已转 Spec',
+  completed: '已完成',
+  failed: '失败',
+  waiting: '等待中',
+  passed: '验证通过',
+  pending: '待验证',
+  sample: '示例课题',
+  manual: '正式项目',
+};
 
- function withProduct(action:()=>void){if(writeDisabled)return;if(!product){createProduct();return}action()}
- function sectionEmpty(title:string,text:string,action?:ReactNode,icon:typeof Inbox=Inbox){
-  if(!dataKnown)return <Empty title={`${currentNav.label}数据尚未加载`} text={needsLogin?`登录后查看${currentNav.label}的真实数据。`:loading?'正在读取工作区数据…':'工作区读取失败，请重试；当前未显示账户数据。'} icon={icon} action={needsLogin?<a className="button" href={loginHref} target="_top">使用 ChatGPT 登录</a>:<button className="button small" disabled={loading} onClick={()=>void refresh()}><RefreshCw size={14}/>重新加载</button>}/>;
-  if(!product)return <Empty title={`${currentNav.label}尚未关联产品`} text="创建一个产品后，在当前栏目管理对应记录。" icon={icon} action={<button className="button" disabled={writeDisabled} onClick={()=>createProduct()}><Plus size={14}/>创建产品</button>}/>;
-  return <Empty title={title} text={text} action={action} icon={icon}/>;
- }
- const primaryAction={overview:{label:product?'添加反馈':'创建产品',run:()=>product?addSignal():createProduct(),icon:Plus},inbox:{label:'添加反馈',run:()=>addSignal(),icon:Plus},decisions:{label:'从反馈创建需求',run:()=>withProduct(()=>navigate('inbox')),icon:Plus},changes:{label:'从已通过需求创建',run:()=>withProduct(()=>{navigate('decisions')}),icon:Plus},outcomes:{label:'记录效果',run:()=>recordOutcome(),icon:Plus},runs:{label:'刷新记录',run:()=>void refresh(),icon:RefreshCw},settings:{label:product?'编辑产品':'创建产品',run:()=>createProduct(product),icon:Settings2}}[section];
- const requireTable=(items:Requirement[],compact=false)=><div className="table-wrap"><table><thead><tr><th>需求 / 证据</th><th>材料完整度</th><th>优先级</th><th>状态</th><th aria-label="详情"/></tr></thead><tbody>{items.map((r,i)=><tr key={r.id} onClick={()=>setDetail({type:'requirement',id:r.id})} className="click-row"><td><div className="table-primary"><span className="table-index">{String(i+1).padStart(2,'0')}</span><div><button className="text-button strong" onClick={e=>{e.stopPropagation();setDetail({type:'requirement',id:r.id})}}>{r.title}</button><p className="table-sub">{r.links.length} 条关联证据 <span>·</span> v{r.version} {r.mode==='sample'&&<em>示例</em>}</p></div></div></td><td><div className="score"><span>{r.quality.score}</span><div className="score-track"><i style={{width:`${Math.max(0,Math.min(100,r.quality.score))}%`}}/></div></div></td><td><span className="priority">{r.score.priority.toFixed(1)}</span></td><td><Badge value={r.decision}/></td><td><ChevronRight size={16}/></td></tr>)}</tbody></table>{!items.length&&sectionEmpty(compact?'没有待决策需求':filter==='all'?'暂无需求':'当前筛选没有需求','从反馈簇创建需求，保留原文与证据关系。',<button className="button small" disabled={writeDisabled} onClick={()=>withProduct(()=>navigate('inbox'))}>前往反馈收件箱 <ArrowRight size={14}/></button>,Layers3)}</div>;
- const planApproval=(p:Plan)=>{const a=state.approvals.filter(a=>a.planId===p.id).at(-1);const r=requirements.find(r=>r.id===p.requirementId);if(!a||a.planVersion!==p.version||a.inputVersion!==p.inputVersion||a.baseCommit!==p.baseCommit||r?.version!==p.inputVersion||r.decision!=='approved'||(p.productVersion??1)!==(product?.version??1))return undefined;return a};
+const iso = (d: string) => {
+  try {
+    return new Date(d).toLocaleString('zh-CN', {
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+  } catch {
+    return d;
+  }
+};
 
- return <div className="app-shell">
-  {mobileNav&&<button className="nav-scrim" aria-label="关闭导航" onClick={()=>setMobileNav(false)}/>}
-  <aside className={`sidebar ${mobileNav?'is-open':''}`}>
-   <a className="brand" href="#" onClick={e=>{e.preventDefault();navigate('overview')}}><span className="brand-mark"><Logo/></span><span>EvoPM<span className="brand-dot">.</span></span></a>
-
-   <div className="workspace-label">当前产品 <button aria-label="新建产品" onClick={()=>createProduct()} disabled={writeDisabled}><Plus size={14}/></button></div>
-   <div className="product-switch"><span className="product-avatar">{product?.name.charAt(0)??'E'}</span><select aria-label="切换产品" disabled={!dataKnown||!state.products.length} value={pid} onChange={e=>setProductId(e.target.value)}>{!product&&<option value="">我的产品工作区</option>}{state.products.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select><ChevronDown size={14}/></div>
-   <nav aria-label="主导航">{NAV.map(({id,label,icon:Icon},i)=><button key={id} onClick={()=>navigate(id)} aria-current={section===id?'page':undefined} className={`${section===id?'active':''} ${i===5?'nav-divider':''}`}><Icon size={18}/><span>{label}</span>{id==='inbox'&&signals.length>0&&<span className="nav-count">{signals.length}</span>}{id==='decisions'&&pending.length>0&&<span className="nav-indicator"/>}</button>)}</nav>
-   <div className="sidebar-bottom"><div className="profile"><span className="profile-avatar">{snapshot?.user?.name?.charAt(0)??'我'}</span><div><strong>{snapshot?.user?.name??(needsLogin?'未登录':'产品工作区')}</strong><span>个人工作空间</span></div>{dataKnown&&<span className="profile-dot"/>}</div></div>
-  </aside>
-  <div className="main-shell">
-   <header className="topbar"><div className="breadcrumbs"><button className="icon-button mobile-menu" aria-label="打开导航" onClick={()=>setMobileNav(true)}><Menu size={20}/></button><span>工作空间</span><ChevronRight size={13}/><strong>{currentNav.label}</strong></div><div className="topbar-right"><span className={`save-status ${loadError?'has-error':''}`}>{loading?<LoaderCircle size={13} className="spin"/>:loadError?<XCircle size={13}/>:<CheckCheck size={14}/>}<span>{loading?'正在同步':needsLogin?'未登录':loadError?'连接失败':busy?'正在保存':'已与服务器同步'}</span></span><button className="icon-button" aria-label="刷新服务器数据" title="刷新服务器数据" disabled={busy||loading} onClick={()=>void refresh()}><RefreshCw size={17}/></button><span className="topbar-line"/><span className="date-label">产品演进工作台</span></div></header>
-   <main className="content" data-section={section}>
-    {needsLogin?<div className="auth-banner" role="status"><ShieldCheck size={19}/><div><strong>登录以查看你的工作区</strong><p>同步你的产品、反馈和决策记录。</p></div><a className="button primary" href={loginHref} target="_top">使用 ChatGPT 登录</a></div>:loadError?<div className="error-banner" role="alert"><XCircle size={18}/><span>{loadError}。数据暂不可用，不代表账户没有记录。</span><button className="text-button" disabled={loading} onClick={()=>void refresh()}>重试</button></div>:loading&&<div className="loading-banner" role="status"><LoaderCircle size={16} className="spin"/>正在读取工作区数据…</div>}
-    <div className="page-heading"><div><h1>{currentNav.label}</h1></div><div className="heading-actions">{product&&<Badge value={product.mode}/>}<button className="button primary" onClick={primaryAction.run} disabled={section==='runs'?busy||loading:writeDisabled}><primaryAction.icon size={16}/>{primaryAction.label}</button></div></div>
-    {section==='overview'&&<div className="overview-dashboard">
-      {dataKnown&&!product&&<div className="onboarding-bar"><div><strong>创建产品，开始整理用户反馈</strong><span>也可以加载独立的示例产品，体验完整流程。</span></div><div className="button-row"><button className="button" disabled={writeDisabled} onClick={()=>void mutate({type:'sample.load'})}><BookOpen size={15}/>加载示例数据</button><button className="button primary" disabled={writeDisabled} onClick={()=>createProduct()}><Plus size={15}/>创建产品</button></div></div>}
-      <div className="stats-grid">{[{label:'用户反馈',number:signals.length,sub:`${clusters.filter(c=>c.status==='active').length} 个反馈簇待整理`,icon:Inbox,to:'inbox' as const},{label:'待决策需求',number:pending.length,sub:`${approved.length} 项需求已通过`,icon:Layers3,to:'decisions' as const},{label:'变更方案',number:plans.length,sub:`${plans.filter(p=>planApproval(p)?.decision==='approved').length} 项当前版本已批准`,icon:GitBranch,to:'changes' as const},{label:'效果观察',number:outcomes.length,sub:`${state.releases.filter(r=>r.productId===pid).length} 份发布回执`,icon:BarChart3,to:'outcomes' as const}].map((item,i)=><button className={`stat-card stat-${i}`} key={item.label} onClick={()=>navigate(item.to)}><div className="stat-label">{item.label}<item.icon size={19}/></div><strong>{count(item.number)}</strong><div className="stat-bottom"><span>{dataKnown?item.sub:'数据尚未加载'}</span><ArrowUpRight size={16}/></div></button>)}</div>
-      <div className="overview-main-grid">
-       <section className="panel trend-panel"><div className="panel-heading"><div><h2>反馈趋势</h2><p className="panel-description">过去 7 天新增反馈 · 按记录时间统计</p></div><span className="period-label">最近 7 天</span></div><FeedbackTrend signals={signals} known={dataKnown}/></section>
-       <div className="overview-side"><section className="panel todo-panel"><div className="panel-heading"><h2>待处理事项 <span className="count-tag">{count(pending.length)}</span></h2><button className="text-button" onClick={()=>navigate('decisions')}>查看全部 <ArrowRight size={15}/></button></div><div className="todo-list">{pending.slice(0,3).map(r=><button className="todo-item" key={r.id} onClick={()=>setDetail({type:'requirement',id:r.id})}><span className="todo-icon"><FileCheck2 size={18}/></span><span><strong>{r.title}</strong><small>{r.links.length} 条证据 · {LABELS[r.decision]}</small></span><ChevronRight size={15}/></button>)}{!pending.length&&<div className="todo-empty"><CheckCircle2 size={22}/><strong>{dataKnown?'暂无待决策需求':'待处理事项尚未加载'}</strong><p>{dataKnown?'整理反馈簇后，可在这里评审需求。':needsLogin?'登录后查看需要你处理的事项。':'完成数据加载后显示待处理事项。'}</p></div>}</div></section>
-       <section className="panel loop-panel"><div className="panel-heading"><h2>产品闭环</h2><span className="tiny-label">{product?.name??'未选择产品'}</span></div><div className="loop-list">{[{icon:MessageSquare,label:'反馈收集',number:signals.length,to:'inbox' as const},{icon:Layers3,label:'需求通过',number:approved.length,to:'decisions' as const},{icon:GitBranch,label:'发布回执',number:state.releases.filter(r=>r.productId===pid).length,to:'changes' as const},{icon:BarChart3,label:'效果观察',number:outcomes.length,to:'outcomes' as const}].map(step=><button className="loop-step" key={step.label} onClick={()=>navigate(step.to)}><step.icon size={17}/><span>{step.label}</span><strong>{count(step.number)}</strong><ChevronRight size={14}/></button>)}</div></section></div>
-      </div>
-      <section className="panel overview-recent"><div className="panel-heading"><div><h2>最近反馈</h2></div><button className="button small" onClick={()=>navigate('inbox')}>查看收件箱 <ArrowRight size={15}/></button></div><div className="table-wrap"><table className="recent-feedback-table"><thead><tr><th>用户标识</th><th>反馈内容</th><th>来源</th><th>记录时间</th><th>整理状态</th><th>详情</th></tr></thead><tbody>{[...signals].sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt)).slice(0,5).map(signal=><tr key={signal.id}><td>{signal.userKey||'匿名用户'}</td><td><button className="text-button feedback-text" onClick={()=>setDetail({type:'signal',id:signal.id})}>{signal.text}</button>{signal.mode==='sample'&&<Badge value="sample"/>}</td><td><span className="source-label">{signal.source}</span></td><td className="nowrap muted">{iso(signal.createdAt)}</td><td><Badge value={clusters.some(c=>c.signalIds.includes(signal.id))?'linked':'draft'}>{clusters.some(c=>c.signalIds.includes(signal.id))?'已归簇':'待整理'}</Badge></td><td><button className="icon-button" aria-label={`查看反馈：${signal.text.slice(0,20)}`} onClick={()=>setDetail({type:'signal',id:signal.id})}><ArrowRight size={17}/></button></td></tr>)}</tbody></table>{!signals.length&&sectionEmpty('暂无用户反馈','手动添加原文，或导入 CSV / JSON。',<button className="button" disabled={writeDisabled} onClick={addSignal}><Plus size={15}/>添加反馈</button>)}</div></section>
-    </div>}
-    {section==='inbox'&&<>
-      <div className="toolbar"><div className="search-field"><Search size={17}/><input aria-label="搜索反馈" placeholder="搜索反馈原文、来源…" value={search} onChange={e=>setSearch(e.target.value)}/></div><div className="button-row"><button className="button" disabled={writeDisabled} onClick={()=>withProduct(()=>{setImportText('');setFormError('');setImportOpen(true)})}><Upload size={15}/>导入 CSV / JSON</button><button className="button" onClick={()=>download('EvoPM-feedback-template.csv',CSV_TEMPLATE,'text/csv;charset=utf-8')}><ArrowDownToLine size={15}/>下载模板</button></div></div>
-      <section className="panel"><div className="panel-heading"><h2>原始反馈 <span className="count-tag">{count(signals.length)}</span></h2><button className="button small primary" disabled={writeDisabled||(!!product&&!selectedSignals.length)} onClick={()=>withProduct(buildCluster)}><Layers3 size={14}/>归为反馈簇 {selectedSignals.length?`(${selectedSignals.length})`:''}</button></div><div className="table-wrap"><table className="feedback-table"><thead><tr><th><input type="checkbox" aria-label="选择所有反馈" disabled={!dataKnown||!signals.length} checked={signals.length>0&&selectedSignals.length===signals.length} onChange={e=>setSelectedSignals(e.target.checked?signals.map(s=>s.id):[])}/></th><th>用户声音</th><th>来源</th><th>记录时间</th><th>标识</th><th/></tr></thead><tbody>{filteredSignals.map(s=><tr key={s.id}><td><input type="checkbox" aria-label={`选择反馈 ${s.text.slice(0,20)}`} checked={selectedSignals.includes(s.id)} onChange={()=>setSelectedSignals(toggle(selectedSignals,s.id))}/></td><td><button className="text-button feedback-text" onClick={()=>setDetail({type:'signal',id:s.id})}>{s.text}</button><span className="table-sub">{s.userKey||'匿名用户'} {clusters.some(c=>c.signalIds.includes(s.id))?'· 已归簇':''}</span></td><td><span className="source-label">{s.source}</span></td><td className="nowrap muted">{iso(s.createdAt)}</td><td><Badge value={s.mode}/></td><td><button className="icon-button" aria-label="查看反馈详情" onClick={()=>setDetail({type:'signal',id:s.id})}><ChevronRight size={15}/></button></td></tr>)}</tbody></table>{signals.length>0&&!filteredSignals.length&&<Empty title="没有匹配的反馈" text="请尝试其他关键词，或清空搜索查看全部反馈。" icon={Search} action={<button className="button small" onClick={()=>setSearch('')}>清空搜索</button>}/>} {!signals.length&&sectionEmpty('暂无原始反馈','手动添加反馈，或导入 CSV / JSON。',<button className="button primary" disabled={writeDisabled} onClick={addSignal}><Plus size={15}/>添加反馈</button>)}</div></section>
-      <div className="section-title"><div><h2>反馈簇 <span className="count-tag">{count(clusters.length)}</span></h2></div><button className="button small" disabled={writeDisabled||(!!product&&selectedClusters.length<2)} onClick={()=>withProduct(mergeClusters)}>合并所选 {selectedClusters.length>0&&`(${selectedClusters.length})`}</button></div><div className="cluster-grid">{clusters.map(c=><article className={`cluster-card ${c.status==='discarded'?'is-discarded':''}`} key={c.id}><div className="cluster-top"><label className="checkbox-label"><input type="checkbox" aria-label={`选择反馈簇 ${c.title}`} checked={selectedClusters.includes(c.id)} disabled={c.status!=='active'} onChange={()=>setSelectedClusters(toggle(selectedClusters,c.id))}/><span>{c.signalIds.length} 条反馈</span></label><Badge value={c.status}/></div><h3>{c.title}</h3><p className="cluster-quote">“{signals.find(s=>s.id===c.signalIds[0])?.text??'无关联原文'}”</p>{c.reason&&<p className="muted">原因：{c.reason}</p>}<div className="cluster-actions"><button className="button small" disabled={c.status!=='active'||writeDisabled} onClick={()=>setReqEditor({cluster:c})}>整理为需求 <ArrowRight size={13}/></button><button className="icon-button" title="拆分反馈簇" aria-label="拆分反馈簇" disabled={c.status!=='active'||c.signalIds.length<2||writeDisabled} onClick={()=>splitCluster(c)}><GitBranch size={15}/></button><button className="icon-button" title="淘汰反馈簇" aria-label="淘汰反馈簇" disabled={c.status!=='active'||writeDisabled} onClick={()=>discardCluster(c)}><X size={15}/></button></div>{c.status==='active'&&<div className="cluster-ai"><button className="text-button" disabled={writeDisabled} onClick={()=>void mutate({type:'run.analyze',productId:pid,clusterId:c.id})}><Sparkles size={13}/>{connected?.engine?'AI 辅助分析':'尝试 AI 分析'}</button><button className="text-button" disabled={writeDisabled} onClick={()=>importAgent(c)}>导入分析结果</button></div>}</article>)}</div>{!clusters.length&&<section className="panel cluster-empty">{sectionEmpty('暂无反馈簇','勾选上方相关反馈，点击「归为反馈簇」。',undefined,Layers3)}</section>}
-    </>}
-    {section==='decisions'&&<><div className="toolbar"><div className="tabs">{[{v:'all',l:'全部需求',n:requirements.length},{v:'draft',l:'待评审',n:requirements.filter(r=>r.decision==='draft').length},{v:'needs_evidence',l:'待补证据',n:requirements.filter(r=>r.decision==='needs_evidence').length},{v:'approved',l:'已通过',n:approved.length},{v:'rejected',l:'已驳回',n:requirements.filter(r=>r.decision==='rejected').length}].map(t=><button className={filter===t.v?'active':''} key={t.v} onClick={()=>setFilter(t.v)}>{t.l}<span>{count(t.n)}</span></button>)}</div><button className="button" disabled={writeDisabled} onClick={()=>withProduct(()=>navigate('inbox'))}><Plus size={15}/>从反馈创建需求</button></div><section className="panel">{requireTable(requirements.filter(r=>filter==='all'||r.decision===filter))}</section><div className="explanation"><ShieldCheck size={18}/><div><strong>评分提供参考，决策始终由人完成</strong><p>完整度仅检查字段与人工证据标注，不评判语义质量；优先级由影响、信心与投入估算。通过需求前，请检查原文、反驳证据与缺失信息。</p></div></div></>}
-    {section==='changes'&&<><div className="integration-banner"><span className={`integration-icon ${connected?.runner?'online':''}`}><Code2 size={20}/></span><div><strong>{!dataKnown?'执行器配置尚未加载':connected?.runner?'外部执行器已配置，待调用验证':'外部执行器尚未连接'}</strong><p>{!dataKnown?'登录并加载工作区后查看真实配置。':connected?.runner?'先审查方案并批准，再导出变更包。':'可先完成方案审批并导出变更包，再登记真实执行环境的回执。'}</p></div><button className="text-button" onClick={()=>navigate('settings')}>查看连接 <ArrowUpRight size={15}/></button></div><div className="section-title"><h2>变更方案 <span className="count-tag">{count(plans.length)}</span></h2><button className="button" disabled={writeDisabled} onClick={()=>withProduct(()=>navigate('decisions'))}><Plus size={15}/>从已通过需求创建</button></div><div className="plans-list">{plans.map(p=>{const a=planApproval(p);const release=state.releases.find(r=>r.planId===p.id&&r.planVersion===p.version);return <article className="plan-card" key={p.id}><div className="plan-symbol"><GitBranch size={23}/></div><div className="plan-summary"><div className="button-row"><span className="tiny-label">变更方案 · v{p.version}</span>{p.mode==='sample'&&<Badge value="sample"/>}</div><button className="text-button strong" onClick={()=>setDetail({type:'plan',id:p.id})}>{p.title}</button><p>{p.goal}</p><div className="plan-meta"><span><GitCommitHorizontal size={14}/>{p.baseCommit.length>16?p.baseCommit.slice(0,12)+'…':p.baseCommit}</span><span><Clock3 size={14}/>{p.budget}</span></div></div><div className="plan-status"><Badge value={release?'completed':a?.decision??'draft'}>{release?'已有发布回执':a?LABELS[a.decision]:'待人工批准'}</Badge><button className="button small" onClick={()=>setDetail({type:'plan',id:p.id})}>审查方案 <ArrowRight size={14}/></button></div></article>})}{!plans.length&&<section className="panel"><div className="table-wrap"><table><thead><tr><th>方案名称</th><th>版本</th><th>审批状态</th><th>执行状态</th></tr></thead><tbody/></table></div>{sectionEmpty('暂无变更方案','先通过需求，再定义修改范围、风险、验收和回滚。',<button className="button" disabled={writeDisabled} onClick={()=>withProduct(()=>navigate('decisions'))}>查看需求决策 <ArrowRight size={15}/></button>,GitBranch)}</section>}</div></>}
-    {section==='outcomes'&&<><section className="outcome-intro"><div><h2>发布效果对照</h2></div><p>记录观察窗口、样本量、来源与干扰因素。<br/>前后差异不单独代表因果关系。</p><BarChart3 size={35}/></section><div className="outcome-grid">{outcomes.map(o=>{const diff=o.after-o.before;return <article className="panel outcome-card" key={o.id}><div className="panel-heading"><div><h3>{o.metric}</h3></div><span className="tiny-label">{iso(o.createdAt)}</span></div><div className="outcome-values"><div><label>变更前</label><strong>{o.before}<small>{o.unit}</small></strong></div><ArrowRight size={20}/><div><label>变更后</label><strong>{o.after}<small>{o.unit}</small></strong></div><span className="change-value">{diff>0?'+':''}{Number(diff.toFixed(3))} {o.unit}</span></div><dl className="compact-dl"><div><dt>前 / 后窗口</dt><dd>{o.beforeWindow}<br/>{o.afterWindow}</dd></div><div><dt>样本量</dt><dd>{o.sampleSize}</dd></div><div><dt>数据来源</dt><dd>{o.source}</dd></div><div><dt>干扰因素</dt><dd>{o.confounders}</dd></div></dl><div className="outcome-footer"><CircleHelp size={14}/>前后差异为观察结果，不代表因果关系</div></article>})}</div>{!outcomes.length&&<section className="panel"><div className="table-wrap"><table><thead><tr><th>关联方案</th><th>观察指标</th><th>变更前</th><th>变更后</th><th>观察窗口</th></tr></thead><tbody/></table></div>{sectionEmpty('暂无效果观察','完成发布后，登记指标、观察窗口和数据来源。',<button className="button" disabled={writeDisabled} onClick={()=>plans.length?recordOutcome():navigate('changes')}>{plans.length?'记录效果':'查看变更方案'}<ArrowRight size={15}/></button>,BarChart3)}</section>}</>}
-    {section==='runs'&&<><section className="panel"><div className="panel-heading"><h2>分析运行 <span className="count-tag">{count(runs.length)}</span></h2></div><div className="table-wrap"><table><thead><tr><th>运行 / 模式</th><th>状态</th><th>模型</th><th>耗时</th><th>时间</th><th/></tr></thead><tbody>{[...runs].reverse().map(r=><tr key={r.id} className="click-row" onClick={()=>setDetail({type:'run',id:r.id})}><td><button className="text-button strong" onClick={()=>setDetail({type:'run',id:r.id})}>{r.id.slice(0,14)}</button><p className="table-sub"><Badge value={r.mode}/></p></td><td><Badge value={r.status}/></td><td>{r.model||'未调用模型'}</td><td>{r.durationMs>0?`${(r.durationMs/1000).toFixed(2)} s`:'—'}</td><td className="nowrap muted">{iso(r.createdAt)}</td><td><ChevronRight size={15}/></td></tr>)}</tbody></table>{!runs.length&&sectionEmpty('暂无分析运行','在反馈簇发起分析或导入结果后，可在这里检查每一步。',<button className="button small" disabled={writeDisabled} onClick={()=>withProduct(()=>navigate('inbox'))}>前往反馈簇</button>,Workflow)}</div></section><section className="panel audit-panel"><div className="panel-heading"><h2>操作轨迹</h2><span className="tiny-label">最近 {count(Math.min(30,audit.length))} 条</span></div><div className="audit-list">{audit.slice(-30).reverse().map(a=><div className="audit-row" key={a.id}><span className="audit-dot"/><div><strong>{a.action}</strong><p>{a.detail}</p></div><time>{iso(a.createdAt)}</time></div>)}{!audit.length&&<p className="muted padded">{dataKnown?'暂无操作记录。':'操作轨迹尚未加载。'}</p>}</div></section></>}
-    {section==='settings'&&<div className="settings-grid"><section className="panel"><div className="panel-heading"><div><h2>产品方向</h2></div><button className="button small" disabled={writeDisabled} onClick={()=>createProduct(product)}>{product?'编辑资料':'创建产品'}</button></div><dl className="settings-dl">{[['产品名称',product?.name],['一句话介绍',product?.description],['目标用户',product?.users],['当前目标',product?.goal],['核心指标',product?.metric],['代码仓库',product?.repository]].map(([k,v])=><div key={k}><dt>{k}</dt><dd>{v||<span className="muted">{!dataKnown?'—':!product?'尚未创建产品':'尚未填写'}</span>}</dd></div>)}</dl></section><section className="panel"><div className="panel-heading"><div><h2>服务连接</h2></div><span className="tiny-label">只读状态</span></div><div className="connection-list">{[{name:'模型服务',desc:'结构化分析与需求整理',on:connected?.model,icon:Sparkles},{name:'分析引擎',desc:'工作流与证据检查',on:connected?.engine,icon:Workflow},{name:'外部 Runner',desc:'执行批准后的变更',on:connected?.runner,icon:Code2},{name:'GitHub',desc:'代码与执行记录关联',on:connected?.github,icon:GitBranch}].map(c=><div className="connection" key={c.name}><span className="connection-icon"><c.icon size={20}/></span><div><strong>{c.name}</strong><p>{c.desc}</p></div><span className={`connection-state ${dataKnown&&c.on?'connected':''}`}><i/>{!dataKnown?'—':c.on?'已配置 · 待验证':'未配置'}</span></div>)}</div><p className="settings-note"><ShieldCheck size={15}/>服务凭据由部署环境管理，此页面不收集或显示密钥。</p></section><section className="panel workspace-panel"><div><h2>探索示例工作区</h2><p>通过一组明确标记的示例数据，了解完整的产品演进流程。</p></div><button className="button" disabled={writeDisabled} onClick={()=>void mutate({type:'sample.load'})}><BookOpen size={15}/>加载演示数据</button></section></div>}
-    <footer className="page-footer"><span>EvoPM · 产品演进工作台</span></footer>
-   </main>
-  </div>
-  {toast&&<div className={`toast ${toast.error?'error':''}`} role={toast.error?'alert':'status'}>{toast.error?<XCircle size={18}/>:<CheckCircle2 size={18}/>}<span>{toast.text}</span><button aria-label="关闭提示" onClick={()=>setToast(null)}><X size={15}/></button></div>}
-  {form&&<Dialog title={form.title} description={form.description} onClose={()=>!busy&&setForm(null)}><GenericForm key={form.title} config={form} busy={writeDisabled} error={formError} onError={setFormError} onComplete={()=>setForm(null)}/></Dialog>}
-  {reqEditor&&<Dialog title={reqEditor.requirement?'编辑需求与证据':'从反馈整理一项需求'} description="先讲清用户的问题，再界定范围、验收方式与证据。保存后不会自动通过。" onClose={()=>!busy&&setReqEditor(null)} wide><RequirementForm cluster={reqEditor.cluster} requirement={reqEditor.requirement} signals={signals} busy={writeDisabled} error={formError} save={async action=>{const ok=await save(action);if(ok)setReqEditor(null);return ok}}/></Dialog>}
-  {importOpen&&<Dialog title="导入用户反馈" description="支持 CSV 或 JSON。CSV 需包含 text 列；JSON 使用对象数组或 { items: [...] }。建议先下载模板。" onClose={()=>!busy&&setImportOpen(false)}><form onSubmit={async e=>{e.preventDefault();try{const items=parseSignals(importText);const ok=await save({type:'signals.import',productId:pid,items});if(ok)setImportOpen(false)}catch(e){setFormError(e instanceof Error?e.message:'解析失败')}}}><div className="import-file"><Upload size={25}/><label htmlFor="import-file">选择 CSV / JSON 文件</label><input id="import-file" type="file" accept=".csv,.json,text/csv,application/json" onChange={async e=>{const f=e.target.files?.[0];if(f)setImportText(await f.text())}}/><small>也可以直接粘贴内容</small><button type="button" className="text-button" onClick={()=>download('EvoPM-feedback-template.json',[{text:'请替换为真实的用户原话',source:'用户访谈',userKey:'user-01',redacted:false}])}>下载 JSON 模板 <ArrowDownToLine size={13}/></button></div><label className="field"><span>待导入内容</span><textarea value={importText} onChange={e=>setImportText(e.target.value)} rows={9} required placeholder={'text,source,userKey\n"希望可以批量导入反馈",用户访谈,user-01'}/></label><p className="form-help">导入前请移除姓名、联系方式等敏感信息。相同来源 ID 的重复记录会由服务器处理。</p>{formError&&<div className="inline-error" role="alert">{formError}</div>}<div className="form-footer"><button type="button" className="text-button" onClick={()=>download('EvoPM-feedback-template.csv',CSV_TEMPLATE,'text/csv;charset=utf-8')}><ArrowDownToLine size={15}/>下载 CSV 模板</button><button className="button primary" disabled={writeDisabled||!importText.trim()}>{busy?<LoaderCircle className="spin" size={16}/>:<Upload size={16}/>}校验并导入</button></div></form></Dialog>}
-  {detail&&<div className="drawer-overlay" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)setDetail(null)}}><aside className="drawer" ref={drawerRef} role="dialog" aria-modal="true" aria-label="记录详情"><div className="drawer-top"><span className="eyebrow">{detail.type==='requirement'?'需求详情':detail.type==='plan'?'变更方案':detail.type==='run'?'运行详情':'反馈原文'}</span><button className="icon-button" aria-label="关闭详情" onClick={()=>setDetail(null)}><X size={21}/></button></div><div className="drawer-content">
-   {detailReq&&<><div className="button-row"><Badge value={detailReq.decision}/><Badge value={detailReq.mode}/><span className="tiny-label">v{detailReq.version}</span></div><h2 className="drawer-title">{detailReq.title}</h2><div className="requirement-metrics"><div><label>材料完整度</label><strong>{detailReq.quality.score}<small>/100</small></strong></div><div><label>优先级</label><strong>{detailReq.score.priority.toFixed(1)}</strong></div><div><label>影响 / 信心 / 投入</label><strong className="small-value">{detailReq.score.impact} / {detailReq.score.confidence} / {detailReq.score.effort}</strong></div></div><DetailText title="用户故事" text={detailReq.story}/><DetailText title="需求范围" text={detailReq.scope}/><DetailText title="验收标准" text={detailReq.acceptance}/><DetailText title="反方观点与风险" text={detailReq.critic}/><div className="detail-section"><h3>材料完整性门禁</h3><div className="checks">{detailReq.quality.checks.map(c=><div key={c.label} className={c.pass?'pass':'missing'}>{c.pass?<CheckCircle2 size={15}/>:<Circle size={15}/>}<span>{c.label}</span></div>)}</div>{detailReq.quality.missing.length>0&&<p className="warning-note">待补充：{detailReq.quality.missing.join('；')}</p>}</div><div className="detail-section"><h3>原始证据 <span>{detailReq.links.length}</span></h3><div className="evidence-list">{detailReq.links.map((link,i)=><div className="evidence" key={link.signalId+i}><div><Badge value={link.relation==='supports'?'approved':link.relation==='contradicts'?'rejected':'needs_evidence'}>{link.relation==='supports'?'支持':link.relation==='contradicts'?'反驳':'证据不足'}</Badge><span>{signals.find(s=>s.id===link.signalId)?.source}</span></div><blockquote>{signals.find(s=>s.id===link.signalId)?.text??'找不到原始反馈'}</blockquote>{link.note&&<p>{link.note}</p>}</div>)}</div></div>{detailReq.decisionNote&&<DetailText title="人工决策说明" text={detailReq.decisionNote}/>}<div className="drawer-action-grid"><button className="button" disabled={writeDisabled} onClick={()=>{const c=clusters.find(c=>c.id===detailReq.clusterId);if(c){setFormError('');setReqEditor({cluster:c,requirement:detailReq})}}}>编辑需求</button><button className="button" disabled={writeDisabled} onClick={()=>decideRequirement(detailReq,'needs_evidence')}>要求补证据</button><button className="button danger" disabled={writeDisabled} onClick={()=>decideRequirement(detailReq,'rejected')}>驳回需求</button><button className="button primary" disabled={writeDisabled} onClick={()=>detailReq.decision==='approved'?editPlan(detailReq):decideRequirement(detailReq,'approved')}>{detailReq.decision==='approved'?<GitBranch size={15}/>:<Check size={15}/>} {detailReq.decision==='approved'?'创建变更方案':'人工通过需求'}</button></div></>}
-   {detailPlan&&<><div className="button-row"><Badge value={planApproval(detailPlan)?.decision??'draft'}/><Badge value={detailPlan.mode}/><span className="tiny-label">v{detailPlan.version} · 输入需求 v{detailPlan.inputVersion}</span></div><h2 className="drawer-title">{detailPlan.title}</h2>{[['变更目标',detailPlan.goal],['修改范围',detailPlan.scope],['明确不做',detailPlan.nonGoals],['验收标准',detailPlan.acceptance],['风险与防护',detailPlan.risks],['回滚方案',detailPlan.rollback],['基线 commit',detailPlan.baseCommit],['执行预算',detailPlan.budget]].map(([title,text])=><DetailText key={title} title={title} text={text}/>)}<div className="detail-section"><h3>人工审批记录</h3>{state.approvals.filter(a=>a.planId===detailPlan.id).map(a=><div className="approval-record" key={a.id}><div><Badge value={a.decision}/><span>v{a.planVersion} · {a.actor}</span></div><p>{a.note}</p><small>{iso(a.createdAt)}</small></div>)}{!state.approvals.some(a=>a.planId===detailPlan.id)&&<p className="muted">当前尚未审批。</p>}</div><div className="drawer-action-grid"><button className="button" disabled={writeDisabled} onClick={()=>{const r=requirements.find(r=>r.id===detailPlan.requirementId);if(r)editPlan(r,detailPlan)}}>编辑方案</button><button className="button" disabled={writeDisabled} onClick={()=>approvePlan(detailPlan,'rejected')}>驳回方案</button><button className="button primary" disabled={writeDisabled} onClick={()=>approvePlan(detailPlan,'approved')}><Check size={15}/>批准当前版本</button><button className="button" disabled={writeDisabled||planApproval(detailPlan)?.decision!=='approved'} onClick={()=>void exportPlan(detailPlan)}><ArrowDownToLine size={15}/>导出变更包</button></div><div className="warning-note"><Code2 size={15}/>{connected?.runner?'执行服务已配置。请根据导出包的审批版本执行。':'外部 Runner 未连接；导出不会执行代码，也不会自动部署。'}</div><div className="detail-section"><h3>CI 与评测回执</h3>{state.evaluations.filter(e=>e.planId===detailPlan.id).map(e=><div className="receipt" key={e.id}><div><Badge value={e.status}/><strong>{e.kind==='ci'?'CI 检查':'产品评测'}</strong><span>{e.commit.slice(0,12)}</span></div><p>{e.note}</p>{e.url&&<a href={safeLink(e.url)} target="_blank" rel="noreferrer">查看证据 <ExternalLink size={12}/></a>}</div>)}<button className="button small" disabled={writeDisabled} onClick={()=>recordEvaluation(detailPlan)}><Plus size={14}/>登记人工回执</button></div><div className="detail-section"><h3>发布记录</h3>{state.releases.filter(r=>r.planId===detailPlan.id).map(r=><div className="receipt" key={r.id}><strong>{r.commit.slice(0,16)}</strong><p>{r.note}</p><a href={safeLink(r.url)} target="_blank" rel="noreferrer">发布证据 <ExternalLink size={12}/></a></div>)}<div className="button-row"><button className="button small" disabled={writeDisabled} onClick={()=>recordRelease(detailPlan)}>登记发布回执</button><button className="button small" disabled={writeDisabled} onClick={()=>recordOutcome(detailPlan)}>记录前后效果</button></div></div></>}
-   {detailRun&&<><div className="button-row"><Badge value={detailRun.status}/><Badge value={detailRun.mode}/></div><h2 className="drawer-title">分析运行检查器</h2><code className="run-id">{detailRun.id}</code><dl className="compact-dl">{[['模型',detailRun.model||'未调用'],['输入版本',detailRun.inputVersion],['提示版本',detailRun.promptVersion],['尝试次数',String(detailRun.attempt)],['预算',detailRun.budget],['耗时',detailRun.durationMs>0?`${detailRun.durationMs} ms`:'未实测']].map(([k,v])=><div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl><div className="detail-section"><h3>实际运行步骤</h3><div className="run-steps">{detailRun.steps.map((step,i)=><div className={`run-step ${step.status}`} key={step.id}><span className="run-step-icon">{step.status==='completed'?<Check size={16}/>:step.status==='failed'?<X size={16}/>:<Clock3 size={16}/>}</span><div><div><strong>{i+1}. {step.name}</strong><Badge value={step.status}/></div><p>{step.message}</p><code>checkpoint · {step.checkpoint||'无'}</code></div></div>)}</div></div>{detailRun.rawResult&&<details className="raw-result"><summary>查看原始结果</summary><pre>{detailRun.rawResult}</pre></details>}</>}
-   {detailSignal&&<><div className="button-row"><Badge value={detailSignal.mode}/><Badge>{detailSignal.redacted?'已标记脱敏':'未标记脱敏'}</Badge></div><h2 className="drawer-title">用户的原始声音</h2><blockquote className="signal-blockquote">{detailSignal.text}</blockquote><dl className="compact-dl">{[['来源',detailSignal.source],['匿名用户',detailSignal.userKey||'未提供'],['来源记录 ID',detailSignal.sourceId||'未提供'],['发生时间',detailSignal.occurredAt?iso(detailSignal.occurredAt):'未提供'],['记录时间',iso(detailSignal.createdAt)]].map(([k,v])=><div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl><div className="detail-section"><h3>所在反馈簇</h3>{clusters.filter(c=>c.signalIds.includes(detailSignal.id)).map(c=><div className="receipt" key={c.id}><Badge value={c.status}/><p>{c.title}</p></div>)}{!clusters.some(c=>c.signalIds.includes(detailSignal.id))&&<p className="muted">尚未归簇。在收件箱勾选相关反馈后整理。</p>}</div></>}
-  </div></aside></div>}
- </div>
+function downloadFile(name: string, content: string, type = 'text/markdown;charset=utf-8') {
+  const url = URL.createObjectURL(new Blob([content], { type }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 600);
 }
-function safeLink(url:string){return /^https?:\/\//i.test(url)?url:'#'}
-function DetailText({title,text}:{title:string;text:string}){return <div className="detail-section"><h3>{title}</h3><p className="preserve-lines">{text||'尚未填写'}</p></div>}
-function Dialog({title,description,onClose,children,wide=false}:{title:string;description?:string;onClose:()=>void;children:ReactNode;wide?:boolean}){const ref=useRef<HTMLDivElement>(null);useEffect(()=>{const prev=document.activeElement as HTMLElement|null;const el=ref.current;el?.querySelector<HTMLElement>('input,textarea,select,button')?.focus();const trap=(e:KeyboardEvent)=>{if(e.key!=='Tab'||!el)return;const els=[...el.querySelectorAll<HTMLElement>('button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),a[href]')];if(!els.length)return;const first=els[0],last=els.at(-1)!;if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}};el?.addEventListener('keydown',trap);return()=>{el?.removeEventListener('keydown',trap);prev?.focus()}},[]);return <div className="modal-overlay" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}><div className={`modal ${wide?'wide':''}`} role="dialog" aria-modal="true" aria-label={title} ref={ref}><div className="modal-header"><div><h2>{title}</h2>{description&&<p>{description}</p>}</div><button type="button" className="icon-button" aria-label="关闭弹窗" onClick={onClose}><X size={20}/></button></div><div className="modal-body">{children}</div></div></div>}
-function GenericForm({config,busy,error,onError,onComplete}:{config:FormConfig;busy:boolean;error:string;onError:(e:string)=>void;onComplete:()=>void}){async function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();onError('');const values=Object.fromEntries(new FormData(e.currentTarget).entries()) as Record<string,string>;try{if(await config.save(values))onComplete()}catch(e){onError(e instanceof Error?e.message:'输入有误，请检查')}}return <form onSubmit={submit}><div className="form-grid">{config.fields.map(f=><FieldInput key={f.name} field={f}/>)}</div>{config.extra}{error&&<div className="inline-error" role="alert">{error}</div>}<div className="form-footer"><span><ShieldCheck size={14}/>保存至当前工作区</span><button className="button primary" disabled={busy}>{busy?<LoaderCircle className="spin" size={16}/>:<Check size={16}/>} {config.submit||'保存'}</button></div></form>}
-function FieldInput({field:f}:{field:Field}){const id='field-'+f.name;return <label className={`field ${f.wide?'wide':''}`} htmlFor={id}><span>{f.label}{f.required&&<i>*</i>}</span>{f.type==='textarea'?<textarea id={id} name={f.name} defaultValue={f.value} placeholder={f.placeholder} required={f.required} rows={4}/>:f.type==='select'?<select id={id} name={f.name} defaultValue={f.value} required={f.required}>{f.options?.map(o=><option value={o.value} key={o.value}>{o.label}</option>)}</select>:<input id={id} name={f.name} type={f.type??'text'} defaultValue={f.value} placeholder={f.placeholder} required={f.required} min={f.min} max={f.max} step={f.type==='number'?'any':undefined}/>} {f.help&&<small>{f.help}</small>}</label>}
-function RequirementForm({cluster,requirement:r,signals,busy,error,save}:{cluster:Cluster;requirement?:Requirement;signals:Signal[];busy:boolean;error:string;save:(a:Action)=>Promise<boolean>}){
- const [links,setLinks]=useState<EvidenceLink[]>(r?.links??cluster.signalIds.map(signalId=>({signalId,relation:'insufficient',note:''})));
- const related=signals.filter(s=>cluster.signalIds.includes(s.id)||links.some(l=>l.signalId===s.id));
- const updateLink=(id:string,key:'relation'|'note',value:string)=>setLinks(links.map(l=>l.signalId===id?{...l,[key]:value}:l) as EvidenceLink[]);
- return <form onSubmit={async e=>{e.preventDefault();const v=Object.fromEntries(new FormData(e.currentTarget).entries()) as Record<string,string>;await save({type:r?'requirement.update':'requirement.create',productId:cluster.productId,...(r?{requirementId:r.id}:{clusterId:cluster.id}),title:v.title,story:v.story,scope:v.scope,acceptance:v.acceptance,critic:v.critic,links,impact:Number(v.impact),confidence:Number(v.confidence),effort:Number(v.effort)} as Action)}}><div className="form-grid"><FieldInput field={{name:'title',label:'需求标题',value:r?.title??cluster.title,required:true,wide:true}}/><FieldInput field={{name:'story',label:'用户故事',value:r?.story,type:'textarea',required:true,wide:true,placeholder:'作为 [目标用户]，我希望 [完成目标]，以便 [获得价值]。',help:'至少 12 字，清楚说明用户与使用情境。'}}/><FieldInput field={{name:'scope',label:'需求范围',value:r?.scope,type:'textarea',required:true,placeholder:'本次包括什么？不包括什么？',help:'至少 8 字，明确边界。'}}/><FieldInput field={{name:'acceptance',label:'可检验的验收标准',value:r?.acceptance,type:'textarea',required:true,placeholder:'在什么条件下，做什么操作，应得到什么结果？',help:'至少 12 字，给出可检验的条件与结果。'}}/><FieldInput field={{name:'critic',label:'反方观点 / 风险',value:r?.critic,type:'textarea',required:true,wide:true,placeholder:'为什么可能不该做？现有证据有什么局限？',help:'至少 8 字，记录反方观点和不确定性。'}}/></div><div className="form-section-heading"><h3>优先级估计</h3><span>用于排序参考，人工确认</span></div><div className="form-grid thirds"><FieldInput field={{name:'impact',label:'影响 Impact · 1–5',type:'number',value:r?.score.impact??3,min:1,max:5,required:true}}/><FieldInput field={{name:'confidence',label:'信心 Confidence · 0–100',type:'number',value:r?.score.confidence??50,min:0,max:100,required:true}}/><FieldInput field={{name:'effort',label:'投入 Effort · 1–5',type:'number',value:r?.score.effort??3,min:1,max:5,required:true}}/></div><div className="form-section-heading"><h3>证据原文与关系</h3><span>{links.length} 条已关联</span></div><div className="evidence-editor">{related.map(s=>{const link=links.find(l=>l.signalId===s.id);return <div className="evidence-edit" key={s.id}><label className="checkbox-label"><input type="checkbox" checked={!!link} onChange={e=>setLinks(e.target.checked?[...links,{signalId:s.id,relation:'insufficient',note:''}]:links.filter(l=>l.signalId!==s.id))}/><strong>{s.source}</strong><span>{s.userKey||'匿名用户'}</span></label><blockquote>{s.text}</blockquote>{link&&<div className="evidence-inputs"><select aria-label={`证据关系：${s.text.slice(0,12)}`} value={link.relation} onChange={e=>updateLink(s.id,'relation',e.target.value)}><option value="supports">支持需求</option><option value="contradicts">反驳需求</option><option value="insufficient">证据不足</option></select><input aria-label={`证据说明：${s.text.slice(0,12)}`} placeholder="这条证据说明什么？支持依据至少 4 字" value={link.note} onChange={e=>updateLink(s.id,'note',e.target.value)}/></div>}</div>})}</div>{error&&<div className="inline-error" role="alert">{error}</div>}<div className="form-footer"><span><ShieldCheck size={14}/>保存后进入人工评审</span><button className="button primary" disabled={busy}>{busy?<LoaderCircle className="spin" size={16}/>:<Check size={16}/>}保存需求</button></div></form>
+
+function generateSpecMarkdown(product?: Product, requirements: Requirement[] = [], signals: Signal[] = []) {
+  const lines = [
+    `# Feature Specification: ${product?.name || '未命名产品'}`,
+    '',
+    `- **目标用户**: ${product?.users || '待补充'}`,
+    `- **当前产品目标**: ${product?.goal || '待补充'}`,
+    `- **核心观测指标**: ${product?.metric || '待补充'}`,
+    `- **仓库地址**: ${product?.repository || '未绑定'}`,
+    '',
+    '---',
+    '',
+  ];
+  if (!requirements.length) {
+    lines.push('> 尚未创建需求规格（Spec）。请先从 Stage 1 痛点簇提炼需求规格。');
+    return lines.join('\n');
+  }
+  requirements.forEach((req, idx) => {
+    lines.push(`## Spec ${String(idx + 1).padStart(2, '0')}: ${req.title}`);
+    lines.push('');
+    lines.push(`- **决策状态**: ${LABELS[req.decision] || req.decision} (v${req.version})`);
+    lines.push(
+      `- **RICE / 优先级评分**: Priority ${req.score.priority.toFixed(1)} (Impact ${req.score.impact} / Confidence ${req.score.confidence} / Effort ${req.score.effort})`,
+    );
+    lines.push('');
+    lines.push('### User Story & Problem Statement');
+    lines.push(req.story || '待补充');
+    lines.push('');
+    lines.push('### Scope & Boundaries');
+    lines.push(req.scope || '待补充');
+    lines.push('');
+    lines.push('### Acceptance Criteria');
+    lines.push(req.acceptance || '待补充');
+    lines.push('');
+    if (req.links.length) {
+      lines.push('### Evidence & User Signals');
+      req.links.forEach((l) => {
+        const sig = signals.find((s) => s.id === l.signalId);
+        lines.push(`- **[${l.relation}]** "${sig?.text || l.signalId}" — *${l.note || '原始反馈证据'}*`);
+      });
+      lines.push('');
+    }
+  });
+  return lines.join('\n');
+}
+
+function generatePlanMarkdown(product?: Product, plans: Plan[] = []) {
+  const lines = [
+    `# Technical Implementation Plan: ${product?.name || '未命名产品'}`,
+    '',
+    '---',
+    '',
+  ];
+  if (!plans.length) {
+    lines.push('> 尚未创建技术方案（Plan）。请在 Stage 2 批准需求后进入 Stage 3 创建技术方案。');
+    return lines.join('\n');
+  }
+  plans.forEach((p, idx) => {
+    lines.push(`## Plan ${String(idx + 1).padStart(2, '0')}: ${p.title} (v${p.version})`);
+    lines.push('');
+    lines.push(`- **Baseline Commit**: \`${p.baseCommit}\``);
+    lines.push(`- **Execution Budget**: ${p.budget}`);
+    lines.push('');
+    lines.push('### Goal');
+    lines.push(p.goal);
+    lines.push('');
+    lines.push('### Technical Scope');
+    lines.push(p.scope);
+    lines.push('');
+    lines.push('### Non-Goals');
+    lines.push(p.nonGoals);
+    lines.push('');
+    lines.push('### Risks & Safeguards');
+    lines.push(p.risks);
+    lines.push('');
+    lines.push('### Rollback Strategy');
+    lines.push(p.rollback);
+    lines.push('');
+  });
+  return lines.join('\n');
+}
+
+function generateTasksMarkdown(product?: Product, plans: Plan[] = [], requirements: Requirement[] = []) {
+  const lines = [
+    `# Executable Tasks Checklist: ${product?.name || '未命名产品'}`,
+    '',
+    '---',
+    '',
+  ];
+  if (!plans.length && !requirements.length) {
+    lines.push('- [ ] T001 收集用户反馈并建立首个痛点簇 (`/speckit.specify`)');
+    lines.push('- [ ] T002 编写需求规格与验收标准 (`/speckit.specify`)');
+    lines.push('- [ ] T003 制定技术方案与回滚边界 (`/speckit.plan`)');
+    return lines.join('\n');
+  }
+  let taskNum = 1;
+  plans.forEach((p) => {
+    lines.push(`## ${p.title} (v${p.version})`);
+    lines.push('');
+    const scopeLines = p.scope
+      .split(/[\r\n；;]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const accLines = p.acceptance
+      .split(/[\r\n；;]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    scopeLines.forEach((item) => {
+      lines.push(`- [ ] T${String(taskNum++).padStart(3, '0')} [Impl] ${item}`);
+    });
+    accLines.forEach((item) => {
+      lines.push(`- [ ] T${String(taskNum++).padStart(3, '0')} [Verify] 验收：${item}`);
+    });
+    lines.push('');
+  });
+  return lines.join('\n');
+}
+
+export default function SpecKitWorkbench() {
+  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [needsLogin, setNeedsLogin] = useState(false);
+  const [productId, setProductId] = useState('');
+  const [activeStage, setActiveStage] = useState<StageTab>('signals');
+  const [busy, setBusy] = useState(false);
+  const [toast, setToast] = useState<{ text: string; error?: boolean } | null>(null);
+  const [modal, setModal] = useState<string>('');
+
+  // Selection & Filters
+  const [search, setSearch] = useState('');
+  const [selectedSignals, setSelectedSignals] = useState<string[]>([]);
+  const [selectedCluster, setSelectedCluster] = useState<Cluster | null>(null);
+  const [editingRequirement, setEditingRequirement] = useState<Requirement | null>(null);
+  const [targetRequirementForPlan, setTargetRequirementForPlan] = useState<Requirement | null>(null);
+  const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
+  const [importText, setImportText] = useState('');
+  const [specPreviewTab, setSpecPreviewTab] = useState<'spec' | 'plan' | 'tasks'>('spec');
+
+  const busyRef = useRef(false);
+  const revisionRef = useRef(0);
+
+  const state = snapshot?.state ?? EMPTY;
+  const product = state.products.find((p) => p.id === productId) ?? state.products[0];
+  const pid = product?.id ?? '';
+
+  const signals = useMemo(() => state.signals.filter((x) => x.productId === pid), [state.signals, pid]);
+  const clusters = useMemo(() => state.clusters.filter((x) => x.productId === pid), [state.clusters, pid]);
+  const requirements = useMemo(
+    () => state.requirements.filter((x) => x.productId === pid),
+    [state.requirements, pid],
+  );
+  const plans = useMemo(() => state.plans.filter((x) => x.productId === pid), [state.plans, pid]);
+  const evaluations = useMemo(
+    () => state.evaluations.filter((x) => x.productId === pid),
+    [state.evaluations, pid],
+  );
+  const releases = useMemo(() => state.releases.filter((x) => x.productId === pid), [state.releases, pid]);
+  const outcomes = useMemo(() => state.outcomes.filter((x) => x.productId === pid), [state.outcomes, pid]);
+
+  const dataKnown = !!snapshot && !needsLogin && !loadError;
+  const writeDisabled = busy || loading || !dataKnown;
+
+  async function refresh() {
+    setLoading(true);
+    setLoadError('');
+    try {
+      const res = await fetch('/api/m/evopm-workbench/workbench', { cache: 'no-store' });
+      const data = (await res.json()) as ApiResponse;
+      if (!res.ok) {
+        setSnapshot(null);
+        setNeedsLogin(res.status === 401);
+        throw new Error(data.error || (res.status === 401 ? '请登录以打开你的工作区' : '读取工作区失败'));
+      }
+      setNeedsLogin(false);
+      setSnapshot(data);
+      revisionRef.current = data.revision;
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : '无法连接服务');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void refresh();
+  }, []);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 4500);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  async function mutate(action: Action): Promise<ApiResponse | null> {
+    if (busyRef.current || loading || !dataKnown) return null;
+    busyRef.current = true;
+    setBusy(true);
+    try {
+      const res = await fetch('/api/m/evopm-workbench/workbench', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          revision: revisionRef.current,
+          requestId: crypto.randomUUID(),
+          action,
+        }),
+      });
+      const data = (await res.json()) as ApiResponse;
+      if (res.status === 401) {
+        setNeedsLogin(true);
+        setLoadError('登录已失效，请重新登录');
+      }
+      if (!res.ok) {
+        throw new Error(data.error || '保存失败');
+      }
+      setSnapshot(data);
+      revisionRef.current = data.revision;
+      if (action.type === 'sample.load' && data.result?.productId) {
+        setProductId(data.result.productId);
+      }
+      setToast({
+        text: data.result?.error || data.notice || '已保存到云端工作区',
+        error: !!data.result?.error,
+      });
+      return data;
+    } catch (e) {
+      const message = e instanceof Error ? e.message : '操作失败';
+      setToast({ text: message, error: true });
+      return null;
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  }
+
+  const planApproval = (p: Plan) => {
+    const a = state.approvals.filter((x) => x.planId === p.id).at(-1);
+    const r = requirements.find((x) => x.id === p.requirementId);
+    if (
+      !a ||
+      a.planVersion !== p.version ||
+      a.inputVersion !== p.inputVersion ||
+      a.baseCommit !== p.baseCommit ||
+      r?.version !== p.inputVersion ||
+      r.decision !== 'approved' ||
+      (p.productVersion ?? 1) !== (product?.version ?? 1)
+    ) {
+      return undefined;
+    }
+    return a;
+  };
+
+  const specMd = useMemo(
+    () => generateSpecMarkdown(product, requirements, signals),
+    [product, requirements, signals],
+  );
+  const planMd = useMemo(() => generatePlanMarkdown(product, plans), [product, plans]);
+  const tasksMd = useMemo(
+    () => generateTasksMarkdown(product, plans, requirements),
+    [product, plans, requirements],
+  );
+
+  const activePreviewText =
+    specPreviewTab === 'spec' ? specMd : specPreviewTab === 'plan' ? planMd : tasksMd;
+
+  const filteredSignals = useMemo(
+    () =>
+      signals.filter((s) =>
+        `${s.text} ${s.source} ${s.userKey}`.toLowerCase().includes(search.toLowerCase()),
+      ),
+    [signals, search],
+  );
+
+  return (
+    <div className="sk-shell">
+      {/* Top Header */}
+      <header className="sk-header">
+        <div className="sk-brand">
+          <div className="sk-logo">SK</div>
+          <div>
+            <div className="sk-title-row">
+              <h1>SpecKit 研发工作台</h1>
+              <span className="sk-badge">AI PM · EvoPM · AI 研发协作 三合一主线</span>
+            </div>
+            <p className="sk-subtitle">
+              以 SpecKit 为主线：用户痛点采集 → 需求规格 (/speckit.specify) → 技术方案与任务 (/speckit.plan &amp; tasks) → 交付验收与导出
+            </p>
+          </div>
+        </div>
+
+        <div className="sk-header-controls">
+          <div className="sk-product-picker">
+            <select
+              aria-label="切换当前产品"
+              disabled={!dataKnown || !state.products.length}
+              value={pid}
+              onChange={(e) => setProductId(e.target.value)}
+            >
+              {!product && <option value="">尚未创建产品…</option>}
+              {state.products.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} ({LABELS[p.mode] || p.mode})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            className="sk-btn"
+            disabled={writeDisabled}
+            onClick={() => setModal('product')}
+          >
+            <FolderPlus size={16} />
+            {product ? '新建 / 编辑产品' : '新建产品'}
+          </button>
+
+          <button
+            className="sk-btn"
+            disabled={writeDisabled}
+            onClick={() => void mutate({ type: 'sample.load' })}
+          >
+            <BookOpen size={16} />
+            一键载入示例项目
+          </button>
+
+          <button
+            className="sk-btn"
+            disabled={busy || loading}
+            onClick={() => void refresh()}
+            title="刷新云端数据"
+          >
+            <RefreshCw size={16} className={loading ? 'sk-spin' : ''} />
+          </button>
+        </div>
+      </header>
+
+      {/* 4-Stage SpecKit Pipeline Navigation */}
+      <nav className="sk-pipeline-nav" aria-label="SpecKit 研发四步流水线">
+        <button
+          className={`sk-stage-tab ${activeStage === 'signals' ? 'is-active' : ''}`}
+          onClick={() => setActiveStage('signals')}
+        >
+          <span className="sk-stage-num">01</span>
+          <Inbox size={18} />
+          <div className="sk-stage-text">
+            <strong>痛点与反馈池</strong>
+            <small>Signals &amp; Discovery</small>
+          </div>
+          <em className="sk-count">{signals.length}</em>
+        </button>
+
+        <button
+          className={`sk-stage-tab ${activeStage === 'specify' ? 'is-active' : ''}`}
+          onClick={() => setActiveStage('specify')}
+        >
+          <span className="sk-stage-num">02</span>
+          <Layers3 size={18} />
+          <div className="sk-stage-text">
+            <strong>需求规格定义</strong>
+            <small>/speckit.specify</small>
+          </div>
+          <em className="sk-count">{requirements.length}</em>
+        </button>
+
+        <button
+          className={`sk-stage-tab ${activeStage === 'plan-tasks' ? 'is-active' : ''}`}
+          onClick={() => setActiveStage('plan-tasks')}
+        >
+          <span className="sk-stage-num">03</span>
+          <GitBranch size={18} />
+          <div className="sk-stage-text">
+            <strong>技术方案与任务</strong>
+            <small>/speckit.plan &amp; tasks</small>
+          </div>
+          <em className="sk-count">{plans.length}</em>
+        </button>
+
+        <button
+          className={`sk-stage-tab ${activeStage === 'delivery' ? 'is-active' : ''}`}
+          onClick={() => setActiveStage('delivery')}
+        >
+          <span className="sk-stage-num">04</span>
+          <Rocket size={18} />
+          <div className="sk-stage-text">
+            <strong>交付验收与 SpecKit 导出</strong>
+            <small>/speckit.implement</small>
+          </div>
+          <em className="sk-count">{releases.length + outcomes.length}</em>
+        </button>
+      </nav>
+
+      {/* Auth / Error Banners */}
+      {needsLogin && (
+        <div className="sk-banner is-warn" role="status">
+          <ShieldCheck size={20} />
+          <div>
+            <strong>请先登录以同步你的 SpecKit 研发项目</strong>
+            <p>登录后可创建产品、保存需求规格、审批技术方案并导出 SpecKit 工程文档。</p>
+          </div>
+          <a
+            className="sk-btn is-primary"
+            href={`/signin-with-chatgpt?return_to=${encodeURIComponent('/m/evopm-workbench')}`}
+            target="_top"
+          >
+            <LogIn size={16} /> 登录工作区
+          </a>
+        </div>
+      )}
+
+      {loadError && !needsLogin && (
+        <div className="sk-banner is-error" role="alert">
+          <AlertTriangle size={20} />
+          <span>{loadError}</span>
+          <button className="sk-btn is-small" onClick={() => void refresh()}>
+            重试
+          </button>
+        </div>
+      )}
+
+      {/* Main Content */}
+      {loading ? (
+        <div className="sk-empty-hero">
+          <LoaderCircle size={32} className="sk-spin" />
+          <h2>正在同步 SpecKit 研发工作区…</h2>
+        </div>
+      ) : !product ? (
+        <div className="sk-empty-hero">
+          <FileCode2 size={42} />
+          <h2>创建你的第一个 SpecKit 产品工作区</h2>
+          <p>
+            将原本分散在 AI PM Studio、AI 研发协作与 EvoPM 中的能力统一收敛为一条清晰的 Spec → Plan → Tasks → Delivery 研发流水线。
+          </p>
+          <div className="sk-btn-row">
+            <button
+              className="sk-btn is-primary"
+              disabled={writeDisabled}
+              onClick={() => setModal('product')}
+            >
+              <Plus size={16} /> 创建新产品
+            </button>
+            <button
+              className="sk-btn"
+              disabled={writeDisabled}
+              onClick={() => void mutate({ type: 'sample.load' })}
+            >
+              <BookOpen size={16} /> 一键加载完整示例项目
+            </button>
+          </div>
+        </div>
+      ) : (
+        <main className="sk-main">
+          {/* Active Product Context Bar */}
+          <section className="sk-product-strip">
+            <div className="sk-product-meta">
+              <span className="sk-pill is-blue">{LABELS[product.mode] || product.mode}</span>
+              <h2>{product.name}</h2>
+              {product.goal && <p>目标：{product.goal}</p>}
+              {product.metric && <span className="sk-pill">核心指标：{product.metric}</span>}
+            </div>
+            <div className="sk-product-stats">
+              <span>已同步版本 v{snapshot?.revision ?? 0}</span>
+              <button
+                className="sk-btn is-small"
+                onClick={() => setActiveStage('delivery')}
+              >
+                <FileCode2 size={14} /> 一键预览 / 导出 SpecKit 文档
+              </button>
+            </div>
+          </section>
+
+          {/* STAGE 1: SIGNALS & CLUSTERS */}
+          {activeStage === 'signals' && (
+            <div className="sk-bento-two">
+              {/* Left: Raw User Feedback Inbox */}
+              <section className="sk-card">
+                <div className="sk-card-head">
+                  <div>
+                    <h3>原始痛点与用户反馈池 ({signals.length})</h3>
+                    <p>录入或批量导入真实用户原话，勾选相似痛点归入右侧「痛点簇」</p>
+                  </div>
+                  <div className="sk-btn-row">
+                    <button
+                      className="sk-btn is-small"
+                      disabled={writeDisabled}
+                      onClick={() => {
+                        setImportText('');
+                        setModal('import-signals');
+                      }}
+                    >
+                      <Upload size={14} /> 批量导入 CSV/JSON
+                    </button>
+                    <button
+                      className="sk-btn is-small is-primary"
+                      disabled={writeDisabled}
+                      onClick={() => setModal('add-signal')}
+                    >
+                      <Plus size={14} /> 录入痛点反馈
+                    </button>
+                  </div>
+                </div>
+
+                <div className="sk-toolbar">
+                  <div className="sk-search">
+                    <Search size={16} />
+                    <input
+                      placeholder="搜索反馈原文、来源或用户标识…"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                    />
+                  </div>
+                  <button
+                    className="sk-btn is-small is-primary"
+                    disabled={writeDisabled || selectedSignals.length === 0}
+                    onClick={() => setModal('create-cluster')}
+                  >
+                    <Layers3 size={14} />
+                    将所选归为痛点簇 ({selectedSignals.length})
+                  </button>
+                </div>
+
+                {filteredSignals.length === 0 ? (
+                  <div className="sk-empty-box">
+                    <Inbox size={26} />
+                    <h4>暂无反馈记录</h4>
+                    <p>点击右上角「录入痛点反馈」或顶部「一键载入示例项目」快速开始。</p>
+                  </div>
+                ) : (
+                  <div className="sk-signal-list">
+                    {filteredSignals.map((s) => {
+                      const checked = selectedSignals.includes(s.id);
+                      const inCluster = clusters.some((c) => c.signalIds.includes(s.id));
+                      return (
+                        <label
+                          key={s.id}
+                          className={`sk-signal-item ${checked ? 'is-selected' : ''}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() =>
+                              setSelectedSignals((prev) =>
+                                checked ? prev.filter((id) => id !== s.id) : [...prev, s.id],
+                              )
+                            }
+                          />
+                          <div className="sk-signal-body">
+                            <p>{s.text}</p>
+                            <div className="sk-signal-meta">
+                              <span>来源：{s.source || '手动录入'}</span>
+                              <span>用户：{s.userKey || '匿名'}</span>
+                              <span>{iso(s.createdAt)}</span>
+                              <span className={`sk-pill ${inCluster ? 'is-green' : ''}`}>
+                                {inCluster ? '已归入痛点簇' : '待归类'}
+                              </span>
+                            </div>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+
+              {/* Right: Pain-Point Clusters -> Convert to Spec */}
+              <aside className="sk-card">
+                <div className="sk-card-head">
+                  <div>
+                    <h3>痛点主题簇 ({clusters.length})</h3>
+                    <p>从高价值痛点簇一键立项生成 `/speckit.specify` 需求规格</p>
+                  </div>
+                </div>
+
+                {clusters.length === 0 ? (
+                  <div className="sk-empty-box">
+                    <Layers3 size={26} />
+                    <h4>尚未建立痛点簇</h4>
+                    <p>在左侧勾选 1 条或多条反馈，点击「将所选归为痛点簇」。</p>
+                  </div>
+                ) : (
+                  <div className="sk-cluster-list">
+                    {clusters.map((c) => {
+                      const firstSignal = signals.find((s) => s.id === c.signalIds[0]);
+                      const linkedReq = requirements.find((r) => r.clusterId === c.id);
+                      return (
+                        <article key={c.id} className="sk-cluster-card">
+                          <div className="sk-cluster-top">
+                            <span className="sk-pill is-blue">{c.signalIds.length} 条原始证据</span>
+                            <span className={`sk-pill ${c.status === 'linked' ? 'is-green' : ''}`}>
+                              {LABELS[c.status] || c.status}
+                            </span>
+                          </div>
+                          <h4>{c.title}</h4>
+                          {firstSignal && (
+                            <blockquote className="sk-quote">“{firstSignal.text}”</blockquote>
+                          )}
+                          <div className="sk-cluster-actions">
+                            <button
+                              className="sk-btn is-small is-primary"
+                              disabled={writeDisabled || c.status === 'discarded'}
+                              onClick={() => {
+                                setSelectedCluster(c);
+                                setEditingRequirement(linkedReq || null);
+                                setModal('requirement-editor');
+                              }}
+                            >
+                              <FileCheck2 size={14} />
+                              {linkedReq ? '编辑关联 Spec' : '提炼为 Spec 需求规格 →'}
+                            </button>
+                            <button
+                              className="sk-btn is-small"
+                              disabled={writeDisabled}
+                              onClick={() =>
+                                void mutate({ type: 'run.analyze', productId: pid, clusterId: c.id })
+                              }
+                            >
+                              <Sparkles size={14} /> AI 聚类分析
+                            </button>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+              </aside>
+            </div>
+          )}
+
+          {/* STAGE 2: /speckit.specify (REQUIREMENTS & SPEC) */}
+          {activeStage === 'specify' && (
+            <section className="sk-card">
+              <div className="sk-card-head">
+                <div>
+                  <h3>Stage 02 · 需求规格定义 (`/speckit.specify`)</h3>
+                  <p>
+                    审查用户故事、功能范围与验收标准（Acceptance Criteria）。人工批准后即可进入 Stage 03 制定技术方案。
+                  </p>
+                </div>
+                <button
+                  className="sk-btn is-primary"
+                  onClick={() => setActiveStage('signals')}
+                >
+                  <Plus size={16} /> 从痛点簇新建需求规格
+                </button>
+              </div>
+
+              {requirements.length === 0 ? (
+                <div className="sk-empty-box">
+                  <Layers3 size={28} />
+                  <h4>暂无需求规格 (Spec)</h4>
+                  <p>请先在 Stage 01 选择一个痛点簇并点击「提炼为 Spec 需求规格」。</p>
+                </div>
+              ) : (
+                <div className="sk-spec-grid">
+                  {requirements.map((r, idx) => (
+                    <article key={r.id} className="sk-spec-card">
+                      <div className="sk-spec-head">
+                        <div className="sk-spec-title-group">
+                          <span className="sk-spec-index">SPEC-{String(idx + 1).padStart(2, '0')}</span>
+                          <h4>{r.title}</h4>
+                          <span
+                            className={`sk-pill ${
+                              r.decision === 'approved'
+                                ? 'is-green'
+                                : r.decision === 'rejected'
+                                  ? 'is-red'
+                                  : 'is-amber'
+                            }`}
+                          >
+                            {LABELS[r.decision] || r.decision} · v{r.version}
+                          </span>
+                        </div>
+                        <div className="sk-spec-scores">
+                          <span className="sk-pill">材料完整度 {r.quality.score}分</span>
+                          <span className="sk-pill is-blue">
+                            优先级 {r.score.priority.toFixed(1)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="sk-spec-columns">
+                        <div className="sk-spec-box">
+                          <strong>用户故事与问题定义 (User Story)</strong>
+                          <p>{r.story}</p>
+                        </div>
+                        <div className="sk-spec-box">
+                          <strong>功能范围与边界 (Scope)</strong>
+                          <p>{r.scope}</p>
+                        </div>
+                        <div className="sk-spec-box">
+                          <strong>验收标准 (Acceptance Criteria)</strong>
+                          <p>{r.acceptance}</p>
+                        </div>
+                      </div>
+
+                      {r.decisionNote && (
+                        <div className="sk-decision-note">
+                          <strong>评审意见：</strong> {r.decisionNote}
+                        </div>
+                      )}
+
+                      <div className="sk-spec-actions">
+                        <button
+                          className="sk-btn is-small"
+                          disabled={writeDisabled}
+                          onClick={() => {
+                            const cluster = clusters.find((c) => c.id === r.clusterId) || clusters[0];
+                            if (cluster) {
+                              setSelectedCluster(cluster);
+                              setEditingRequirement(r);
+                              setModal('requirement-editor');
+                            }
+                          }}
+                        >
+                          编辑 Spec 内容
+                        </button>
+
+                        {r.decision !== 'approved' && (
+                          <button
+                            className="sk-btn is-small is-primary"
+                            disabled={writeDisabled}
+                            onClick={() =>
+                              void mutate({
+                                type: 'requirement.decide',
+                                productId: pid,
+                                requirementId: r.id,
+                                decision: 'approved',
+                                note: '需求边界与验收标准清晰，批准进入技术方案阶段。',
+                              })
+                            }
+                          >
+                            <Check size={14} /> 批准此 Spec
+                          </button>
+                        )}
+
+                        {r.decision === 'approved' && (
+                          <button
+                            className="sk-btn is-small is-primary"
+                            disabled={writeDisabled}
+                            onClick={() => {
+                              setTargetRequirementForPlan(r);
+                              setEditingPlan(plans.find((p) => p.requirementId === r.id) || null);
+                              setModal('plan-editor');
+                            }}
+                          >
+                            <GitBranch size={14} /> 编写技术方案 (`/speckit.plan`) →
+                          </button>
+                        )}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* STAGE 3: /speckit.plan & /speckit.tasks */}
+          {activeStage === 'plan-tasks' && (
+            <section className="sk-card">
+              <div className="sk-card-head">
+                <div>
+                  <h3>Stage 03 · 技术方案与任务拆解 (`/speckit.plan` &amp; `/speckit.tasks`)</h3>
+                  <p>定义修改范围、明确不做事项（Non-Goals）、风险与回滚方案，并自动拆解可执行检查清单</p>
+                </div>
+                {requirements.some((r) => r.decision === 'approved') && (
+                  <button
+                    className="sk-btn is-primary"
+                    disabled={writeDisabled}
+                    onClick={() => {
+                      const approvedReq = requirements.find((r) => r.decision === 'approved')!;
+                      setTargetRequirementForPlan(approvedReq);
+                      setEditingPlan(null);
+                      setModal('plan-editor');
+                    }}
+                  >
+                    <Plus size={16} /> 新建技术方案
+                  </button>
+                )}
+              </div>
+
+              {plans.length === 0 ? (
+                <div className="sk-empty-box">
+                  <GitBranch size={28} />
+                  <h4>尚未制定技术方案 (Plan)</h4>
+                  <p>请先在 Stage 02 批准一项需求规格，然后点击「编写技术方案」。</p>
+                </div>
+              ) : (
+                <div className="sk-spec-grid">
+                  {plans.map((p, idx) => {
+                    const approval = planApproval(p);
+                    const tasksList = [
+                      ...p.scope
+                        .split(/[\r\n；;]+/)
+                        .map((s) => s.trim())
+                        .filter(Boolean)
+                        .map((t) => `[实现] ${t}`),
+                      ...p.acceptance
+                        .split(/[\r\n；;]+/)
+                        .map((s) => s.trim())
+                        .filter(Boolean)
+                        .map((t) => `[验证] ${t}`),
+                    ];
+                    return (
+                      <article key={p.id} className="sk-spec-card">
+                        <div className="sk-spec-head">
+                          <div className="sk-spec-title-group">
+                            <span className="sk-spec-index">PLAN-{String(idx + 1).padStart(2, '0')}</span>
+                            <h4>{p.title}</h4>
+                            <span className="sk-pill">v{p.version}</span>
+                            <span
+                              className={`sk-pill ${
+                                approval?.decision === 'approved' ? 'is-green' : 'is-amber'
+                              }`}
+                            >
+                              {approval?.decision === 'approved' ? '方案已批准执行' : '待审批方案'}
+                            </span>
+                          </div>
+                          <div className="sk-spec-scores">
+                            <span className="sk-pill">基线: {p.baseCommit.slice(0, 10)}</span>
+                            <span className="sk-pill">预算: {p.budget}</span>
+                          </div>
+                        </div>
+
+                        <div className="sk-spec-columns">
+                          <div className="sk-spec-box">
+                            <strong>架构目标与修改范围 (Goal &amp; Scope)</strong>
+                            <p>{p.goal}</p>
+                            <p style={{ marginTop: 8, color: 'var(--sk-muted)' }}>范围：{p.scope}</p>
+                          </div>
+                          <div className="sk-spec-box">
+                            <strong>非目标与风险回滚 (Non-Goals &amp; Rollback)</strong>
+                            <p>不做：{p.nonGoals}</p>
+                            <p style={{ marginTop: 8, color: 'var(--sk-muted)' }}>回滚：{p.rollback}</p>
+                          </div>
+                          <div className="sk-spec-box">
+                            <strong>自动拆解任务清单 (`/speckit.tasks`)</strong>
+                            <ul className="sk-task-checklist">
+                              {tasksList.map((t, i) => (
+                                <li key={i}>
+                                  <code>T{String(i + 1).padStart(2, '0')}</code> {t}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+
+                        <div className="sk-spec-actions">
+                          <button
+                            className="sk-btn is-small"
+                            disabled={writeDisabled}
+                            onClick={() => {
+                              const req =
+                                requirements.find((r) => r.id === p.requirementId) || requirements[0];
+                              setTargetRequirementForPlan(req || null);
+                              setEditingPlan(p);
+                              setModal('plan-editor');
+                            }}
+                          >
+                            修订方案版本
+                          </button>
+
+                          {approval?.decision !== 'approved' && (
+                            <button
+                              className="sk-btn is-small is-primary"
+                              disabled={writeDisabled}
+                              onClick={() =>
+                                void mutate({
+                                  type: 'plan.approve',
+                                  productId: pid,
+                                  planId: p.id,
+                                  decision: 'approved',
+                                  note: `批准技术方案 v${p.version} 进入研发实施与交付阶段。`,
+                                })
+                              }
+                            >
+                              <Check size={14} /> 批准方案 v{p.version}
+                            </button>
+                          )}
+
+                          <button
+                            className="sk-btn is-small"
+                            disabled={writeDisabled}
+                            onClick={async () => {
+                              const r = await mutate({
+                                type: 'job.export',
+                                productId: pid,
+                                planId: p.id,
+                              });
+                              if (r) {
+                                const exported = r.result as
+                                  | { filename?: string; changePackage?: unknown }
+                                  | undefined;
+                                downloadFile(
+                                  exported?.filename ?? `SpecKit-${p.title}-v${p.version}.json`,
+                                  JSON.stringify(exported?.changePackage ?? r.result, null, 2),
+                                  'application/json',
+                                );
+                              }
+                            }}
+                          >
+                            <Download size={14} /> 导出变更执行包 (.json)
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* STAGE 4: DELIVERY, VERIFICATION & SPECKIT MARKDOWN EXPORT */}
+          {activeStage === 'delivery' && (
+            <div className="sk-bento-two">
+              {/* Left: Live SpecKit Artifact Generator (spec.md / plan.md / tasks.md) */}
+              <section className="sk-card">
+                <div className="sk-card-head">
+                  <div>
+                    <h3>SpecKit 标准工程文档实时预览与导出</h3>
+                    <p>自动将当前产品的痛点证据、需求规格与技术方案编译为标准 SpecKit 三件套</p>
+                  </div>
+                  <div className="sk-btn-row">
+                    <button
+                      className="sk-btn is-small"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(activePreviewText);
+                          setToast({ text: `已复制 ${specPreviewTab}.md 到剪贴板` });
+                        } catch {
+                          setToast({ text: '请手动全选复制', error: true });
+                        }
+                      }}
+                    >
+                      <ClipboardCopy size={14} /> 复制当前 Markdown
+                    </button>
+                    <button
+                      className="sk-btn is-small is-primary"
+                      onClick={() =>
+                        downloadFile(
+                          `${product.name}-${specPreviewTab}.md`,
+                          activePreviewText,
+                        )
+                      }
+                    >
+                      <Download size={14} /> 下载 {specPreviewTab}.md
+                    </button>
+                  </div>
+                </div>
+
+                <div className="sk-subtabs">
+                  <button
+                    className={specPreviewTab === 'spec' ? 'is-active' : ''}
+                    onClick={() => setSpecPreviewTab('spec')}
+                  >
+                    <FileText size={15} /> spec.md (需求规格)
+                  </button>
+                  <button
+                    className={specPreviewTab === 'plan' ? 'is-active' : ''}
+                    onClick={() => setSpecPreviewTab('plan')}
+                  >
+                    <FileCode2 size={15} /> plan.md (技术方案)
+                  </button>
+                  <button
+                    className={specPreviewTab === 'tasks' ? 'is-active' : ''}
+                    onClick={() => setSpecPreviewTab('tasks')}
+                  >
+                    <FileCheck2 size={15} /> tasks.md (任务清单)
+                  </button>
+                </div>
+
+                <pre className="sk-markdown-preview">{activePreviewText}</pre>
+              </section>
+
+              {/* Right: Verification Receipts & Outcomes */}
+              <aside className="sk-card">
+                <div className="sk-card-head">
+                  <div>
+                    <h3>交付验收与效果回看</h3>
+                    <p>记录 CI 评测回执、上线提交记录与发布前后的核心指标对比</p>
+                  </div>
+                  {plans.length > 0 && (
+                    <button
+                      className="sk-btn is-small is-primary"
+                      disabled={writeDisabled}
+                      onClick={() => setModal('record-outcome')}
+                    >
+                      <Plus size={14} /> 记录效果指标
+                    </button>
+                  )}
+                </div>
+
+                <div className="sk-delivery-stats">
+                  <div className="sk-stat-box">
+                    <span>CI / 评测回执</span>
+                    <strong>{evaluations.length}</strong>
+                  </div>
+                  <div className="sk-stat-box">
+                    <span>发布登记</span>
+                    <strong>{releases.length}</strong>
+                  </div>
+                  <div className="sk-stat-box">
+                    <span>上线效果对照</span>
+                    <strong>{outcomes.length}</strong>
+                  </div>
+                </div>
+
+                {outcomes.length === 0 ? (
+                  <div className="sk-empty-box">
+                    <BarChart3 size={24} />
+                    <h4>暂无上线效果观察记录</h4>
+                    <p>方案发布后，可在此登记变更前后的核心指标窗口与样本量对照。</p>
+                  </div>
+                ) : (
+                  <div className="sk-outcome-list">
+                    {outcomes.map((o) => {
+                      const diff = o.after - o.before;
+                      return (
+                        <article key={o.id} className="sk-outcome-card">
+                          <div className="sk-outcome-top">
+                            <strong>{o.metric}</strong>
+                            <span className={`sk-pill ${diff >= 0 ? 'is-green' : 'is-amber'}`}>
+                              {diff >= 0 ? `+${diff}` : diff} {o.unit}
+                            </span>
+                          </div>
+                          <p>
+                            变更前：{o.before} {o.unit} ({o.beforeWindow}) → 变更后：{o.after} {o.unit} ({o.afterWindow})
+                          </p>
+                          <small>样本量 N={o.sampleSize} · 来源：{o.source}</small>
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+              </aside>
+            </div>
+          )}
+        </main>
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div className={`sk-toast ${toast.error ? 'is-error' : ''}`} role="status">
+          <CheckCircle2 size={18} />
+          <span>{toast.text}</span>
+        </div>
+      )}
+
+      {/* MODAL: Create / Edit Product */}
+      {modal === 'product' && (
+        <div className="sk-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setModal('')}>
+          <section className="sk-modal" role="dialog" aria-modal="true" aria-label="产品配置">
+            <header className="sk-modal-head">
+              <h2>{product ? '新建或更新产品工作区' : '创建产品工作区'}</h2>
+              <button onClick={() => setModal('')} aria-label="关闭">
+                <X size={20} />
+              </button>
+            </header>
+            <form
+              className="sk-form"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const f = new FormData(e.currentTarget);
+                const mode = String(f.get('actionMode') || 'create');
+                const payload = {
+                  name: String(f.get('name') || ''),
+                  description: String(f.get('description') || ''),
+                  users: String(f.get('users') || ''),
+                  goal: String(f.get('goal') || ''),
+                  metric: String(f.get('metric') || ''),
+                  repository: String(f.get('repository') || ''),
+                };
+                const r = await mutate(
+                  mode === 'update' && product
+                    ? { type: 'product.update', productId: product.id, ...payload }
+                    : { type: 'product.create', ...payload },
+                );
+                if (r) {
+                  if (mode === 'create') {
+                    setProductId(r.state.products.at(-1)?.id ?? '');
+                  }
+                  setModal('');
+                }
+              }}
+            >
+              {product && (
+                <label className="sk-field">
+                  <span>操作方式</span>
+                  <select name="actionMode" defaultValue="update">
+                    <option value="update">更新当前产品（{product.name}）</option>
+                    <option value="create">创建一个全新的产品</option>
+                  </select>
+                </label>
+              )}
+              <label className="sk-field">
+                <span>产品名称</span>
+                <input
+                  name="name"
+                  required
+                  defaultValue={product?.name || ''}
+                  placeholder="如：丁康个人 AI 研发工作台"
+                />
+              </label>
+              <div className="sk-form-two">
+                <label className="sk-field">
+                  <span>目标用户</span>
+                  <input
+                    name="users"
+                    defaultValue={product?.users || ''}
+                    placeholder="如：AI 工程师与独立开发者"
+                  />
+                </label>
+                <label className="sk-field">
+                  <span>核心观测指标</span>
+                  <input
+                    name="metric"
+                    defaultValue={product?.metric || ''}
+                    placeholder="如：首次任务完成率 (%)"
+                  />
+                </label>
+              </div>
+              <label className="sk-field">
+                <span>当前产品目标</span>
+                <input
+                  name="goal"
+                  defaultValue={product?.goal || ''}
+                  placeholder="本阶段最核心的演进目标是什么？"
+                />
+              </label>
+              <label className="sk-field">
+                <span>Git 仓库地址（可选）</span>
+                <input
+                  name="repository"
+                  defaultValue={product?.repository || ''}
+                  placeholder="https://github.com/Adversit/dingkang"
+                />
+              </label>
+              <div className="sk-modal-actions">
+                <button type="button" className="sk-btn" onClick={() => setModal('')}>
+                  取消
+                </button>
+                <button type="submit" className="sk-btn is-primary" disabled={busy}>
+                  <Save size={16} /> 保存产品
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
+
+      {/* MODAL: Add Single Signal */}
+      {modal === 'add-signal' && (
+        <div className="sk-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setModal('')}>
+          <section className="sk-modal" role="dialog" aria-modal="true" aria-label="录入痛点反馈">
+            <header className="sk-modal-head">
+              <h2>录入用户痛点或产品想法</h2>
+              <button onClick={() => setModal('')} aria-label="关闭">
+                <X size={20} />
+              </button>
+            </header>
+            <form
+              className="sk-form"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const f = new FormData(e.currentTarget);
+                const r = await mutate({
+                  type: 'signals.import',
+                  productId: pid,
+                  items: [
+                    {
+                      text: String(f.get('text') || ''),
+                      source: String(f.get('source') || '手动录入'),
+                      userKey: String(f.get('userKey') || 'user-01'),
+                      redacted: true,
+                    },
+                  ],
+                });
+                if (r) setModal('');
+              }}
+            >
+              <label className="sk-field">
+                <span>痛点反馈原文（请确保已脱敏个人隐私）</span>
+                <textarea
+                  name="text"
+                  rows={4}
+                  required
+                  autoFocus
+                  placeholder="用户遇到的真实阻碍或需求原话…"
+                />
+              </label>
+              <div className="sk-form-two">
+                <label className="sk-field">
+                  <span>反馈来源</span>
+                  <input name="source" defaultValue="用户访谈 / 体验反馈" />
+                </label>
+                <label className="sk-field">
+                  <span>匿名用户标识</span>
+                  <input name="userKey" defaultValue="user-01" />
+                </label>
+              </div>
+              <div className="sk-modal-actions">
+                <button type="button" className="sk-btn" onClick={() => setModal('')}>
+                  取消
+                </button>
+                <button type="submit" className="sk-btn is-primary" disabled={busy}>
+                  <Plus size={16} /> 保存反馈
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
+
+      {/* MODAL: Batch Import Signals */}
+      {modal === 'import-signals' && (
+        <div className="sk-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setModal('')}>
+          <section className="sk-modal" role="dialog" aria-modal="true" aria-label="批量导入反馈">
+            <header className="sk-modal-head">
+              <h2>批量导入 CSV / JSON 反馈</h2>
+              <button onClick={() => setModal('')} aria-label="关闭">
+                <X size={20} />
+              </button>
+            </header>
+            <div className="sk-form">
+              <div className="sk-btn-row">
+                <button
+                  type="button"
+                  className="sk-btn is-small"
+                  onClick={() => downloadFile('SpecKit-feedback-template.csv', CSV_TEMPLATE, 'text/csv')}
+                >
+                  下载 CSV 模板
+                </button>
+              </div>
+              <label className="sk-field">
+                <span>粘贴 CSV 或 JSON 内容</span>
+                <textarea
+                  rows={7}
+                  value={importText}
+                  onChange={(e) => setImportText(e.target.value)}
+                  placeholder={CSV_TEMPLATE}
+                />
+              </label>
+              <div className="sk-modal-actions">
+                <button type="button" className="sk-btn" onClick={() => setModal('')}>
+                  取消
+                </button>
+                <button
+                  type="button"
+                  className="sk-btn is-primary"
+                  disabled={busy || !importText.trim()}
+                  onClick={async () => {
+                    try {
+                      const items = parseSignals(importText);
+                      const r = await mutate({
+                        type: 'signals.import',
+                        productId: pid,
+                        items,
+                      });
+                      if (r) setModal('');
+                    } catch (err) {
+                      setToast({
+                        text: err instanceof Error ? err.message : '解析失败',
+                        error: true,
+                      });
+                    }
+                  }}
+                >
+                  导入反馈
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {/* MODAL: Create Cluster */}
+      {modal === 'create-cluster' && (
+        <div className="sk-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setModal('')}>
+          <section className="sk-modal" role="dialog" aria-modal="true" aria-label="创建痛点簇">
+            <header className="sk-modal-head">
+              <h2>将 {selectedSignals.length} 条反馈归为痛点簇</h2>
+              <button onClick={() => setModal('')} aria-label="关闭">
+                <X size={20} />
+              </button>
+            </header>
+            <form
+              className="sk-form"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const f = new FormData(e.currentTarget);
+                const r = await mutate({
+                  type: 'cluster.create',
+                  productId: pid,
+                  title: String(f.get('title') || ''),
+                  signalIds: selectedSignals,
+                });
+                if (r) {
+                  setSelectedSignals([]);
+                  setModal('');
+                }
+              }}
+            >
+              <label className="sk-field">
+                <span>痛点簇一句话主题</span>
+                <input
+                  name="title"
+                  required
+                  autoFocus
+                  placeholder="如：多工作台入口分散，缺少统一的 SpecKit 研发主线"
+                />
+              </label>
+              <div className="sk-modal-actions">
+                <button type="button" className="sk-btn" onClick={() => setModal('')}>
+                  取消
+                </button>
+                <button type="submit" className="sk-btn is-primary" disabled={busy}>
+                  创建痛点簇
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
+
+      {/* MODAL: Requirement / Spec Editor */}
+      {modal === 'requirement-editor' && selectedCluster && (
+        <div className="sk-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setModal('')}>
+          <section className="sk-modal is-wide" role="dialog" aria-modal="true" aria-label="编写需求规格 Spec">
+            <header className="sk-modal-head">
+              <div>
+                <h2>{editingRequirement ? '编辑需求规格 (Spec)' : '从痛点簇提炼需求规格 (/speckit.specify)'}</h2>
+                <p>关联痛点簇：{selectedCluster.title}</p>
+              </div>
+              <button onClick={() => setModal('')} aria-label="关闭">
+                <X size={20} />
+              </button>
+            </header>
+            <form
+              className="sk-form"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const f = new FormData(e.currentTarget);
+                const links: EvidenceLink[] = selectedCluster.signalIds.map((signalId) => ({
+                  signalId,
+                  relation: 'supports',
+                  note: '核心痛点原话支撑',
+                }));
+                const basePayload = {
+                  productId: pid,
+                  title: String(f.get('title') || ''),
+                  story: String(f.get('story') || ''),
+                  scope: String(f.get('scope') || ''),
+                  acceptance: String(f.get('acceptance') || ''),
+                  critic: String(f.get('critic') || '需进一步在上线后观测真实转化率与留存表现。'),
+                  impact: Number(f.get('impact') || 4),
+                  confidence: Number(f.get('confidence') || 4),
+                  effort: Number(f.get('effort') || 2),
+                  links,
+                };
+                const r = await mutate(
+                  editingRequirement
+                    ? {
+                        type: 'requirement.update',
+                        requirementId: editingRequirement.id,
+                        ...basePayload,
+                      }
+                    : {
+                        type: 'requirement.create',
+                        clusterId: selectedCluster.id,
+                        ...basePayload,
+                      },
+                );
+                if (r && !r.result?.error) {
+                  setModal('');
+                  setActiveStage('specify');
+                }
+              }}
+            >
+              <label className="sk-field">
+                <span>Spec 需求标题</span>
+                <input
+                  name="title"
+                  required
+                  defaultValue={editingRequirement?.title || selectedCluster.title}
+                />
+              </label>
+              <label className="sk-field">
+                <span>用户故事与问题背景 (User Story)</span>
+                <textarea
+                  name="story"
+                  rows={3}
+                  required
+                  defaultValue={
+                    editingRequirement?.story ||
+                    `作为目标用户，当我面对「${selectedCluster.title}」时，我希望有一套直观的四步流水线，以便快速完成从痛点到交付的闭环。`
+                  }
+                />
+              </label>
+              <label className="sk-field">
+                <span>功能范围与边界 (Scope)</span>
+                <textarea
+                  name="scope"
+                  rows={3}
+                  required
+                  defaultValue={
+                    editingRequirement?.scope ||
+                    '提供痛点归簇、需求规格定义、技术方案拆解与 SpecKit Markdown 三件套导出；不破坏底层已有 API 存储契约。'
+                  }
+                />
+              </label>
+              <label className="sk-field">
+                <span>可验证的验收标准 (Acceptance Criteria)</span>
+                <textarea
+                  name="acceptance"
+                  rows={3}
+                  required
+                  defaultValue={
+                    editingRequirement?.acceptance ||
+                    '1. 支持从反馈簇一键生成 Spec；2. 支持批准并生成 Plan 与 Tasks；3. 支持一键导出标准 spec.md / plan.md / tasks.md。'
+                  }
+                />
+              </label>
+              <div className="sk-form-three">
+                <label className="sk-field">
+                  <span>影响度 (Impact 1-5)</span>
+                  <input
+                    name="impact"
+                    type="number"
+                    min={1}
+                    max={5}
+                    defaultValue={editingRequirement?.score.impact || 4}
+                  />
+                </label>
+                <label className="sk-field">
+                  <span>把握度 (Confidence 1-5)</span>
+                  <input
+                    name="confidence"
+                    type="number"
+                    min={1}
+                    max={5}
+                    defaultValue={editingRequirement?.score.confidence || 4}
+                  />
+                </label>
+                <label className="sk-field">
+                  <span>工作量 (Effort 1-5)</span>
+                  <input
+                    name="effort"
+                    type="number"
+                    min={1}
+                    max={5}
+                    defaultValue={editingRequirement?.score.effort || 2}
+                  />
+                </label>
+              </div>
+              <label className="sk-field">
+                <span>风险与反驳审视 (Critic &amp; Missing Info)</span>
+                <textarea
+                  name="critic"
+                  rows={2}
+                  required
+                  defaultValue={
+                    editingRequirement?.critic ||
+                    '需注意保持存量数据迁移兼容，并在上线后观察真实用户完成率。'
+                  }
+                />
+              </label>
+              <div className="sk-modal-actions">
+                <button type="button" className="sk-btn" onClick={() => setModal('')}>
+                  取消
+                </button>
+                <button type="submit" className="sk-btn is-primary" disabled={busy}>
+                  <Save size={16} /> 保存 Spec 规格
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
+
+      {/* MODAL: Plan Editor */}
+      {modal === 'plan-editor' && targetRequirementForPlan && (
+        <div className="sk-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setModal('')}>
+          <section className="sk-modal is-wide" role="dialog" aria-modal="true" aria-label="编写技术方案 Plan">
+            <header className="sk-modal-head">
+              <div>
+                <h2>{editingPlan ? '修订技术方案 (`/speckit.plan`)' : '创建技术方案 (`/speckit.plan`)'}</h2>
+                <p>关联 Spec：{targetRequirementForPlan.title}</p>
+              </div>
+              <button onClick={() => setModal('')} aria-label="关闭">
+                <X size={20} />
+              </button>
+            </header>
+            <form
+              className="sk-form"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const f = new FormData(e.currentTarget);
+                const payload = {
+                  productId: pid,
+                  title: String(f.get('title') || ''),
+                  goal: String(f.get('goal') || ''),
+                  scope: String(f.get('scope') || ''),
+                  nonGoals: String(f.get('nonGoals') || ''),
+                  acceptance: String(f.get('acceptance') || ''),
+                  risks: String(f.get('risks') || ''),
+                  rollback: String(f.get('rollback') || ''),
+                  baseCommit: String(f.get('baseCommit') || ''),
+                  budget: String(f.get('budget') || ''),
+                };
+                const r = await mutate(
+                  editingPlan
+                    ? { type: 'plan.update', planId: editingPlan.id, ...payload }
+                    : {
+                        type: 'plan.create',
+                        requirementId: targetRequirementForPlan.id,
+                        ...payload,
+                      },
+                );
+                if (r && !r.result?.error) {
+                  setModal('');
+                  setActiveStage('plan-tasks');
+                }
+              }}
+            >
+              <label className="sk-field">
+                <span>技术方案名称</span>
+                <input
+                  name="title"
+                  required
+                  defaultValue={editingPlan?.title || `${targetRequirementForPlan.title} 技术实施方案`}
+                />
+              </label>
+              <div className="sk-form-two">
+                <label className="sk-field">
+                  <span>基线 Commit (40 位 SHA)</span>
+                  <input
+                    name="baseCommit"
+                    required
+                    defaultValue={
+                      editingPlan?.baseCommit || '4c6ca52698058edce3f786fd59f88e8fdb8770a5'
+                    }
+                  />
+                </label>
+                <label className="sk-field">
+                  <span>执行预算</span>
+                  <input
+                    name="budget"
+                    required
+                    defaultValue={editingPlan?.budget || '2 小时 / 全量自动化回归测试'}
+                  />
+                </label>
+              </div>
+              <label className="sk-field">
+                <span>变更目标 (Goal)</span>
+                <textarea
+                  name="goal"
+                  rows={2}
+                  required
+                  defaultValue={editingPlan?.goal || targetRequirementForPlan.story}
+                />
+              </label>
+              <label className="sk-field">
+                <span>修改范围（每条分号或换行将自动拆解为 `/speckit.tasks` 实现项）</span>
+                <textarea
+                  name="scope"
+                  rows={3}
+                  required
+                  defaultValue={editingPlan?.scope || targetRequirementForPlan.scope}
+                />
+              </label>
+              <label className="sk-field">
+                <span>明确不做 (Non-Goals)</span>
+                <textarea
+                  name="nonGoals"
+                  rows={2}
+                  required
+                  defaultValue={editingPlan?.nonGoals || '不更改底层数据库表结构与历史备份恢复协议。'}
+                />
+              </label>
+              <label className="sk-field">
+                <span>验收标准（每条将自动拆解为 `/speckit.tasks` 验证项）</span>
+                <textarea
+                  name="acceptance"
+                  rows={3}
+                  required
+                  defaultValue={editingPlan?.acceptance || targetRequirementForPlan.acceptance}
+                />
+              </label>
+              <div className="sk-form-two">
+                <label className="sk-field">
+                  <span>风险与防护措施</span>
+                  <textarea
+                    name="risks"
+                    rows={2}
+                    required
+                    defaultValue={editingPlan?.risks || '通过 CAS 版本号防止并发覆盖，通过 tsc 与单元测试保障类型安全。'}
+                  />
+                </label>
+                <label className="sk-field">
+                  <span>回滚策略 (Rollback)</span>
+                  <textarea
+                    name="rollback"
+                    rows={2}
+                    required
+                    defaultValue={editingPlan?.rollback || '若构建或验收异常，直接按基线 Commit 一键回滚前端视图层。'}
+                  />
+                </label>
+              </div>
+              <div className="sk-modal-actions">
+                <button type="button" className="sk-btn" onClick={() => setModal('')}>
+                  取消
+                </button>
+                <button type="submit" className="sk-btn is-primary" disabled={busy}>
+                  <Save size={16} /> 保存技术方案
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
+
+      {/* MODAL: Record Outcome */}
+      {modal === 'record-outcome' && plans.length > 0 && (
+        <div className="sk-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setModal('')}>
+          <section className="sk-modal" role="dialog" aria-modal="true" aria-label="记录效果观察">
+            <header className="sk-modal-head">
+              <h2>记录发布效果对照</h2>
+              <button onClick={() => setModal('')} aria-label="关闭">
+                <X size={20} />
+              </button>
+            </header>
+            <form
+              className="sk-form"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const f = new FormData(e.currentTarget);
+                const r = await mutate({
+                  type: 'outcome.record',
+                  productId: pid,
+                  planId: String(f.get('planId') || plans[0].id),
+                  metric: String(f.get('metric') || product.metric || '任务完成率'),
+                  unit: String(f.get('unit') || '%'),
+                  before: Number(f.get('before') || 0),
+                  after: Number(f.get('after') || 0),
+                  beforeWindow: String(f.get('beforeWindow') || '2026-11-01 ~ 2026-11-07'),
+                  afterWindow: String(f.get('afterWindow') || '2026-11-08 ~ 2026-11-14'),
+                  sampleSize: Number(f.get('sampleSize') || 100),
+                  source: String(f.get('source') || '线上核心埋点看板'),
+                  confounders: String(f.get('confounders') || '同期无其他重大改版干扰'),
+                });
+                if (r && !r.result?.error) setModal('');
+              }}
+            >
+              <label className="sk-field">
+                <span>关联技术方案</span>
+                <select name="planId" defaultValue={plans[0].id}>
+                  {plans.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.title} (v{p.version})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="sk-form-two">
+                <label className="sk-field">
+                  <span>观测指标名称</span>
+                  <input name="metric" required defaultValue={product.metric || '首次任务完成率'} />
+                </label>
+                <label className="sk-field">
+                  <span>单位</span>
+                  <input name="unit" required defaultValue="%" />
+                </label>
+              </div>
+              <div className="sk-form-two">
+                <label className="sk-field">
+                  <span>变更前数值</span>
+                  <input name="before" type="number" step="any" required defaultValue={62} />
+                </label>
+                <label className="sk-field">
+                  <span>变更后数值</span>
+                  <input name="after" type="number" step="any" required defaultValue={84} />
+                </label>
+              </div>
+              <div className="sk-form-two">
+                <label className="sk-field">
+                  <span>变更前时间窗口</span>
+                  <input name="beforeWindow" required defaultValue="2026-11-01 至 2026-11-07" />
+                </label>
+                <label className="sk-field">
+                  <span>变更后时间窗口</span>
+                  <input name="afterWindow" required defaultValue="2026-11-08 至 2026-11-14" />
+                </label>
+              </div>
+              <div className="sk-form-two">
+                <label className="sk-field">
+                  <span>样本量 (N)</span>
+                  <input name="sampleSize" type="number" min={1} required defaultValue={120} />
+                </label>
+                <label className="sk-field">
+                  <span>数据来源</span>
+                  <input name="source" required defaultValue="生产环境验收看板" />
+                </label>
+              </div>
+              <label className="sk-field">
+                <span>潜在干扰因素说明</span>
+                <textarea name="confounders" rows={2} required defaultValue="同期无渠道投放波动。" />
+              </label>
+              <div className="sk-modal-actions">
+                <button type="button" className="sk-btn" onClick={() => setModal('')}>
+                  取消
+                </button>
+                <button type="submit" className="sk-btn is-primary" disabled={busy}>
+                  <Save size={16} /> 保存效果记录
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
+    </div>
+  );
 }

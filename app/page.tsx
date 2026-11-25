@@ -290,10 +290,13 @@ export default function Hub(){
 
   const theme=themeById(appearance.theme),moving=appearance.motion&&!reducedMotion&&pageVisible&&!open&&theme.motion.supported;
   const query=search.trim().toLowerCase(),activeCategory=categories.find(category=>category.id===section);
-  const visible=modules.filter(module=>(section==='all'||module.category===section||section==='favorites'&&favorites.includes(module.id))&&(!query||(module.name+module.subtitle+module.description).toLowerCase().includes(query)));
-  const recentModules=recents.map(moduleById).filter(Boolean) as HubModule[];
+  const activeModules=modules.filter(module=>!module.archived);
+  const archivedModules=modules.filter(module=>module.archived);
+  const visible=activeModules.filter(module=>(section==='all'||module.category===section||section==='favorites'&&favorites.includes(module.id))&&(!query||(module.name+module.subtitle+module.description).toLowerCase().includes(query)));
+  const recentModules=recents.map(moduleById).filter((m):m is HubModule=>Boolean(m&&!m.archived));
   const calendar=useWorkspaceCalendar(session,ready);
-  const gameModules=modules.filter(module=>module.category==='games');
+  const gameModules=activeModules.filter(module=>module.category==='games');
+  const nonGameModules=activeModules.filter(module=>module.category!=='games');
   const recentGameModules=recentModules.filter(module=>module.category==='games');
   const hasIssue=!!(error||healthError||fileError);
   const status=!ready||health==='checking'?'正在连接':saving?'正在保存偏好':hasIssue?'连接需要留意':session?.authenticated&&health==='ready'?'私人空间已连接':session?.authenticated?'保存服务待确认':'尚未登录';
@@ -351,26 +354,7 @@ export default function Hub(){
         </section>
         <div className="hub-frame-wrap">{frameLoading&&<div className="hub-frame-loading" role="status"><LoaderCircle size={28} className="hub-spin"/><p>正在打开{open.name}…</p></div>}<iframe key={open.id} ref={frameRef} src={open.path} title={open.name} allow="fullscreen; clipboard-write; autoplay" onLoad={()=>{setFrameLoading(false);setLegacyNovelPage(openRef.current?.id==='novel-studio'&&hubStorageMode('novel-studio',frameRef.current?.contentWindow)==='bridge');}}/></div>
       </div>:<>
-        {showHero&&theme.id==='classic'&&<section className="hub-classic-welcome hub-content">
-          <div className="hub-classic-stage">
-            <div className="hub-classic-intro">
-              <div className="hub-classic-status-pill"><span className="hub-pulse-dot" aria-hidden="true"/><span>{modules.length} 个应用空间已就绪 · {calendar.today}</span></div>
-              <h1>今天，从这里继续。</h1>
-              <div className="hub-classic-domain-pills">
-                {categories.map(cat=>{const Icon=icons[cat.icon];return <button key={cat.id} type="button" onClick={()=>selectSection(cat.id)} disabled={controlsDisabled}><Icon size={16}/><span>{cat.id==='games'?'游戏大厅':cat.name}</span></button>;})}
-              </div>
-            </div>
-            {recentModules.length>0&&<div className="hub-classic-recents"><h2><Clock3 size={17}/>最近使用</h2><div>{recentModules.slice(0,3).map(module=><button key={module.id} disabled={controlsDisabled} onClick={()=>launch(module)}><AppIcon module={module}/><span><strong>{module.name}</strong></span><ArrowUpRight size={19}/></button>)}</div></div>}
-          </div>
-        </section>}
-        {showHero&&theme.id==='kinetic'&&<KineticScene {...sceneProps} motionEnabled={appearance.motion} reducedMotion={reducedMotion} onToggleMotion={()=>persist({appearance:{...appearanceRef.current,motion:!appearanceRef.current.motion}})}/>}
         {cozyHome&&<div className="hub-cozy-space"><CozyBaseScene {...sceneProps} initialRoom={cozyRoom.current} onRoomChange={rememberCozyRoom} onOpenCalendar={()=>{document.getElementById('hub-workspace-calendar')?.scrollIntoView({behavior:reducedMotion?'instant':'smooth',block:'start'});}} onOpenGameHall={()=>selectSection('games')}/></div>}
-        {showHero&&theme.id==='night-harbor'&&<section className="hub-hero" aria-labelledby="hero-title">
-          {theme.scene.src&&<div className="hub-scene" aria-hidden="true"><img src={theme.scene.src} alt="" style={{objectPosition:theme.scene.position}} fetchPriority="high"/><div className="hub-scene-shade"/></div>}
-          <div className="hub-hero-copy"><h1 id="hero-title">好奇不熄，<br/>继续创造。</h1><button className="hub-hero-link" onClick={exploreCatalog}>打开应用目录<ArrowRight size={21}/></button></div>
-          {recentModules.length>0?<div className="hub-continue"><h2><Clock3 size={18}/>接着上次</h2>{recentModules.slice(0,3).map(module=><button key={module.id} onClick={()=>launch(module)} disabled={controlsDisabled}><AppIcon module={module} size={21}/><span>{module.name}</span><ArrowUpRight size={21}/></button>)}</div>:null}
-        </section>}
-        {!open&&section==='all'&&!query&&<div id="hub-workspace-calendar" data-kinetic-section="true"><WorkspaceCalendar calendar={calendar} authenticated={!!session?.authenticated} onSignIn={()=>void leaveFor('/signin-with-chatgpt?return_to=/')}/></div>}
 
         {section==='data'?<div className="hub-content hub-data-content">
           <div className="hub-page-heading"><div><h1>数据中心</h1></div><button className="hub-button" onClick={()=>void refreshData()} disabled={fileLoading||!session?.authenticated}><RefreshCw size={18} className={fileLoading?'hub-spin':''}/>刷新</button></div>
@@ -386,15 +370,65 @@ export default function Hub(){
             <details className="hub-paste-disclosure"><summary>或粘贴 JSON 存档</summary><BackupPasteInput key={session?.userId||'signed-out'} onSubmitRaw={previewBackupRaw} disabled={!session?.authenticated||!ready||!preferencesReady.current||importing} busy={readingBackup} disabledReason={!session?.authenticated?'请先登录私人空间。':undefined}/></details>
           </section>
         </div>:<>
-          {cozyHome&&cozyDirectoryOpen&&<div className="hub-cozy-directory-toggle hub-content"><button className="hub-button" aria-expanded={cozyDirectoryOpen} aria-controls="hub-catalog" onClick={()=>setCozyDirectoryOpen(false)}><Search size={19}/>收起列表</button><span>全部 {modules.length} 个应用</span></div>}
+          {/* Next.js 极简空间首屏舞台：左工作台矩阵 + 右场景/最近使用 */}
+          {showHero&&theme.id!=='cozy'&&<section className="hub-spatial-hero hub-content" data-kinetic-hero="true">
+            <div className="hub-spatial-hero-head">
+              <div>
+                <div className="hub-spatial-status-pill">
+                  <span className="hub-status-dot-blue" aria-hidden="true"/><span>研究 3</span>
+                  <span className="hub-status-dot-emerald" aria-hidden="true"/><span>创造 2</span>
+                  <span className="hub-status-dot-amber" aria-hidden="true"/><span>生活 1</span>
+                  <span className="hub-status-sep" aria-hidden="true"/>
+                  <strong>{theme.name}</strong>
+                </div>
+                <h1 className="hub-spatial-title">丁康的私人工作台</h1>
+              </div>
+              {recentModules.length>0&&<div className="hub-spatial-recents">
+                <span>接着上次</span>
+                {recentModules.slice(0,3).map(mod=><button key={mod.id} type="button" disabled={controlsDisabled} onClick={()=>launch(mod)}><AppIcon module={mod} size={18}/><strong>{mod.name}</strong><ArrowUpRight size={15}/></button>)}
+              </div>}
+            </div>
+
+            {/* 6 大核心工作台 + 1 游戏大厅 首屏 Bento 矩阵 */}
+            <div className="hub-core-bento-grid">
+              {nonGameModules.map(module=><article key={module.id} className="hub-core-bento-card" style={{'--app-accent':module.color} as CSSProperties} data-kinetic-interactive="true">
+                <button type="button" className="hub-core-bento-launch" disabled={controlsDisabled} onClick={()=>launch(module)}>
+                  <div className="hub-core-bento-top">
+                    <AppIcon module={module} size={24}/>
+                    <span className="hub-core-bento-cat">{categories.find(c=>c.id===module.category)?.name}</span>
+                    <ArrowUpRight size={19} className="hub-core-bento-arrow"/>
+                  </div>
+                  <h3>{module.name}</h3>
+                  <p>{module.description}</p>
+                </button>
+                <button type="button" className={'hub-favorite '+(favorites.includes(module.id)?'selected':'')} onClick={()=>toggleFavorite(module.id)} disabled={!ready||importing} aria-label={(favorites.includes(module.id)?'取消收藏':'收藏')+module.name} aria-pressed={favorites.includes(module.id)}><Star size={18} fill={favorites.includes(module.id)?'currentColor':'none'}/></button>
+              </article>)}
+
+              <article className="hub-core-bento-card hub-core-games-portal" data-kinetic-interactive="true">
+                <button type="button" className="hub-core-bento-launch" disabled={controlsDisabled} onClick={()=>selectSection('games')}>
+                  <div className="hub-core-bento-top">
+                    <span className="hub-app-icon"><Gamepad2 size={24}/></span>
+                    <span className="hub-core-bento-cat">8 个独立世界</span>
+                    <ArrowRight size={19} className="hub-core-bento-arrow"/>
+                  </div>
+                  <h3>游戏大厅</h3>
+                  <p>吉大校园漫游、云阙三国、星屿同行等 {gameModules.length} 款作品，统一存档</p>
+                </button>
+              </article>
+            </div>
+          </section>}
+
+          {!open&&section==='all'&&!query&&<div id="hub-workspace-calendar" data-kinetic-section="true"><WorkspaceCalendar calendar={calendar} authenticated={!!session?.authenticated} onSignIn={()=>void leaveFor('/signin-with-chatgpt?return_to=/')}/></div>}
+
+          {cozyHome&&cozyDirectoryOpen&&<div className="hub-cozy-directory-toggle hub-content"><button className="hub-button" aria-expanded={cozyDirectoryOpen} aria-controls="hub-catalog" onClick={()=>setCozyDirectoryOpen(false)}><Search size={19}/>收起列表</button><span>全部 {activeModules.length} 个核心应用</span></div>}
           <div className="hub-content hub-catalog" id="hub-catalog" hidden={cozyHome&&!cozyDirectoryOpen}>
-          <div className="hub-catalog-heading"><div><h2>{section==='favorites'?'我的收藏':activeCategory?.name||'应用目录'}</h2></div><label className="hub-search"><Search size={21}/><input ref={searchRef} aria-label="搜索应用" placeholder="找一个应用" value={search} onChange={event=>setSearch(event.target.value)}/>{search?<button onClick={()=>setSearch('')} aria-label="清除搜索"><X size={19}/></button>:<kbd>/</kbd>}</label></div>
+          <div className="hub-catalog-heading"><div><h2>{section==='favorites'?'我的收藏':activeCategory?.name||'工作台索引'}</h2></div><label className="hub-search"><Search size={21}/><input ref={searchRef} aria-label="搜索应用" placeholder="搜索工作台或游戏" value={search} onChange={event=>setSearch(event.target.value)}/>{search?<button onClick={()=>setSearch('')} aria-label="清除搜索"><X size={19}/></button>:<kbd>/</kbd>}</label></div>
           {section!=='favorites'&&<nav className="hub-category-filter" aria-label="应用分类"><button className={section==='all'?'active':''} onClick={()=>selectSection('all')}>全部</button>{categories.map(category=><button key={category.id} className={section===category.id?'active':''} onClick={()=>selectSection(category.id)}>{category.id==='games'?'游戏大厅':category.name}</button>)}</nav>}
-          {section==='games'&&!query?<GameHall favorites={favorites} recentIds={recents} disabled={controlsDisabled} onLaunch={launch} onToggleFavorite={toggleFavorite} onBack={()=>selectSection('all')}/>:visible.length===0?<div className="hub-empty hub-no-apps">{section==='favorites'?<Star size={38}/>:<Search size={38}/>}<h3>{query?'没有找到这个应用':'还没有收藏应用'}</h3><p>{query?'试试名称，例如“知证”或“三国”。':'应用旁的星标，会把它留在这里。'}</p><button className="hub-button" onClick={()=>selectSection('all')}>查看全部应用</button></div>:categories.filter(category=>visible.some(module=>module.category===category.id)).map(category=>{
+          {section==='games'&&!query?<GameHall favorites={favorites} recentIds={recents} disabled={controlsDisabled} onLaunch={launch} onToggleFavorite={toggleFavorite} onBack={()=>selectSection('all')}/>:visible.length===0?<div className="hub-empty hub-no-apps">{section==='favorites'?<Star size={38}/>:<Search size={38}/>}<h3>{query?'没有找到这个应用':'还没有收藏应用'}</h3><p>{query?'试试名称，例如“知证”或“SpecKit”。':'应用旁的星标，会把它留在这里。'}</p><button className="hub-button" onClick={()=>selectSection('all')}>查看全部应用</button></div>:categories.filter(category=>visible.some(module=>module.category===category.id)).map(category=>{
             const presentation=categoryPresentation[category.id],scenic=theme.id!=='classic'&&(category.id==='games'||category.id==='life');
             if(category.id==='games'&&section==='all'&&!query){
               return <section className="hub-collection hub-game-hall-section" data-category="games" key="games" aria-labelledby="category-games" data-kinetic-section="true">
-                <div className="hub-collection-heading"><h3 id="category-games">{theme.id==='classic'?'游戏大厅':presentation.title}</h3></div>
+                <div className="hub-collection-heading"><h3 id="category-games">游戏大厅</h3></div>
                 <div className="hub-game-hall-card" data-kinetic-interactive="true">
                   <div className="hub-game-hall-info">
                     <span className="hub-game-hall-icon"><Gamepad2 size={28}/></span>
@@ -411,7 +445,7 @@ export default function Hub(){
               </section>;
             }
             return <section className={'hub-collection '+(scenic?'scenic':'editorial')} data-category={category.id} key={category.id} aria-labelledby={'category-'+category.id}>
-              <div className="hub-collection-heading"><h3 id={'category-'+category.id}>{theme.id==='classic'?category.name:presentation.title}</h3></div>
+              <div className="hub-collection-heading"><h3 id={'category-'+category.id}>{category.name}</h3></div>
               <div className={scenic?'hub-art-grid':'hub-editorial-grid'}>{visible.filter(module=>module.category===category.id).map(module=>{
                 const art=moduleArtwork[module.id];
                 return <article className={'hub-application '+(art?'has-art':'type-art')} key={module.id} style={{'--app-accent':module.color} as CSSProperties} data-kinetic-interactive="true">
@@ -431,6 +465,20 @@ export default function Hub(){
               })}</div>
             </section>;
           })}
+
+          {/* 底部折叠归档室：同住（AI 面试作品）及已并入 SpecKit 的历史入口 */}
+          {archivedModules.length>0&&section==='all'&&!query&&<details className="hub-archive-drawer">
+            <summary>归档与已合并历史项目（{archivedModules.length}）</summary>
+            <div className="hub-archive-grid">
+              {archivedModules.map(mod=><div key={mod.id} className="hub-archive-item">
+                <div>
+                  <strong>{mod.name}</strong>
+                  <span>{mod.archiveNote||mod.subtitle}</span>
+                </div>
+                <button type="button" className="hub-button" disabled={controlsDisabled} onClick={()=>launch(mod)}>查看归档<ArrowUpRight size={15}/></button>
+              </div>)}
+            </div>
+          </details>}
           </div>
         </>}
         <footer className="hub-footer"><span className="hub-footer-name">丁康 · {theme.identity}</span><button onClick={()=>selectSection('data')}>管理文件与存档<ArrowUpRight size={18}/></button></footer>

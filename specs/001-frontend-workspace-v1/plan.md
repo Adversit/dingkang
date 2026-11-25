@@ -23,3 +23,12 @@
    - `app/page.tsx`, `app/globals.css`, `components/CozyBaseScene.tsx`: 四主题整合、暖居直达入口、玻璃态与景深层次。
    - `public/apps/hub-workbench-unified.css` + `app/layout.tsx` + 13 个静态 HTML 入口：全站 17 个子工作台统一样式与微动效层。
    - `docs/spec-plan-task/`: 整体、前端改造与 17 个子工作台独立交接文档。
+
+4. **V3 Radical Overhaul & SpecKit Consolidation**
+   - `lib/hub/catalog.ts`: 新增 `archived?: boolean` 与 `archiveNote?: string`；归档 `roommate-housekeeper`、`aipm-studio-dk`、`ai-dev-collaboration-workbench`；将 `evopm-workbench` 升级为 `SpecKit 研发工作台`。
+   - `app/page.tsx` & `app/globals.css`: 全新 `.hub-spatial-hero` Next.js 极简 Bento 首页矩阵（6 个活跃工作台 + 1 个跨两列游戏大厅入口）与底部 `.hub-archive-drawer` 归档抽屉。
+   - `modules/zhiliu-radar/app/home.tsx` & `globals.css`: 3 页签极简 Bento 情报与简报工作台。
+   - `modules/zhizheng-research/app/workbench.tsx` & `globals.css`: 3 步学术文献检索、分栏精读卡/证据摘录与跨论文综述工作台。
+   - `public/apps/agent-architecture-journey/index.html`: 5 大核心架构模块 + 实时 JSON 状态流推演沙盘 + 持久化学习笔记。
+   - `modules/evopm-workbench/app/page.tsx` & `styles.css`: 统一合并 AI PM、EvoPM 与 AI 研发协作为 4 阶段 SpecKit 流水线，支持实时预览与一键导出 `spec.md`、`plan.md`、`tasks.md`。
+   - `public/apps/novel-studio/canvas.js` & `canvas.css`: 3 栏沉浸式小说创作工作台（保留 `HubBeforeLeave`、`HubCancelLeave` 与 `hub:open-menu` / `hub:return` 通信契约）。

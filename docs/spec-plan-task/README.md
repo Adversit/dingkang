@@ -15,19 +15,19 @@
 - **17 个子工作台独立文档**（`modules/<moduleId>.md`）：
 
 ### 研究与学习（3）
-- [zhiliu-radar](./modules/zhiliu-radar.md) — 知流（个人信息雷达）
-- [zhizheng-research](./modules/zhizheng-research.md) — 知证（论文研究工作台）
-- [agent-architecture-journey](./modules/agent-architecture-journey.md) — Agent 架构学习
+- [zhiliu-radar](./modules/zhiliu-radar.md) — 知流（AI 情报与每日简报工作台 · V3 三页签极简 Bento 重构）
+- [zhizheng-research](./modules/zhizheng-research.md) — 知证（学术文献精读与证据综述工作台 · V3 三步流水线重构）
+- [agent-architecture-journey](./modules/agent-architecture-journey.md) — Agent 架构实验室（五大核心机制与实时运行推演沙盘 · V3 互动实验室重构）
 
-### 产品与开发（4）
-- [novel-studio](./modules/novel-studio.md) — AI 小说创作
-- [aipm-studio-dk](./modules/aipm-studio-dk.md) — AI PM Studio
-- [evopm-workbench](./modules/evopm-workbench.md) — EvoPM（产品演进工作台）
-- [ai-dev-collaboration-workbench](./modules/ai-dev-collaboration-workbench.md) — AI 研发协作
+### 产品与开发（1 核心活跃 + 2 已合并归档）
+- [novel-studio](./modules/novel-studio.md) — AI 小说工坊（三栏沉浸式章节写作、世界观设定与 AI 续写审阅 · V3 重构）
+- [evopm-workbench](./modules/evopm-workbench.md) — SpecKit 研发工作台（合并原 AI PM Studio、AI 研发协作与 EvoPM，以 `Signals → /speckit.specify → /speckit.plan & tasks → Delivery` 为主线）
+- [aipm-studio-dk](./modules/aipm-studio-dk.md) — AI PM Studio（已并入 SpecKit 研发工作台，置于首页底部归档抽屉）
+- [ai-dev-collaboration-workbench](./modules/ai-dev-collaboration-workbench.md) — AI 研发协作（已并入 SpecKit 研发工作台，置于首页底部归档抽屉）
 
-### 生活与陪伴（2）
-- [wandeng-evening](./modules/wandeng-evening.md) — 晚灯（数字陪伴与轻复盘）
-- [roommate-housekeeper](./modules/roommate-housekeeper.md) — 同住（合租生活管家）
+### 生活与陪伴（1 核心活跃 + 1 面试作品归档）
+- [wandeng-evening](./modules/wandeng-evening.md) — 晚灯（夜间数字陪伴与轻复盘）
+- [roommate-housekeeper](./modules/roommate-housekeeper.md) — 同住（AI 面试作品，已归档置于首页底部归档抽屉）
 
 ### 游戏（8，首页聚合于「游戏大厅」）
 - [jlu-campus](./modules/jlu-campus.md) — 吉大校园漫游

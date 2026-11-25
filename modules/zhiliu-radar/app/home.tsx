@@ -1,152 +1,827 @@
 'use client';
-import aihotDirectory from '@/modules/zhiliu-radar/data/aihot-public-directory.json';
-import { useEffect,useMemo,useRef,useState } from 'react';
-import { Radar, Newspaper, Bookmark, Rss, Activity, SlidersHorizontal, Search, ArrowUpRight, ArrowRight, RefreshCw, Check, Plus, X, ChevronDown, Clock3, Sparkles, BookOpen, CheckCheck, ThumbsUp, ThumbsDown, Copy, Download, FileText, AlertCircle, Layers3, Link2, Settings2, Menu, CircleHelp, PencilLine, ExternalLink, LoaderCircle, Radio, Feather, Zap, RotateCcw } from 'lucide-react';
-import { CATEGORIES,DEFAULT_PREFS,FEEDBACK_LABELS,shanghaiDate,type Event,type Source,type Prefs } from '@/modules/zhiliu-radar/lib/domain';
 
-type View='feed'|'digests'|'reading'|'sources'|'runs'|'settings';
-const NAV=[{id:'feed',title:'今日精选',icon:Newspaper},{id:'digests',title:'每日简报',icon:FileText},{id:'reading',title:'我的阅读',icon:Bookmark},{id:'sources',title:'来源中心',icon:Rss},{id:'runs',title:'运行记录',icon:Activity},{id:'settings',title:'偏好设置',icon:SlidersHorizontal}] as const;
-const CATEGORY_COLORS:Record<string,string>={'AI 产品':'purple','Agent 工程':'blue','软件工程':'green','北京招聘':'amber','一人公司':'rose'};
-const localTime=(x?:string|null)=>x?new Date(x).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}):'尚无记录';
-const pubLabel=(x:string|null,today:string)=>!x?'发布时间未知':shanghaiDate(x)===today?'今天 '+new Date(x).toLocaleTimeString('zh-CN',{timeZone:'Asia/Shanghai',hour:'2-digit',minute:'2-digit',hour12:false}):shanghaiDate(x).slice(5).replace('-','月')+'日';
-const IconSpin=()=> <LoaderCircle size={16} className="spin"/>;
-const safeRead=(v:string)=>{try{return JSON.parse(v)}catch{return []}};
+import { useEffect, useMemo, useState } from 'react';
+import {
+  AlertCircle,
+  ArrowUpRight,
+  Bookmark,
+  Check,
+  Copy,
+  ExternalLink,
+  FileText,
+  LoaderCircle,
+  Newspaper,
+  Plus,
+  Radar,
+  RefreshCw,
+  Rss,
+  Search,
+  Sparkles,
+  X,
+} from 'lucide-react';
+import {
+  CATEGORIES,
+  shanghaiDate,
+  type Event,
+  type Source,
+} from '@/modules/zhiliu-radar/lib/domain';
 
-export default function Home(){
- const [data,setData]=useState<any>(null),[view,setView]=useState<View>('feed'),[loading,setLoading]=useState(true),[busy,setBusy]=useState(''),[error,setError]=useState(''),[toast,setToast]=useState('');
- const [query,setQuery]=useState(''),[category,setCategory]=useState('全部'),[period,setPeriod]=useState('week'),[sort,setSort]=useState('score'),[readFilter,setReadFilter]=useState('saved'),[limit,setLimit]=useState(18),[selected,setSelected]=useState<string|null>(null),[menu,setMenu]=useState(false),[collectProgress,setCollectProgress]=useState('');
- async function load(){const res=await fetch('/api/m/zhiliu-radar/radar',{cache:'no-store'});const d:any=await res.json();if(!res.ok)throw new Error(d.error||'暂时无法连接，请重试');setData(d);return d}
- useEffect(()=>{const q=new URLSearchParams(location.search).get('view');if(NAV.some(x=>x.id===q))setView(q as View);load().catch(e=>setError(e.message)).finally(()=>setLoading(false))},[]);
- useEffect(()=>{if(!toast)return;const t=setTimeout(()=>setToast(''),4500);return()=>clearTimeout(t)},[toast]);
- useEffect(()=>{setLimit(18)},[category,period,query,readFilter,view]);
- function navigate(v:View){setView(v);setMenu(false);history.replaceState(null,'','?view='+v);window.scrollTo({top:0})}
- async function act(action:string,payload:any={},message='已保存'){
-  if(busy)return null;setBusy(action);setError('');
-  try{const response=await fetch('/api/m/zhiliu-radar/radar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,requestId:Array.from(crypto.getRandomValues(new Uint8Array(16)),x=>x.toString(16).padStart(2,'0')).join(''),...payload})});const result:any=await response.json();if(!response.ok)throw new Error(result.error||'操作失败');await load();if(message)setToast(result.busy?result.message:message);return result}catch(e){setError(e instanceof Error?e.message:'操作失败');return null}finally{setBusy('')}
- }
- async function refresh(){setBusy('refresh');try{await load();setToast('已刷新最新记录')}catch(e){setError(String(e))}finally{setBusy('')}}
- async function ingestAll(){
-  if(busy)return;setBusy('ingest');setError('');setCollectProgress('正在开始…');let cycleId:string|undefined;let inserted=0,duplicates=0,failed=0;
-  try{for(let batch=0;batch<201;batch++){
-   const response=await fetch('/api/m/zhiliu-radar/radar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:batch===0&&!data?.sources.length?'initialize':'ingest',requestId:Array.from(crypto.getRandomValues(new Uint8Array(16)),x=>x.toString(16).padStart(2,'0')).join(''),cycleId})});const r:any=await response.json();
-   if(!response.ok)throw new Error(r.error||'采集失败');if(r.busy){setToast(r.message);break}
-   inserted+=r.inserted||0;duplicates+=r.duplicates||0;failed+=r.failed||0;setCollectProgress(`已采集 ${r.completedSources} / ${r.totalSources}`);
-   if(!r.hasMore){setToast(`全部采集完成 · ${inserted} 条新内容，${duplicates} 条重复${failed?`，${failed} 个来源失败（查看运行记录）`:''}`);break}cycleId=r.cycleId;
-  }await load()}catch(e){setError(e instanceof Error?e.message:'采集中断，再次点击将从已保存的进度继续');await load().catch(()=>{})}finally{setBusy('');setCollectProgress('')}
- }
- const events:Event[]=data?.events||[],sources:Source[]=data?.sources||[],today=data?.today||shanghaiDate();
- const filtered=useMemo(()=>events.filter(e=>{
-  if(category!=='全部'&&e.category!==category)return false;
-  if(query&&!((e.displayTitle+e.summary+e.items.flatMap(i=>i.sources.map(s=>s.name)).join(' ')).toLowerCase().includes(query.toLowerCase())))return false;
-  if(view==='reading')return readFilter==='all'?e.feedback.length>0:e.feedback.includes(readFilter);
-  if(period==='today')return !!e.latest&&shanghaiDate(e.latest)===today;
-  if(period==='week')return !!e.latest&&Date.now()-new Date(e.latest).getTime()<7*86400000;
-  if(period==='unread')return !e.feedback.includes('read');return true;
- }).sort((a,b)=>sort==='latest'?(b.latest||'').localeCompare(a.latest||''):b.score-a.score),[data,category,query,period,view,readFilter,sort,today]);
- const todayEvents=events.filter(e=>e.latest&&shanghaiDate(e.latest)===today),saved=events.filter(e=>e.feedback.includes('saved')),read=events.filter(e=>e.feedback.includes('read'));
- const current=events.find(e=>e.id===selected);const lastSuccess=sources.map(s=>s.last_success||'').sort().at(-1);const healthy=sources.filter(s=>s.last_success&&!s.last_error).length;
- const feedBack=(e:Event,kind:string)=>act('feedback',{id:e.id,kind,active:!e.feedback.includes(kind)},e.feedback.includes(kind)?'已撤销反馈':'反馈已保存，排序已更新');
- return <div className="shell">
-  <aside className={'sidebar '+(menu?'mobile-open':'')}>
-   <a className="brand" href="/m/zhiliu-radar" aria-label="知流首页"><span className="brand-icon"><Radar size={27}/></span><span>知流</span></a>
+type View = 'feed' | 'digests' | 'sources';
 
-   <nav>{NAV.map((n,i)=><button key={n.id} className={'nav-item '+(view===n.id?'active':'')+(i===3?' nav-section':'')} onClick={()=>navigate(n.id)}><n.icon size={19} strokeWidth={1.7}/><span>{n.title}</span>{n.id==='reading'&&saved.length>0&&<em>{saved.length}</em>}{view===n.id&&<span className="nav-active-dot"/>}</button>)}</nav>
-   <div className="sidebar-bottom"><div className="profile"><span className="avatar">丁</span><div><strong>我的阅读空间</strong><small>私有站点 · 持久保存</small></div><span className="online-dot"/></div></div>
-  </aside>
-  {menu&&<button className="nav-mask" onClick={()=>setMenu(false)} aria-label="收起菜单"/>}
-  <main className="main">
-   <header className="topbar"><div className="breadcrumb"><button className="icon-button mobile-only" onClick={()=>setMenu(!menu)} aria-label="打开菜单"><Menu size={22}/></button><span>工作空间</span><span className="slash">/</span><strong>{NAV.find(n=>n.id===view)?.title}</strong></div><div className="top-actions"><span className="private-badge"><span className="tiny-dot"/> 仅自己可见</span><button className="icon-button" aria-label="刷新页面数据" title="刷新页面数据" onClick={refresh} disabled={!!busy}><RefreshCw size={17} className={busy==='refresh'?'spin':''}/></button><span className="avatar small-avatar">丁</span></div></header>
-   <div className="content">
-    {error&&<div className="notice error" role="alert"><AlertCircle size={18}/><span>{error}{error.includes('登录')&&<> · <a href="/signin-with-chatgpt?return_to=%2Fm%2Fzhiliu-radar" target="_top">使用 ChatGPT 登录</a></>}</span><button className="icon-button" aria-label="关闭错误提示" onClick={()=>setError('')}><X size={16}/></button></div>}
-    {(view==='feed'||view==='reading')&&<>
-     <div className="page-heading"><div>{view==='feed'&&<div className="eyebrow">{new Date(today+'T00:00:00+08:00').toLocaleDateString('zh-CN',{timeZone:'Asia/Shanghai',year:'numeric',month:'long',day:'numeric',weekday:'long'})}</div>}<h1>{view==='feed'?<>把注意力，留给<span>值得读的事。</span></>:'读过的，留下来的。'}</h1></div><button className="primary" onClick={ingestAll} disabled={!!busy}>{busy==='ingest'||busy==='initialize'?<IconSpin/>:<RefreshCw size={17}/>} {busy==='ingest'||busy==='initialize'?(collectProgress||'正在采集…'):'采集最新信息'}</button></div>
-     {view==='feed'&&<div className="reading-strip"><div><span className="strip-icon"><Sparkles size={19}/></span><p>今天新发布 <strong>{todayEvents.length}</strong> 件事 <span className="strip-sep">·</span> <strong>{sources.filter(s=>s.enabled).length}</strong> 个来源为你守望</p></div><button onClick={()=>navigate('digests')}>生成今日简报 <ArrowUpRight size={16}/></button></div>}
-     {view==='reading'&&<div className="reading-tabs">{[['saved','我的收藏',saved.length],['read','已读记录',read.length],['useful','有用'],['all','全部反馈']].map(([key,label,count])=><button key={key} className={readFilter===key?'selected':''} onClick={()=>setReadFilter(String(key))}>{label} {count!==undefined&&<b>{count}</b>}</button>)}</div>}
-     <div className="feed-layout"><section className="feed-main"><div className="feed-tools"><div className="category-tabs">{['全部',...CATEGORIES].map(c=><button key={c} className={category===c?'selected':''} onClick={()=>setCategory(c)}>{c}</button>)}</div><div className="search-row"><label className="search-box"><Search size={17}/><input aria-label="搜索标题、摘要、来源" value={query} onChange={e=>setQuery(e.target.value)} placeholder="搜索标题、摘要、来源…"/>{query&&<button className="icon-button" onClick={()=>setQuery('')} aria-label="清空搜索"><X size={14}/></button>}</label>{view==='feed'&&<select aria-label="时间范围" value={period} onChange={e=>setPeriod(e.target.value)}><option value="week">近 7 天</option><option value="today">今天发布</option><option value="all">全部时间</option><option value="unread">所有未读</option></select>}<select aria-label="排序方式" value={sort} onChange={e=>setSort(e.target.value)}><option value="score">为你推荐</option><option value="latest">最新发布</option></select></div></div>
-      <div className="list-caption"><span>{view==='reading'?'阅读记录':period==='today'?'今日更新':period==='week'?'本周值得关注':'精选信息'} <b>{filtered.length}</b></span><span>北京时间 · {sort==='score'?'按个人相关性排序':'按来源发布时间排序'}</span></div>
-      {loading?<div className="loading-state"><IconSpin/><p>正在打开你的信息雷达…</p></div>:filtered.length?filtered.slice(0,limit).map((e,index)=><EventCard key={e.id} event={e} index={index} today={today} disabled={!!busy} onOpen={()=>setSelected(e.id)} onFeedback={kind=>feedBack(e,kind)}/>):<div className="empty-state"><span className="empty-icon"><Radio size={32}/></span><h3>{!sources.length?'从一手信源，开启知流。':period==='today'&&view==='feed'?'今天暂时没有新发布的内容':'这里暂时还没有内容'}</h3><p>{!sources.length?'连接 AIHOT 公开信源与现有官方订阅，采集结果将保存在你的数据库。':view==='reading'?'在信息卡片上点击收藏、已读或有用，记录会保存在这里。':'可以调整时间范围、清空筛选，或重新采集。旧文始终显示它的原始日期。'}</p><button className="primary" onClick={!sources.length?ingestAll:()=>{setPeriod('all');setCategory('全部');setQuery('');if(view==='reading')navigate('feed')}} disabled={!!busy}>{!sources.length?'连接默认来源并采集':'查看全部信息'}<ArrowRight size={16}/></button></div>}
-      {filtered.length>limit&&<button className="load-more" onClick={()=>setLimit(limit+18)}>继续阅读 · 还有 {filtered.length-limit} 件事 <ChevronDown size={16}/></button>}
-     </section><aside className="reading-aside"><div className="edition-card"><div className="edition-top"><Radar size={22}/></div><h2>少一点噪声，<br/>多一点<span>洞见。</span></h2><div className="edition-stats"><div><b>{todayEvents.length.toString().padStart(2,'0')}</b><span>今日新发布</span></div><div><b>{read.length.toString().padStart(2,'0')}</b><span>已读事件</span></div></div><button onClick={()=>navigate('digests')}>编一份我的简报 <ArrowRight size={16}/></button></div>
-      <div className="focus-box"><h3>你的关注方向 <button className="icon-button" onClick={()=>navigate('settings')} aria-label="调整关注方向"><Settings2 size={16}/></button></h3>{CATEGORIES.map(c=><div className="focus-row" key={c}><span><i className={'topic-dot '+CATEGORY_COLORS[c]}/>{c}</span><div className="weight-dots">{[1,2,3,4,5].map(n=><i key={n} className={n<=(data?.prefs.weights[c]??DEFAULT_PREFS.weights[c])?'on':''}/>)}</div></div>)}<p>收藏用于稍后阅读；有用、无关反馈<br/>会调整你下一轮的推荐排序。</p></div>
-      <div className="source-mini"><span className={healthy?'online-dot':'idle-dot'}/><div><strong>{healthy} 个来源最近采集成功</strong><p>上次成功 {localTime(lastSuccess)}</p><button onClick={()=>navigate('sources')}>管理我的信源 <ArrowUpRight size={13}/></button></div></div>
-     </aside></div>
-    </>}
-    {view==='sources'&&<Sources data={data} busy={busy} act={act} ingestAll={ingestAll} collectProgress={collectProgress}/>}
-    {view==='digests'&&<Digests data={data} busy={busy} act={act} notify={setToast}/>}
-    {view==='runs'&&<Runs data={data} busy={busy} refresh={refresh} act={act}/>}
-    {view==='settings'&&<Settings data={data} busy={busy} act={act}/>}
-    <footer className="page-footer"><span><Radar size={13}/> 知流</span><span>原始摘要与模型摘要分别标注 · Asia/Shanghai</span></footer>
-   </div>
-  </main>
-  {toast&&<div className="toast" role="status"><Check size={17}/>{toast}</div>}
-  {current&&<Detail event={current} allEvents={events} model={data.model} busy={busy} act={act} onClose={()=>setSelected(null)} onFeedback={(kind:string)=>feedBack(current,kind)}/>}
- </div>
+const CATEGORY_BADGE: Record<string, string> = {
+  'AI 产品': 'badge-purple',
+  'Agent 工程': 'badge-blue',
+  '软件工程': 'badge-emerald',
+  '北京招聘': 'badge-amber',
+  '一人公司': 'badge-rose',
+};
+
+function makeReqId() {
+  return Array.from(crypto.getRandomValues(new Uint8Array(12)), x =>
+    x.toString(16).padStart(2, '0'),
+  ).join('');
 }
-function EventCard({event:e,index,today,disabled,onOpen,onFeedback}:{event:Event;index:number;today:string;disabled:boolean;onOpen:()=>void;onFeedback:(s:string)=>void}){
- const first=e.items[0],names=[...new Set(e.items.flatMap(i=>i.sources.map(s=>s.name)))];
- return <article className={'event-card '+(e.feedback.includes('read')?'is-read':'')+(index===0?' lead-card':'')}>
-  <div className="card-top"><div className="card-tags"><span className={'tag '+CATEGORY_COLORS[e.category]}>{e.category}</span>{index===0&&<span className="editor-pick"><Sparkles size={12}/> 优先阅读</span>}{e.items.length>1&&<span className="subtle-tag"><Layers3 size={12}/>{e.sourceCount} 个来源 · {e.items.length} 篇报道</span>}</div><span className="score-badge" title={Object.entries(e.parts).map(([k,v])=>`${k} ${v}`).join(' · ')}>{e.score}<small>相关度</small></span></div>
-  <button className="card-title" onClick={onOpen}>{e.displayTitle}<ArrowUpRight size={21}/></button>
-  <p className="card-summary" lang={e.summaryMode.startsWith('原始')?'en':undefined}>{e.summary}</p>
-  <div className="reason-line"><span><Zap size={13}/></span><p>{e.reason}</p></div>
-  <div className="card-meta"><span className="source-avatar">{names[0]?.slice(0,1)||'源'}</span><span>{names.slice(0,2).join(' / ')}{names.length>2?` +${names.length-2}`:''}</span>{e.officialSource&&<span className="official-mark" title="来源被配置为官方或一手信源"><CheckCheck size={13}/></span>}<i/> <time>{pubLabel(e.latest,today)}</time></div>
-  <div className="card-bottom"><div className="processing-label">{e.summaryMode}{e.feedback.includes('read')&&<span> · 已读</span>}</div><div className="card-actions"><button className={e.feedback.includes('useful')?'active':''} title={e.feedback.includes('useful')?'撤销有用':'这条信息有用'} aria-label={e.feedback.includes('useful')?'撤销有用':'标记有用'} onClick={()=>onFeedback('useful')} disabled={disabled}><ThumbsUp size={15}/><span>有用</span></button><button className={e.feedback.includes('read')?'active':''} aria-label={e.feedback.includes('read')?'撤销已读':'标记已读'} title="切换已读状态" onClick={()=>onFeedback('read')} disabled={disabled}><Check size={16}/></button><button className={e.feedback.includes('saved')?'active':''} aria-label={e.feedback.includes('saved')?'取消收藏':'收藏文章'} title="收藏 / 取消收藏" onClick={()=>onFeedback('saved')} disabled={disabled}><Bookmark size={16} fill={e.feedback.includes('saved')?'currentColor':'none'}/></button><a href={first.canonical_url} target="_blank" rel="noreferrer" className="original-link">原文 <ArrowUpRight size={14}/></a></div></div>
- </article>
+
+function formatPubDate(iso: string | null | undefined, today: string): string {
+  if (!iso) return '近期';
+  const d = shanghaiDate(iso);
+  if (d === today) {
+    return (
+      '今天 ' +
+      new Date(iso).toLocaleTimeString('zh-CN', {
+        timeZone: 'Asia/Shanghai',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      })
+    );
+  }
+  return d.slice(5).replace('-', '月') + '日';
 }
-function SectionHeading({eyebrow,title,description,children}:{eyebrow:string;title:string;description:string;children?:React.ReactNode}){return <div className="page-heading"><div><h1>{title}</h1></div>{children}</div>}
-function Sources({data,busy,act,ingestAll,collectProgress}:any){
- const [show,setShow]=useState(false),[test,setTest]=useState<any>(null),[search,setSearch]=useState(''),[state,setState]=useState('all');const [form,setForm]=useState({name:'',url:'',kind:'rss',category:'AI 产品',quality:26,official:false});
- const shown=(data?.sources||[]).filter((s:Source)=>(!search||(s.name+' '+s.url).toLowerCase().includes(search.toLowerCase()))&&(state==='all'||state==='failed'&&s.last_error||state==='enabled'&&s.enabled||state==='disabled'&&!s.enabled));
- const set=(key:string,value:any)=>{setForm({...form,[key]:value});setTest(null)};
- async function trial(){const r=await act('source-test',{source:form},'试抓完成');if(r)setTest(r)}
- async function save(e:React.FormEvent){e.preventDefault();const r=await act('source-add',{source:form},'来源已添加，可以立即采集');if(r){setShow(false);setTest(null);setForm({...form,name:'',url:''})}}
- return <><SectionHeading eyebrow="YOUR SOURCES" title="好信息，从好信源开始。" description="连接公开订阅与官方更新。每个来源独立运行，失败不会清空已经读到的内容。"><button className="primary" onClick={()=>setShow(!show)}><Plus size={17}/>添加来源</button></SectionHeading>
-  <div className="stat-grid"><div><span>全部来源</span><b>{data?.sources.length||0}</b></div><div><span>正在启用</span><b>{data?.sources.filter((s:Source)=>s.enabled).length||0}</b></div><div><span>最近成功</span><b>{data?.sources.filter((s:Source)=>s.last_success&&!s.last_error).length||0}</b></div><div><span>需要关注</span><b className="amber-text">{data?.sources.filter((s:Source)=>s.last_error).length||0}</b></div></div>
-  <div className="panel catalog-note"><h2>AIHOT 信源接入</h2><p>公开仓库的 18 个配置已纳入目录，已核实的原站订阅也一并补充。当前可接入 {data?.catalog?.available||18} 个，已有地址自动去重。<a href={data?.catalog?.configUrl} target="_blank" rel="noreferrer"> 查看公开配置</a></p><button className="secondary" disabled={!!busy} onClick={()=>act('source-import-aihot',{},'已补齐公开目录中的来源，已有设置保持不变')}>补齐公开目录 <Plus size={15}/></button></div>
-  {show&&<form className="panel source-form" onSubmit={save}><div className="panel-heading"><h2>添加一个真实信源</h2><button type="button" className="icon-button" onClick={()=>setShow(false)} aria-label="关闭添加来源"><X size={18}/></button></div><div className="form-grid"><label>来源名称<input required value={form.name} onChange={e=>set('name',e.target.value)} placeholder="例如：LangGraph 发布记录" maxLength={80}/></label><label>接入方式<select value={form.kind} onChange={e=>set('kind',e.target.value)}><option value="rss">RSS / Atom 订阅</option><option value="json">公开 JSON / JSON Feed</option><option value="url">手动网页 URL</option></select></label><label className="full-width">采集地址<input required type="url" value={form.url} onChange={e=>set('url',e.target.value)} placeholder="https://github.com/langchain-ai/langgraph/releases.atom"/></label><label>默认分类<select value={form.category} onChange={e=>set('category',e.target.value)}>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></label><label>来源质量分 · {form.quality}/30<input type="range" min="10" max="30" value={form.quality} onChange={e=>set('quality',+e.target.value)}/></label></div><label className="check-label"><input type="checkbox" checked={form.official} onChange={e=>set('official',e.target.checked)}/>这是官方或一手来源（由你确认）</label><p className="helper">JSON 支持条目数组、JSON Feed、GitHub releases 和 Greenhouse / Lever 招聘格式。手动 URL 只读取网页标题与 meta 摘要。可采集域名见偏好设置。</p><div className="form-actions"><button type="button" className="secondary" disabled={!!busy||!form.url||!form.name} onClick={trial}>{busy==='source-test'?<IconSpin/>:<Radio size={16}/>}试抓并预览</button><button className="primary" disabled={!!busy}>保存来源<Plus size={15}/></button></div>{test&&<div className="test-result"><strong><Check size={15}/>成功读取 {test.count} 条</strong>{test.samples.map((s:any,i:number)=><p key={i}>{s.title}<small>{s.published?localTime(s.published):'首发时间未知'} · {s.scope}</small></p>)}</div>}</form>}
-  <div className="section-bar"><h2>我的信源 <span>{data?.sources.length||0}</span></h2><button className="secondary" onClick={ingestAll} disabled={!!busy}>{busy==='ingest'?<IconSpin/>:<RefreshCw size={15}/>} {busy==='ingest'?collectProgress||'正在采集…':'采集全部'}</button></div>
-  <div className="source-filters"><label className="search-box"><Search size={17}/><input aria-label="搜索信源" value={search} onChange={e=>setSearch(e.target.value)} placeholder="搜索名称或订阅地址…"/></label><select aria-label="信源状态" value={state} onChange={e=>setState(e.target.value)}><option value="all">全部状态</option><option value="enabled">已启用</option><option value="failed">采集失败</option><option value="disabled">已停用</option></select><span>{shown.length} 个来源</span></div>
-  {!data?.sources.length?<div className="empty-state"><Rss size={36}/><h3>还没有连接来源</h3><button className="primary" disabled={!!busy} onClick={ingestAll}>连接默认来源并采集</button></div>:<div className="sources-grid">{shown.map((s:Source & {catalog?:{origin:string;tags:string[];evidence?:string}})=><article className={'source-card '+(!s.enabled?'muted-source':'')} key={s.id}><div className="source-card-header"><span className={'source-logo '+CATEGORY_COLORS[s.category]}>{s.name.slice(0,1)}</span><div><h3>{s.name}</h3><span>{s.kind==='rss'?'RSS / ATOM':s.kind==='json'?'PUBLIC JSON':'网页摘要'} · {s.official?'官方 / 一手':s.catalog?.tags.join(' · ')||'自定义信源'}</span></div><button role="switch" aria-checked={!!s.enabled} aria-label={(s.enabled?'停用':'启用')+s.name} className={'toggle '+(s.enabled?'on':'')} onClick={()=>act('source-toggle',{id:s.id,enabled:!s.enabled},s.enabled?'已停用来源':'已启用来源')} disabled={!!busy}><i/></button></div><a className="source-url" href={s.url} target="_blank" rel="noreferrer">{s.url}<ExternalLink size={12}/></a><div className="source-card-status"><span className={s.last_error?'status error-status':s.last_success?'status success-status':'status'}><i/>{s.last_error?'采集失败':s.last_success?'采集正常':'等待首次采集'}</span><span className={'tag '+CATEGORY_COLORS[s.category]}>{s.category}</span></div>{s.catalog&&<p className="source-provenance"><a href={s.catalog.evidence} target="_blank" rel="noreferrer">{s.catalog.origin}<ArrowUpRight size={11}/></a></p>}{s.last_error&&<p className="inline-error">{s.last_error}</p>}<div className="source-card-foot"><span>上次成功 {localTime(s.last_success)}</span><button disabled={!!busy||!s.enabled} onClick={()=>act('ingest',{sourceId:s.id},'来源采集结束，请查看运行记录')}><RefreshCw size={13}/>{s.last_error?'重试':'采集'}</button></div></article>)}</div>}
-  {!!data?.sources.length&&!shown.length&&<p className="helper">没有符合当前搜索或状态的来源。</p>}
-  <AIHotDirectory/>
- </>
-}
-function AIHotDirectory(){
- const [search,setSearch]=useState('');const labels:Record<string,string>={x_search:'X',rss:'RSS',web_list:'网页',mp_account:'公众号',json_list:'接口'};
- const list=aihotDirectory.samples.filter(s=>s.name.toLowerCase().includes(search.toLowerCase()));
- return <div className="panel catalog-note"><h2>线上完整信源的接入缺口</h2><p><a href={aihotDirectory.evidence} target="_blank" rel="noreferrer">AIHOT 线上统计</a>在 {aihotDirectory.checkedAt} 显示 {aihotDirectory.total} 个启用来源：{Object.entries(aihotDirectory.kinds).map(([kind,n])=>`${labels[kind]} ${n}`).join(' · ')}。</p><p>网站仅公开 {aihotDirectory.samples.length} 个名称抽样，未提供完整采集配置。其余来源需要完整信源导出；X 和公众号还需要对应的数据服务密钥。下面的名称仅供核对，不计入已接入来源。</p><details className="catalog-directory"><summary>查看 {aihotDirectory.samples.length} 个公开名称</summary><input aria-label="搜索 AIHOT 公开名称" value={search} onChange={e=>setSearch(e.target.value)} placeholder="查找账号、媒体或机构…"/><ul>{list.map((s,i)=><li key={s.kind+s.name+i}>{s.name}<small>{labels[s.kind]} · 采集配置未公开</small></li>)}</ul>{!list.length&&<p>此抽样中没有匹配名称。</p>}</details></div>
-}
-function Digests({data,busy,act,notify}:any){
- const [date,setDate]=useState(shanghaiDate()),[count,setCount]=useState(7),[selectedId,setSelectedId]=useState<string|null>(null),[content,setContent]=useState(''),[editing,setEditing]=useState(false);
- const selected=data?.digests.find((d:any)=>d.id===selectedId)||data?.digests[0];
- useEffect(()=>{if(selected){setContent(selected.content);setEditing(false)}},[selected?.id,selected?.updated_at]);
- async function create(){const result=await act('digest-create',{date,count},'简报已生成并保存');if(result)setSelectedId(result.id)}
- function download(){if(!selected)return;const blob=new Blob([content],{type:'text/markdown;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='知流_'+selected.date+'.md';a.click();URL.revokeObjectURL(url)}
- async function copy(){try{await navigator.clipboard.writeText(content);notify('已复制 Markdown 简报')}catch{notify('浏览器不允许复制，请使用导出 Markdown')}}
- return <><SectionHeading eyebrow="THE DAILY EDITION" title="一份简报，带走今天的重点。" description="按北京时间的来源发布日期编选，保留每条信息的原文与处理方式。"/>
-  <div className="digest-controls panel"><label>简报日期<input type="date" value={date} max={shanghaiDate()} onChange={e=>setDate(e.target.value)}/></label><label>最多条数<select value={count} onChange={e=>setCount(+e.target.value)}>{[3,5,7,10,15,20].map(n=><option key={n} value={n}>{n} 条</option>)}</select></label><button className="primary" disabled={!!busy||!date} onClick={create}>{busy==='digest-create'?<IconSpin/>:<Feather size={17}/>}生成简报</button></div>
-  <div className="digest-layout"><aside className="digest-history"><h3>历史简报 <span>{data?.digests.length||0}</span></h3>{!data?.digests.length?<p className="muted">你的第一份简报将出现在这里。</p>:data.digests.map((d:any)=><button key={d.id} className={selected?.id===d.id?'selected':''} onClick={()=>setSelectedId(d.id)}><FileText size={18}/><span><b>{d.date}</b><small>{safeRead(d.event_ids).length} 件事 · {d.edited?'已编辑':'原始版本'} · {localTime(d.created_at).split(' ').at(-1)}</small></span></button>)}</aside>
-   <section className="digest-paper">{selected?<><div className="digest-toolbar"><span><span className="tiny-dot"/>{editing?'编辑中':selected.edited?'已保存编辑':'已保存到数据库'}</span><div><button className="secondary small" onClick={()=>setEditing(!editing)}><PencilLine size={14}/>{editing?'预览':'编辑'}</button><button className="icon-button" title="复制 Markdown" aria-label="复制 Markdown" onClick={copy}><Copy size={17}/></button><button className="secondary small" onClick={download}><Download size={14}/>导出</button></div></div>{editing?<><textarea className="digest-editor" aria-label="编辑简报 Markdown" value={content} onChange={e=>setContent(e.target.value)} maxLength={40000}/><div className="form-actions"><button className="secondary" onClick={()=>{setContent(selected.content);setEditing(false)}}>取消修改</button><button className="primary" disabled={!!busy} onClick={async()=>{const r=await act('digest-save',{id:selected.id,content},'简报修改已保存');if(r)setEditing(false)}}>保存修改</button></div></>:<div className="markdown-paper">{content.split('\n').map((line:string,i:number)=>line.startsWith('# ')?<h2 key={i}>{line.slice(2)}</h2>:line.startsWith('## ')?<h3 key={i}>{line.slice(3)}</h3>:line.startsWith('> ')?<blockquote key={i}>{line.slice(2)}</blockquote>:line.startsWith('- [')?<p className="markdown-link" key={i}>{(()=>{const m=line.match(/^- \[(.*?)\]\((https?:\/\/[^)]+)\)(.*)$/);return m?<><a href={m[2]} target="_blank" rel="noreferrer">{m[1]} <ArrowUpRight size={12}/></a><small>{m[3]}</small></>:line})()}</p>:line?<p key={i}>{line.replace(/\*\*/g,'').replace(/^\*|\*$/g,'')}</p>:null)}</div>}</>:<div className="empty-state"><Feather size={38}/><h3>把今天值得读的，编成一页。</h3><p>选择日期和条数，生成你自己的第一份简报。所有选入条目都能回到原始来源。</p></div>}</section>
-  </div>
- </>
-}
-function Runs({data,busy,refresh,act}:any){const [expanded,setExpanded]=useState<string|null>(null);const labels:Record<string,string>={success:'全部完成',partial:'部分完成',failed:'运行失败',running:'采集中',interrupted:'已中断，可恢复'};return <><SectionHeading eyebrow="BEHIND THE SIGNAL" title="每一次更新，都有迹可循。" description="查看真实的采集结果、失败原因与重试记录。来源暂时失联，已有内容仍会保留。"><button className="secondary" disabled={!!busy} onClick={refresh}><RefreshCw size={16}/>刷新状态</button></SectionHeading>
- <div className="connection-grid"><div className="panel"><Radio size={22}/><h3>后台调度</h3><span className={'status '+(data?.schedule.connected?'success-status':'')}>{data?.schedule.connected?'已连接':'待接入'}</span><p>{data?.schedule.label||'支持手动采集'}</p></div><div className="panel"><Sparkles size={22}/><h3>摘要处理</h3><span className="status">{data?.model.connected?'服务端已配置':'原始摘要 + 规则评分'}</span><p>{data?.model.connected?data.model.model:'模型未连接；未产生模型调用费用。'}</p></div><div className="panel"><Layers3 size={22}/><h3>持久数据</h3><span className="status success-status">D1 数据库</span><p>{data?.counts.items||0} 条原始记录 · {data?.counts.events||0} 个事件 · {data?.counts.pending||0} 条待归组</p></div></div>
- <div className="section-bar"><h2>采集记录</h2><span className="muted">最近 30 次运行</span></div><div className="run-list">{!data?.runs.length?<div className="empty-state"><Activity size={34}/><h3>尚未运行采集</h3><p>在来源中心连接信源，或点击首页“采集最新信息”。</p></div>:data.runs.map((r:any)=><article className="run-card" key={r.id}><button className="run-head" onClick={()=>setExpanded(expanded===r.id?null:r.id)}><span className={'run-icon '+(r.state==='success'?'green':r.state==='running'?'blue':'amber')}>{r.state==='success'?<CheckCheck size={20}/>:r.state==='running'?<LoaderCircle className="spin" size={20}/>:<AlertCircle size={20}/>}</span><div><h3>{r.trigger} <span className="subtle-tag">{labels[r.state]||r.state}</span></h3><p>{localTime(r.started_at)}{r.finished_at?` · 耗时 ${Math.max(1,Math.round((+new Date(r.finished_at)-+new Date(r.started_at))/1000))} 秒`:' · 状态由服务器保存'}</p></div><div className="run-numbers"><span><b>{r.inserted}</b> 新增</span><span><b>{r.duplicates}</b> 去重</span><span><b>{r.failed}</b> 失败</span></div><ChevronDown size={18}/></button>{expanded===r.id&&<div className="run-details">{r.error&&<p className="inline-error">{r.error}</p>}{safeRead(r.results).map((s:any)=><div key={s.id}><span className={'status '+(s.status==='failed'?'error-status':'success-status')}><i/>{s.name}</span><p>{s.error||`${s.inserted} 条新增 · ${s.duplicates} 条重复${s.status==='unchanged'?' · HTTP 304 未变化':''}${s.attempts?` · ${s.attempts} 次请求`:''}`}</p>{s.status==='failed'&&<button className="secondary small" disabled={!!busy} onClick={()=>act('ingest',{sourceId:s.id},'重试已完成')}><RotateCcw size={13}/>重试</button>}</div>)}</div>}</article>)}</div>
- {data?.model.runs.length>0&&<div className="panel model-runs"><h2>模型请求记录</h2>{data.model.runs.map((r:any,i:number)=><p key={i}>{r.model} · {r.status} · {r.duration??'—'} ms{r.input_tokens!=null?` · ${r.input_tokens} 输入 / ${r.output_tokens} 输出 tokens`:''}{r.error?` · ${r.error}`:''}</p>)}</div>}
- </>}
-function Settings({data,busy,act}:any){const [prefs,setPrefs]=useState<Prefs>(DEFAULT_PREFS);useEffect(()=>{if(data?.prefs)setPrefs(data.prefs)},[data?.prefs]);return <><SectionHeading eyebrow="MAKE IT YOURS" title="让下一次推荐，更懂你。" description="关注权重、关键词和阅读反馈共同影响排序。偏好会保存到你的账号。"/>
- <div className="settings-layout"><section className="panel"><div className="panel-heading"><h2>关注方向</h2><span className="muted">0 不优先 · 5 最关注</span></div>{CATEGORIES.map(c=><label className="weight-slider" key={c}><span><i className={'topic-dot '+CATEGORY_COLORS[c]}/>{c}<b>{prefs.weights[c]}/5</b></span><input type="range" min="0" max="5" value={prefs.weights[c]} onChange={e=>setPrefs({...prefs,weights:{...prefs.weights,[c]:+e.target.value}})}/>{!!data?.learned[c]&&<small>阅读反馈额外调整：{data.learned[c]>0?'+':''}{Math.max(-10,Math.min(10,data.learned[c]))} 分</small>}</label>)}<label className="settings-label">重点关键词<textarea value={prefs.keywords} onChange={e=>setPrefs({...prefs,keywords:e.target.value})} maxLength={400}/><small>以逗号分隔。命中的关键词会显示在推荐理由中。</small></label><label className="settings-label">每天给自己多少分钟？<select value={prefs.minutes} onChange={e=>setPrefs({...prefs,minutes:+e.target.value})}>{[5,10,15,20,30].map(n=><option key={n} value={n}>{n} 分钟</option>)}</select></label><div className="form-actions"><button className="primary" disabled={!!busy} onClick={()=>act('preferences',{prefs},'偏好已保存，推荐排序已更新')}><Check size={16}/>保存我的偏好</button></div></section>
- <aside><section className="panel explanation"><h3><SlidersHorizontal size={18}/> 推荐分数怎么来？</h3><p>个人相关性 30 分、来源质量 30 分、时效性 20 分、未读增量 10 分、独立来源 10 分，再叠加阅读反馈调整。</p><p>“有用”提高相同主题的权重，“无关”降低。错误与重复反馈降低对应事件的排名；所有反馈均可撤销。</p><p>规则归组采用严格标题匹配，保留版本号差异。人工合并、拆分与修订会锁定，后续采集不会覆盖。</p></section><section className="panel explanation"><h3><Sparkles size={18}/> 模型连接</h3><p>{data?.model.state||'模型未连接'}</p><p>连接后，可在事件详情按需生成中文摘要。每条成功结果缓存；每日最多 20 条请求。模型故障时保留原始摘要。</p><details><summary>查看接入条件</summary><p>在 Sites 的服务端环境变量配置 LLM_API_KEY（密钥）、LLM_BASE_URL（兼容接口的 /v1 地址）、LLM_MODEL（实际模型名），随后重新部署。</p><p>ChatGPT 登录和订阅不自动提供站点模型额度。密钥不会在本页面输入、显示或导出。</p></details></section><section className="panel explanation"><h3><Rss size={18}/> 公开来源与边界</h3><p>支持 RSS / Atom、公开 JSON 和手动 URL 摘要；不绕过登录。不提供 X、Reddit、公众号的万能抓取。</p><details><summary>查看可采集域名</summary><div className="host-list">{data?.allowedHosts?.map((h:string)=><code key={h}>{h}</code>)}</div><p>新增域名需在服务端公开信源允许列表核实后加入。</p></details></section></aside></div>
- </>}
-function Detail({event:e,allEvents,model,busy,act,onClose,onFeedback}:any){
- const dialog=useRef<HTMLDialogElement>(null);const [edit,setEdit]=useState(false),[title,setTitle]=useState(e.displayTitle),[summary,setSummary]=useState(e.manual_summary||e.summary),[category,setCategory]=useState(e.category),[target,setTarget]=useState(''),[jobEdit,setJobEdit]=useState(false);
- const jobItem=e.items.find((i:any)=>i.job),job=jobItem?JSON.parse(jobItem.job):null;const [jobData,setJobData]=useState<any>(job||{});
- useEffect(()=>{dialog.current?.showModal();return()=>dialog.current?.close()},[]);
- return <dialog ref={dialog} className="detail-dialog" onCancel={onClose} onClick={ev=>{if(ev.target===ev.currentTarget)onClose()}}><div className="detail-inner"><div className="detail-top"><span><Layers3 size={16}/>事件详情</span><button className="icon-button" aria-label="关闭事件详情" onClick={onClose}><X size={21}/></button></div><div className="detail-content"><div className="card-tags"><span className={'tag '+CATEGORY_COLORS[e.category]}>{e.category}</span><span className="subtle-tag">{e.sourceCount} 个来源 · {e.items.length} 篇报道</span>{e.locked===1&&<span className="subtle-tag">人工修正已锁定</span>}</div><h2>{e.displayTitle}</h2><p className="detail-summary">{e.summary}</p><div className="processing-note"><CircleHelp size={15}/>{e.summaryMode}。{e.summaryMode.startsWith('原始')?'保留来源原语言；未根据标题补充事实。':'请结合下方来源核实，模型摘要与人工修订不替代原文。'}</div><div className="detail-feedback">{['read','saved','useful','irrelevant','duplicate','error'].map(kind=><button key={kind} disabled={!!busy} className={'secondary small '+(e.feedback.includes(kind)?'chosen':'')} onClick={()=>onFeedback(kind)}>{e.feedback.includes(kind)&&<Check size={13}/>} {FEEDBACK_LABELS[kind]}</button>)}</div>
- <section className="detail-section"><h3>为什么推荐给你 <strong>{e.score}<small>/100</small></strong></h3><p>{e.reason}</p><div className="score-grid">{Object.entries(e.parts).map(([k,v])=><div key={k}><span>{k}</span><b>{String(v)}</b></div>)}</div></section>
- <section className="detail-section"><h3>来源与时间线</h3><p className="muted small-text">保留每个来源的表述；规则归组并不表示来源之间已相互印证。</p><div className="timeline">{[...e.items].sort((a:any,b:any)=>(a.published_at||a.ingested_at).localeCompare(b.published_at||b.ingested_at)).map((i:any,index:number)=><article key={i.id}><span className="timeline-dot"/><div className="timeline-meta"><span>{i.published_at?localTime(i.published_at):'首发时间未知'}{index===0&&i.sources.some((s:any)=>s.official)?' · 最早可见的一手记录':''}</span><span>{i.relation}</span></div><h4><a href={i.canonical_url} target="_blank" rel="noreferrer">{i.title}<ArrowUpRight size={15}/></a></h4><p>{i.excerpt||'没有提供原始摘要，请打开原文。'}</p><div className="timeline-source">{i.sources.map((s:Source)=>s.name).join(' / ')} · {i.scope}<br/>采集时间 {localTime(i.ingested_at)}</div><div className="timeline-actions"><a href={i.canonical_url} target="_blank" rel="noreferrer">打开原文 <ExternalLink size={12}/></a>{e.items.length>1&&<button disabled={!!busy} onClick={async()=>{const r=await act('event-split',{itemId:i.id},'已拆分为独立事件；人工决定会保留');if(r)onClose()}}>拆为独立事件</button>}<button disabled={!!busy||!model.connected||i.model_status==='success'} title={model.connected?'基于已获取摘要生成中文摘要':'请先在偏好设置查看模型接入条件'} onClick={()=>act('model-summary',{itemId:i.id},'中文摘要已保存')}>{i.model_status==='success'?'已有模型摘要':model.connected?'生成中文摘要':'中文模型未连接'}</button></div></article>)}</div></section>
- {job&&<section className="detail-section"><h3>招聘信息 <button className="text-button" onClick={()=>setJobEdit(!jobEdit)}>{jobEdit?'收起':'人工核实'}</button></h3><div className="notice neutral"><AlertCircle size={16}/><span>抓取到招聘页面不等于岗位仍然开放，申请前请核对官方页面。</span></div>{jobEdit?<div className="job-form">{[['company','公司'],['city','城市'],['position','岗位'],['type','实习 / 校招'],['deadline','截止日期'],['applyUrl','官方申请链接'],['status','招聘状态']].map(([key,label])=><label key={key}>{label}<input value={jobData[key]||''} onChange={ev=>setJobData({...jobData,[key]:ev.target.value})}/></label>)}<button className="primary" disabled={!!busy} onClick={async()=>{const r=await act('job-edit',{itemId:jobItem.id,...jobData},'招聘字段已保存');if(r)setJobEdit(false)}}>保存核实结果</button></div>:<dl className="job-grid">{[['company','公司'],['city','城市'],['position','岗位'],['type','实习 / 校招'],['deadline','截止日期'],['status','状态']].map(([key,label])=><div key={key}><dt>{label}</dt><dd>{job[key]||'未知'}</dd></div>)}<div className="full-width"><dt>官方申请</dt><dd><a href={job.applyUrl} target="_blank" rel="noreferrer">打开申请页面 <ArrowUpRight size={13}/></a></dd></div></dl>}</section>}
- <section className="detail-section"><h3>人工校正 <button className="text-button" onClick={()=>setEdit(!edit)}><PencilLine size={14}/>{edit?'收起':'修订与归组'}</button></h3><p className="muted small-text">修改后的标题、摘要与原始资料分开保存。人工归组不会被下次采集覆盖。</p>{edit&&<div className="correction-form"><label>标题<input value={title} onChange={ev=>setTitle(ev.target.value)} maxLength={220}/></label><label>摘要<textarea value={summary} onChange={ev=>setSummary(ev.target.value)} maxLength={800}/></label><label>分类<select value={category} onChange={ev=>setCategory(ev.target.value)}>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></label><button className="primary" disabled={!!busy||!title.trim()} onClick={async()=>{const r=await act('event-edit',{id:e.id,title,summary,category},'人工修订已保存');if(r)setEdit(false)}}>保存修订</button><div className="merge-control"><label>这是另一个事件的相关报道？<select value={target} onChange={ev=>setTarget(ev.target.value)}><option value="">选择合并目标…</option>{allEvents.filter((x:any)=>x.id!==e.id).map((x:any)=><option key={x.id} value={x.id}>{x.displayTitle}</option>)}</select></label><button className="secondary" disabled={!!busy||!target} onClick={async()=>{const r=await act('event-merge',{from:e.id,to:target},'已合并；可在目标事件中拆分恢复');if(r)onClose()}}><Layers3 size={15}/>合并到目标事件</button></div></div>}</section>
- </div></div></dialog>
+
+export default function Home() {
+  const [data, setData] = useState<any>(null);
+  const [view, setView] = useState<View>('feed');
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState('');
+  const [collectProgress, setCollectProgress] = useState('');
+  const [error, setError] = useState('');
+  const [toast, setToast] = useState('');
+
+  // Feed filters
+  const [query, setQuery] = useState('');
+  const [category, setCategory] = useState('全部');
+  const [filterMode, setFilterMode] = useState<'all' | 'saved' | 'unread'>('all');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Digest state
+  const [selectedDigestId, setSelectedDigestId] = useState<string>('');
+  const [digestDraft, setDigestDraft] = useState<string>('');
+  const [editingDigest, setEditingDigest] = useState(false);
+
+  // New source form
+  const [sourceName, setSourceName] = useState('');
+  const [sourceUrl, setSourceUrl] = useState('');
+  const [sourceCategory, setSourceCategory] = useState<string>(CATEGORIES[0]);
+
+  async function load() {
+    const res = await fetch('/api/m/zhiliu-radar/radar', { cache: 'no-store' });
+    const json: any = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.error || '暂时无法读取知流数据，请确认已登录。');
+    setData(json);
+    if (json.digests?.length && !selectedDigestId) {
+      setSelectedDigestId(json.digests[0].id);
+      setDigestDraft(json.digests[0].content || '');
+    }
+    return json;
+  }
+
+  useEffect(() => {
+    load()
+      .catch(e => setError(e instanceof Error ? e.message : '加载失败'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(''), 3600);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  async function act(action: string, payload: Record<string, unknown> = {}, notice = '操作已完成') {
+    if (busy) return null;
+    setBusy(action);
+    setError('');
+    try {
+      const res = await fetch('/api/m/zhiliu-radar/radar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, requestId: makeReqId(), ...payload }),
+      });
+      const result: any = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(result.error || '请求未完成');
+      const fresh = await load();
+      if (notice) setToast(result.message || notice);
+      return { result, fresh };
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '操作失败');
+      return null;
+    } finally {
+      setBusy('');
+    }
+  }
+
+  async function ingestAll() {
+    if (busy) return;
+    setBusy('ingest');
+    setError('');
+    setCollectProgress('正在连接信源…');
+    let cycleId: string | undefined;
+    let inserted = 0;
+    try {
+      for (let batch = 0; batch < 80; batch++) {
+        const res = await fetch('/api/m/zhiliu-radar/radar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: batch === 0 && !data?.sources?.length ? 'initialize' : 'ingest',
+            requestId: makeReqId(),
+            cycleId,
+          }),
+        });
+        const r: any = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(r.error || '采集失败');
+        if (r.busy) {
+          setToast(r.message || '后台正在采集');
+          break;
+        }
+        inserted += r.inserted || 0;
+        setCollectProgress(`正在采集 (${r.completedSources || 0}/${r.totalSources || 0})`);
+        if (!r.hasMore) {
+          setToast(`采集完成 · 新增 ${inserted} 条资讯`);
+          break;
+        }
+        cycleId = r.cycleId;
+      }
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '采集中断，可稍后重试');
+      await load().catch(() => {});
+    } finally {
+      setBusy('');
+      setCollectProgress('');
+    }
+  }
+
+  const events: Event[] = data?.events || [];
+  const sources: Source[] = data?.sources || [];
+  const digests: any[] = data?.digests || [];
+  const today: string = data?.today || shanghaiDate();
+
+  const savedEvents = useMemo(
+    () => events.filter(e => e.feedback.includes('saved')),
+    [events],
+  );
+
+  const filteredEvents = useMemo(() => {
+    return events
+      .filter(e => {
+        if (category !== '全部' && e.category !== category) return false;
+        if (filterMode === 'saved' && !e.feedback.includes('saved')) return false;
+        if (filterMode === 'unread' && e.feedback.includes('read')) return false;
+        if (query.trim()) {
+          const text = (
+            e.displayTitle +
+            ' ' +
+            e.summary +
+            ' ' +
+            e.items.flatMap(i => i.sources.map(s => s.name)).join(' ')
+          ).toLowerCase();
+          if (!text.includes(query.trim().toLowerCase())) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => b.score - a.score);
+  }, [events, category, filterMode, query]);
+
+  const activeEvent = useMemo(
+    () => events.find(e => e.id === selectedId) || null,
+    [events, selectedId],
+  );
+
+  const activeDigest = useMemo(
+    () => digests.find(d => d.id === selectedDigestId) || digests[0] || null,
+    [digests, selectedDigestId],
+  );
+
+  function toggleFeedback(e: Event, kind: 'saved' | 'read' | 'useful') {
+    const active = !e.feedback.includes(kind);
+    void act(
+      'feedback',
+      { id: e.id, kind, active },
+      active ? (kind === 'saved' ? '已加入收藏' : '已标记') : '已取消标记',
+    );
+  }
+
+  return (
+    <div className="zl-shell">
+      {/* 顶部 Bento 导航舱 */}
+      <header className="zl-header">
+        <div className="zl-brand-group">
+          <span className="zl-brand-icon">
+            <Radar size={22} />
+          </span>
+          <div>
+            <h1>知流</h1>
+            <p>AI 情报雷达与每日简报工作台</p>
+          </div>
+        </div>
+
+        <nav className="zl-tabs" aria-label="知流主视图">
+          <button
+            type="button"
+            className={view === 'feed' ? 'active' : ''}
+            onClick={() => setView('feed')}
+          >
+            <Newspaper size={17} />
+            <span>情报流 ({events.length})</span>
+          </button>
+          <button
+            type="button"
+            className={view === 'digests' ? 'active' : ''}
+            onClick={() => setView('digests')}
+          >
+            <FileText size={17} />
+            <span>每日简报 ({digests.length})</span>
+          </button>
+          <button
+            type="button"
+            className={view === 'sources' ? 'active' : ''}
+            onClick={() => setView('sources')}
+          >
+            <Rss size={17} />
+            <span>信源管理 ({sources.length})</span>
+          </button>
+        </nav>
+
+        <div className="zl-actions">
+          <button
+            type="button"
+            className="zl-btn primary"
+            disabled={!!busy}
+            onClick={ingestAll}
+          >
+            {busy === 'ingest' ? (
+              <LoaderCircle size={16} className="spin" />
+            ) : (
+              <RefreshCw size={16} />
+            )}
+            <span>{busy === 'ingest' ? collectProgress || '采集中…' : '一键采集最新情报'}</span>
+          </button>
+        </div>
+      </header>
+
+      <main className="zl-main">
+        {error && (
+          <div className="zl-alert" role="alert">
+            <AlertCircle size={18} />
+            <span>
+              {error}
+              {error.includes('登录') && (
+                <>
+                  {' '}
+                  ·{' '}
+                  <a href="/signin-with-chatgpt?return_to=%2Fm%2Fzhiliu-radar" target="_top">
+                    立即登录
+                  </a>
+                </>
+              )}
+            </span>
+            <button type="button" onClick={() => setError('')} aria-label="关闭提示">
+              <X size={16} />
+            </button>
+          </div>
+        )}
+
+        {/* 视图 1：情报流 */}
+        {view === 'feed' && (
+          <div className="zl-feed-container">
+            <div className="zl-toolbar-card">
+              <div className="zl-category-pills" role="tablist" aria-label="情报分类">
+                {['全部', ...CATEGORIES].map(cat => (
+                  <button
+                    key={cat}
+                    type="button"
+                    className={category === cat ? 'active' : ''}
+                    onClick={() => setCategory(cat)}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+
+              <div className="zl-filter-row">
+                <label className="zl-search">
+                  <Search size={17} />
+                  <input
+                    type="text"
+                    value={query}
+                    onChange={e => setQuery(e.target.value)}
+                    placeholder="搜索模型、Agent、工具或来源名称…"
+                  />
+                  {query && (
+                    <button type="button" onClick={() => setQuery('')} aria-label="清除搜索">
+                      <X size={15} />
+                    </button>
+                  )}
+                </label>
+
+                <div className="zl-mode-pills">
+                  <button
+                    type="button"
+                    className={filterMode === 'all' ? 'active' : ''}
+                    onClick={() => setFilterMode('all')}
+                  >
+                    全部 ({events.length})
+                  </button>
+                  <button
+                    type="button"
+                    className={filterMode === 'saved' ? 'active' : ''}
+                    onClick={() => setFilterMode('saved')}
+                  >
+                    已收藏 ({savedEvents.length})
+                  </button>
+                  <button
+                    type="button"
+                    className={filterMode === 'unread' ? 'active' : ''}
+                    onClick={() => setFilterMode('unread')}
+                  >
+                    未读
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="zl-empty-card">
+                <LoaderCircle size={28} className="spin" />
+                <h3>正在同步你的 AI 情报流…</h3>
+              </div>
+            ) : filteredEvents.length === 0 ? (
+              <div className="zl-empty-card">
+                <Radar size={36} />
+                <h3>{sources.length === 0 ? '还没有配置情报信源' : '当前筛选下暂无情报'}</h3>
+                <p>
+                  {sources.length === 0
+                    ? '点击下方按钮一键导入精选 AI 信源并抓取最新动态。'
+                    : '可以切换分类筛选，或点击右上角「一键采集最新情报」。'}
+                </p>
+                <div className="zl-empty-actions">
+                  <button
+                    type="button"
+                    className="zl-btn primary"
+                    disabled={!!busy}
+                    onClick={ingestAll}
+                  >
+                    <Sparkles size={16} />
+                    <span>初始化精选信源并采集</span>
+                  </button>
+                  {sources.length === 0 && (
+                    <button
+                      type="button"
+                      className="zl-btn"
+                      disabled={!!busy}
+                      onClick={() =>
+                        void act('source-import-aihot', {}, '已导入精选 AI 信源库')
+                      }
+                    >
+                      导入 AIHOT 信源目录
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="zl-cards-grid">
+                {filteredEvents.map(ev => {
+                  const sourceNames = [
+                    ...new Set(ev.items.flatMap(i => i.sources.map(s => s.name))),
+                  ];
+                  const firstUrl = ev.items[0]?.canonical_url || ev.items[0]?.raw_url;
+                  const isSaved = ev.feedback.includes('saved');
+                  const isRead = ev.feedback.includes('read');
+
+                  return (
+                    <article
+                      key={ev.id}
+                      className={`zl-event-card ${isRead ? 'is-read' : ''}`}
+                    >
+                      <div className="zl-card-head">
+                        <span className={`zl-badge ${CATEGORY_BADGE[ev.category] || 'badge-blue'}`}>
+                          {ev.category}
+                        </span>
+                        <span className="zl-card-date">
+                          {formatPubDate(ev.latest, today)} · {sourceNames.slice(0, 2).join(' / ')}
+                        </span>
+                        <span className="zl-score-pill">相关度 {ev.score}</span>
+                      </div>
+
+                      <button
+                        type="button"
+                        className="zl-card-title"
+                        onClick={() => setSelectedId(ev.id)}
+                      >
+                        <span>{ev.displayTitle}</span>
+                        <ArrowUpRight size={19} />
+                      </button>
+
+                      <p className="zl-card-summary">{ev.summary}</p>
+
+                      <div className="zl-card-foot">
+                        <div className="zl-card-btns">
+                          <button
+                            type="button"
+                            className={isSaved ? 'active' : ''}
+                            disabled={!!busy}
+                            onClick={() => toggleFeedback(ev, 'saved')}
+                          >
+                            <Bookmark size={15} />
+                            <span>{isSaved ? '已收藏' : '收藏'}</span>
+                          </button>
+                          <button
+                            type="button"
+                            className={isRead ? 'active' : ''}
+                            disabled={!!busy}
+                            onClick={() => toggleFeedback(ev, 'read')}
+                          >
+                            <Check size={15} />
+                            <span>{isRead ? '已读' : '标为已读'}</span>
+                          </button>
+                          {ev.items[0]?.id && (
+                            <button
+                              type="button"
+                              disabled={!!busy}
+                              onClick={() =>
+                                void act(
+                                  'model-summary',
+                                  { itemId: ev.items[0].id },
+                                  'AI 摘要已更新',
+                                )
+                              }
+                            >
+                              <Sparkles size={15} />
+                              <span>AI 提炼</span>
+                            </button>
+                          )}
+                        </div>
+                        {firstUrl && (
+                          <a
+                            href={firstUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="zl-ext-link"
+                          >
+                            <span>原文</span>
+                            <ExternalLink size={14} />
+                          </a>
+                        )}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 视图 2：每日简报 */}
+        {view === 'digests' && (
+          <div className="zl-digest-workspace">
+            <aside className="zl-digest-sidebar">
+              <div className="zl-digest-create-box">
+                <h3>生成今日 AI 简报</h3>
+                <p>从当前高优情报自动汇总生成结构化 Markdown 简报。</p>
+                <button
+                  type="button"
+                  className="zl-btn primary full"
+                  disabled={!!busy}
+                  onClick={async () => {
+                    const res = await act(
+                      'digest-create',
+                      { date: today, count: 8 },
+                      '今日简报已生成',
+                    );
+                    if (res?.fresh?.digests?.[0]) {
+                      setSelectedDigestId(res.fresh.digests[0].id);
+                      setDigestDraft(res.fresh.digests[0].content || '');
+                    }
+                  }}
+                >
+                  <Sparkles size={16} />
+                  <span>一键生成今日简报</span>
+                </button>
+              </div>
+
+              <div className="zl-digest-list">
+                {digests.length === 0 ? (
+                  <p className="zl-muted">暂无历史简报，点击上方按钮即可生成第一份。</p>
+                ) : (
+                  digests.map(d => (
+                    <button
+                      key={d.id}
+                      type="button"
+                      className={`zl-digest-item ${activeDigest?.id === d.id ? 'active' : ''}`}
+                      onClick={() => {
+                        setSelectedDigestId(d.id);
+                        setDigestDraft(d.content || '');
+                        setEditingDigest(false);
+                      }}
+                    >
+                      <strong>{d.title || `${d.digest_date} 简报`}</strong>
+                      <span>{d.digest_date} · {d.item_count || 0} 条精选</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </aside>
+
+            <section className="zl-digest-main">
+              {activeDigest ? (
+                <>
+                  <div className="zl-digest-toolbar">
+                    <div>
+                      <h2>{activeDigest.title || `${activeDigest.digest_date} 简报`}</h2>
+                      <span>支持直接编辑与一键复制 Markdown</span>
+                    </div>
+                    <div className="zl-digest-actions">
+                      <button
+                        type="button"
+                        className="zl-btn"
+                        onClick={() => {
+                          navigator.clipboard?.writeText(
+                            editingDigest ? digestDraft : activeDigest.content || '',
+                          );
+                          setToast('已复制简报 Markdown');
+                        }}
+                      >
+                        <Copy size={15} />
+                        <span>复制 Markdown</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="zl-btn"
+                        onClick={() => {
+                          setDigestDraft(activeDigest.content || '');
+                          setEditingDigest(!editingDigest);
+                        }}
+                      >
+                        <span>{editingDigest ? '预览简报' : '编辑内容'}</span>
+                      </button>
+                      {editingDigest && (
+                        <button
+                          type="button"
+                          className="zl-btn primary"
+                          disabled={!!busy}
+                          onClick={async () => {
+                            await act(
+                              'digest-save',
+                              { id: activeDigest.id, content: digestDraft },
+                              '简报已保存',
+                            );
+                            setEditingDigest(false);
+                          }}
+                        >
+                          <Check size={15} />
+                          <span>保存简报</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {editingDigest ? (
+                    <textarea
+                      className="zl-digest-editor"
+                      value={digestDraft}
+                      onChange={e => setDigestDraft(e.target.value)}
+                    />
+                  ) : (
+                    <pre className="zl-digest-preview">{activeDigest.content}</pre>
+                  )}
+                </>
+              ) : (
+                <div className="zl-empty-card">
+                  <FileText size={34} />
+                  <h3>还没有简报</h3>
+                  <p>点击左侧「一键生成今日简报」，自动汇总今日最重要的 AI 进展。</p>
+                </div>
+              )}
+            </section>
+          </div>
+        )}
+
+        {/* 视图 3：信源管理 */}
+        {view === 'sources' && (
+          <div className="zl-sources-workspace">
+            <div className="zl-source-top-grid">
+              <form
+                className="zl-source-form-card"
+                onSubmit={async e => {
+                  e.preventDefault();
+                  if (!sourceName.trim() || !sourceUrl.trim()) return;
+                  await act(
+                    'source-add',
+                    {
+                      source: {
+                        name: sourceName.trim(),
+                        url: sourceUrl.trim(),
+                        category: sourceCategory,
+                        kind: 'rss',
+                        region: 'global',
+                        weight: 3,
+                        official: false,
+                      },
+                    },
+                    '新信源已添加',
+                  );
+                  setSourceName('');
+                  setSourceUrl('');
+                }}
+              >
+                <h3>添加自定义 RSS / Atom 信源</h3>
+                <div className="zl-form-row">
+                  <input
+                    type="text"
+                    placeholder="信源名称（如 OpenAI Blog）"
+                    value={sourceName}
+                    onChange={e => setSourceName(e.target.value)}
+                    required
+                  />
+                  <input
+                    type="url"
+                    placeholder="订阅地址 https://..."
+                    value={sourceUrl}
+                    onChange={e => setSourceUrl(e.target.value)}
+                    required
+                  />
+                  <select
+                    value={sourceCategory}
+                    onChange={e => setSourceCategory(e.target.value)}
+                  >
+                    {CATEGORIES.map(c => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                  <button type="submit" className="zl-btn primary" disabled={!!busy}>
+                    <Plus size={16} />
+                    <span>添加信源</span>
+                  </button>
+                </div>
+              </form>
+
+              <div className="zl-source-quick-card">
+                <h3>一键导入精选 AI 信源库</h3>
+                <p>包含主流大模型实验室、Agent 框架与开发者社区官方订阅。</p>
+                <button
+                  type="button"
+                  className="zl-btn"
+                  disabled={!!busy}
+                  onClick={() =>
+                    void act('source-import-aihot', {}, '已导入精选 AI 信源')
+                  }
+                >
+                  <Sparkles size={16} />
+                  <span>导入精选 AI 信源</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="zl-sources-grid">
+              {sources.map(src => (
+                <div
+                  key={src.id}
+                  className={`zl-source-card ${src.enabled ? '' : 'disabled'}`}
+                >
+                  <div className="zl-source-head">
+                    <div>
+                      <strong>{src.name}</strong>
+                      <span className="zl-source-cat">{src.category}</span>
+                    </div>
+                    <button
+                      type="button"
+                      className={`zl-switch ${src.enabled ? 'on' : ''}`}
+                      disabled={!!busy}
+                      onClick={() =>
+                        void act(
+                          'source-toggle',
+                          { id: src.id, enabled: !src.enabled },
+                          src.enabled ? '已暂停该信源' : '已启用该信源',
+                        )
+                      }
+                      aria-label={src.enabled ? '暂停信源' : '启用信源'}
+                    >
+                      <i />
+                    </button>
+                  </div>
+                  <p className="zl-source-url">{src.url}</p>
+                  <div className="zl-source-foot">
+                    <span>
+                      {src.last_error
+                        ? `最近异常：${src.last_error.slice(0, 40)}`
+                        : src.last_success
+                          ? '状态正常'
+                          : '待首次采集'}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={!!busy}
+                      onClick={() =>
+                        void act('source-test', { sourceId: src.id }, '测试连接完成')
+                      }
+                    >
+                      测试连通
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* 右侧详情抽屉 */}
+      {activeEvent && (
+        <div className="zl-drawer-backdrop" onClick={() => setSelectedId(null)}>
+          <aside
+            className="zl-drawer"
+            onClick={e => e.stopPropagation()}
+            aria-label="情报详情"
+          >
+            <div className="zl-drawer-head">
+              <span className={`zl-badge ${CATEGORY_BADGE[activeEvent.category] || 'badge-blue'}`}>
+                {activeEvent.category}
+              </span>
+              <button
+                type="button"
+                className="zl-icon-btn"
+                onClick={() => setSelectedId(null)}
+                aria-label="关闭详情"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <h2>{activeEvent.displayTitle}</h2>
+            <p className="zl-drawer-summary">{activeEvent.summary}</p>
+            {activeEvent.reason && (
+              <div className="zl-drawer-reason">
+                <strong>推荐理由：</strong>
+                <span>{activeEvent.reason}</span>
+              </div>
+            )}
+
+            <div className="zl-drawer-sources">
+              <h3>报道来源 ({activeEvent.items.length})</h3>
+              {activeEvent.items.map(item => (
+                <div key={item.id} className="zl-drawer-item">
+                  <div>
+                    <strong>{item.title}</strong>
+                    <p>{item.model_summary || item.excerpt}</p>
+                  </div>
+                  <div className="zl-drawer-item-actions">
+                    <button
+                      type="button"
+                      className="zl-btn"
+                      disabled={!!busy}
+                      onClick={() =>
+                        void act('model-summary', { itemId: item.id }, '已生成 AI 摘要')
+                      }
+                    >
+                      <Sparkles size={14} />
+                      <span>AI 提炼</span>
+                    </button>
+                    <a
+                      href={item.canonical_url || item.raw_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="zl-btn primary"
+                    >
+                      <span>阅读原文</span>
+                      <ExternalLink size={14} />
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </aside>
+        </div>
+      )}
+
+      {toast && (
+        <div className="zl-toast" role="status">
+          <Check size={16} />
+          <span>{toast}</span>
+        </div>
+      )}
+    </div>
+  );
 }

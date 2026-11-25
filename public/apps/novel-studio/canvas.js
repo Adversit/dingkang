@@ -1,284 +1,1007 @@
-(async()=>{'use strict';
-const root=document.querySelector('#root'),base='/api/m/novel-studio/';
-const E=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const names={world:'世界事实',belief:'角色信念',speech:'人物话语',plan:'计划',unknown:'未分类'};
-let resultTab='manuscript',inspectedStage='',inspectorTab='output',canvasZoom=1,briefCollapsed=typeof matchMedia==='function'&&matchMedia('(max-width:760px)').matches;
-const openDetails=new Set();
-let graphView='run',reader='',readerReturn='',lastFollow='',actionError='';
-let account='', archive=null, version=0, projectId='', sceneId='', busy=false, pending=null, preview=null, previewInput=null, candidate=null, review=null, checked=new Set(), events=[], runs={preview:'idle',draft:'idle',review:'idle',apply:'idle'};
-let form={instruction:'',moment:'',perspective:'omniscient',pov:'',factIds:[],model:'',idea:'',writer:'',extract:'',reviewPrompt:'',projectName:'',sceneTitle:'',sceneCount:1,scenePlans:'',plannerPrompt:'',runMode:'idea',planMode:'scenes'};
-let compatiblePlan=null,routedPreview=false;
-let availableModels=[],modelsStatus='正在读取模型列表…',modelsTruncated=false,modelRefreshSequence=0,modelSourceRevision=null;
-let planBase=null,planFeedback='',standalonePlan=false,acceptedPlan='',portableInput='',portablePane='',planStorageFailed=false;
-let plannerError='',plannerStatus='idle',ideaPreview=null,ideaPreviewInput=null,planPreview=null,planPreviewInput=null,planResult=null,defaultModel='', auto={status:'idle',stages:[],messages:[],draft:'',candidates:[],issues:[],scenes:[],notice:''};
-const project=()=>archive?.projects.find(p=>p.id===projectId);const scene=()=>project()?.scenes.find(s=>s.id===sceneId);const revision=()=>scene()?.revisions.at(-1);
-const sessionKey=()=>`novel-canvas-pending:${account}`;
-const time=()=>new Date().toLocaleTimeString('zh-CN',{hour12:false});
-function log(message){events.unshift({time:time(),message});if(events.length>100)events.pop()}
-function toast(message){let old=document.querySelector('.toast');old?.remove();let d=document.createElement('div');d.className='toast';d.setAttribute('role','status');d.textContent=message;document.body.append(d);setTimeout(()=>d.remove(),5000)}
-function headers(){return {'Content-Type':'application/json','X-Hub-User-Id':account}}
-function draftMatches(s,r){return !!r&&s?.title===r.title&&s?.draft===r.body}
-const safeModelId=s=>typeof s==='string'&&/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,100}$/.test(s)&&!/^(sk-|sess-)/i.test(s);
-function switchReport(raw){return raw&&safeModelId(raw.requestedModel)&&safeModelId(raw.selectedModel)&&['model_not_found','model_access','endpoint_incompatible'].includes(raw.reason)?{requestedModel:raw.requestedModel,selectedModel:raw.selectedModel,reason:raw.reason,defaultUpdated:raw.defaultUpdated===true}:null}
-function switchMessage(info){return `原选 ${info.requestedModel} 不可用，已验证并切换至 ${info.selectedModel}。${info.defaultUpdated?'默认模型已更新。':'未修改默认模型。'}`}
-function switchView(raw){const info=switchReport(raw);return info?`<p class="note" role="status" data-model-fallback>${E(switchMessage(info))}</p>`:''}
-function planMatches(current){if(!planPreviewInput)return false;const compatible=compatiblePlan?.plan===planResult&&current.model===compatiblePlan.to;return JSON.stringify(compatible?{...current,model:planPreviewInput.model}:current)===JSON.stringify(planPreviewInput)}
-function applySwitch(raw){
- const info=switchReport(raw);if(!info)return null;
- const wasAccepted=standalonePlan&&adoptedCurrentPlan();const requested=form.model.trim();
- if(info.defaultUpdated)defaultModel=info.selectedModel;
- if(requested===info.requestedModel){if(planResult&&planPreviewInput&&(planMatches(planPayloadSafe())||wasAccepted))compatiblePlan={plan:planResult,to:info.selectedModel};form.model=info.selectedModel;try{sessionStorage.setItem('novel-model-choice:'+account,form.model)}catch{}if(wasAccepted)acceptedPlan=acceptedStamp();persistForm()}
- log(switchMessage(info));return info;
-}
-function planPayloadSafe(){try{return planPayload()}catch{return {}}}
-function sameInput(adopting=false){if(routedPreview&&!adopting)return false;if(!previewInput||!revision())return false;return JSON.stringify({projectId,sceneId,revisionId:revision().id,instruction:form.instruction.trim(),storyMoment:form.moment.trim(),perspective:form.perspective,pov:form.pov.trim(),factIds:form.factIds,model:adopting&&switchReport(candidate?.modelFallback)?.selectedModel===form.model.trim()?previewInput.model:form.model.trim(),writingProfile:publicProfile()})===JSON.stringify(previewInput)}
-function invalidate(){routedPreview=false;preview=null;previewInput=null;candidate=null;review=null;checked=new Set();runs={preview:'idle',draft:'idle',review:'idle',apply:'idle'}}
-async function load(){let r=await fetch(base+'canon',{cache:'no-store',headers:{'X-Hub-User-Id':account}}),d=await r.json().catch(()=>null);if(!r.ok||!d?.state||!Array.isArray(d.state.projects)||!Number.isSafeInteger(d.version))throw Error(d?.error||'无法读取服务端档案');archive=d.state;version=d.version;if(!archive.projects.some(x=>x.id===projectId))projectId=archive.projects[0]?.id||'';if(!project()?.scenes.some(x=>x.id===sceneId))sceneId=project()?.scenes[0]?.id||''}
-async function request(endpoint,input,label){actionError='';let response;try{const task=fetch(base+endpoint,{method:'POST',headers:headers(),body:JSON.stringify(input)});log(`${label}：已发起请求`);render();response=await task}catch{const model=endpoint==='draft'||endpoint==='review';log(`${label}：未取得服务端响应${model?'，结果未知':''}`);const err=Error(model?'未收到响应，模型是否已执行或产生费用无法确认；不会自动重试。':'未取得服务端响应，请手动重试。');if(model)err.unknown=true;throw err}let result=await response.json().catch(()=>null);log(`${label}：收到 HTTP ${response.status}`);if(!response.ok){const maybeModel=(endpoint==='draft'||endpoint==='review')&&([408,409,429].includes(response.status)||response.status>=500)&&!(response.status===503&&(result?.error||'').includes('尚未配置'));const err=Error((result?.error||`请求失败（HTTP ${response.status}）`)+(maybeModel?' 模型是否已执行或产生费用无法确认，不会自动重试。':''));err.httpStatus=response.status;if(maybeModel)err.unknown=true;throw err;}if(!result||result.status!=='REVIEW'){const err=Error((endpoint==='draft'||endpoint==='review')?'响应格式无效；模型可能已执行或产生费用，不会自动重试。':'预览响应格式无效。');if(endpoint==='draft'||endpoint==='review')err.unknown=true;throw err;}return result}
-function modelOptions(value){const ids=availableModels.map(x=>x.id);const custom=value&&!ids.includes(value);return `<option value="">使用默认模型${defaultModel?' · '+E(defaultModel):''}</option>${availableModels.map(x=>`<option value="${E(x.id)}">${E(x.id)}</option>`).join('')}${custom?`<option value="${E(value)}">手动输入 · ${E(value)}</option>`:''}<option value="__manual__">手动输入其他模型…</option>`}
-function modelControl(id,value){return `<div class="model-control"><label class="field">写作模型<select data-model-picker="${E(id)}" aria-label="选择模型">${modelOptions(value).replace(`value="${E(value)}"`, `value="${E(value)}" selected`)}</select></label><div class="model-links"><a href="model-settings.html" target="_blank" rel="noopener">模型设置</a><button class="text-button" type="button" data-act="refresh-models">刷新</button></div><details class="model-advanced" data-detail-key="model-advanced"><summary>其他模型</summary><label class="field">模型名称<input id="${E(id)}" maxlength="101" value="${E(value)}" placeholder="留空使用默认模型"></label><p class="small" data-model-status>${E(modelsStatus)}${modelsTruncated?'（列表未全部返回）':''}；是否支持写作需实际验证。</p></details></div>`}
-function syncModelControls(){for(const el of document.querySelectorAll('[data-model-picker]')){const input=document.getElementById(el.dataset.modelPicker),value=input?.value??form.model;el.innerHTML=modelOptions(value);el.value=value||''}for(const el of document.querySelectorAll('[data-model-status]'))el.textContent=modelsStatus+(modelsTruncated?'（列表未全部返回）':'')+'；列表仅表示 API 返回，是否支持写作需实际验证。';const label=document.querySelector('[data-effective-model]');if(label)label.textContent=auto.modelFallback?.selectedModel||auto.requestModel||form.model||defaultModel||'尚未选择模型'}
-async function refreshModels(){const seq=++modelRefreshSequence;let previous=defaultModel;try{const pr=await fetch(base+'model-preference',{cache:'no-store',headers:{'X-Hub-User-Id':account}}),pd=await pr.json().catch(()=>null);if(seq!==modelRefreshSequence)return;if(pr.status===409)defaultModel='';else if(pr.ok&&pd){let next=pd.model||pd.fallbackModel;if(typeof next==='string')defaultModel=next}}catch{}if(previous!==defaultModel&&!form.model.trim()){previewInput=null;ideaPreview=null;ideaPreviewInput=null;planPreview=null;planPreviewInput=null;for(const b of document.querySelectorAll('[data-act="draft"],[data-act="review"],[data-act="apply"],[data-act="auto-run"],[data-act="plan-run"]'))b.disabled=true;let note=document.querySelector('#context-safety');if(note){note.textContent='默认模型已变化，请重新预览。';note.className='note warn'}}try{const r=await fetch(base+'models',{cache:'no-store',headers:{'X-Hub-User-Id':account}}),d=await r.json().catch(()=>null);if(seq!==modelRefreshSequence)return;if(!r.ok||!Array.isArray(d?.models))throw Error(d?.error||'模型列表暂不可用');if(Number.isSafeInteger(d.sourceRevision)){if(modelSourceRevision!==null&&modelSourceRevision!==d.sourceRevision){previewInput=null;ideaPreview=null;ideaPreviewInput=null;planPreview=null;planPreviewInput=null;for(const b of document.querySelectorAll('[data-act="draft"],[data-act="review"],[data-act="apply"],[data-act="auto-run"],[data-act="plan-run"]'))b.disabled=true;let note=document.querySelector('#context-safety');if(note){note.textContent='模型连接已变化，请重新预览。';note.className='note warn'}}modelSourceRevision=d.sourceRevision}availableModels=(Array.isArray(d.writingModels)?d.writingModels:d.models).filter(x=>x&&typeof x.id==='string');modelsTruncated=!!d.truncated;modelsStatus=availableModels.length?`已读取 ${availableModels.length} 个模型`:'连接返回空模型列表';}catch(e){if(seq!==modelRefreshSequence)return;availableModels=[];modelsTruncated=false;modelsStatus=e.message||'模型列表暂不可用，可手动输入';}syncModelControls()}
-// Author notes stay in the browser. Hub localStorage syncs to the server, so do not use it here.
-const styles={general:'通用叙事',xuanhuan:'玄幻 · 布局悟道',mystery:'悬疑 · 证据推理'};
-const privateRecords=new Map();let profileDb=null;
-const profileParts=(mode=form.runMode,p=projectId,s=sceneId)=>mode==='idea'?['new-book','new-scene']:[JSON.stringify(['book',p]),JSON.stringify(['scene',p,s])];
-const cacheKey=k=>'novel-author-profile:'+JSON.stringify([account,k]);
-function record(k){if(!privateRecords.has(k)){let row={};try{row=JSON.parse(sessionStorage.getItem(cacheKey(k))||'{}')||{}}catch{}privateRecords.set(k,row)}return privateRecords.get(k)}
-function putRecord(k,row){privateRecords.set(k,row);try{sessionStorage.setItem(cacheKey(k),JSON.stringify(row))}catch{}if(profileDb){try{profileDb.transaction('profiles','readwrite').objectStore('profiles').put({k,row})}catch{profileDb=null}}}
-async function openAuthorDesk(){let idb;try{idb=window.indexedDB}catch{return}if(!idb)return;await new Promise(resolve=>{let finished=false;const done=()=>{if(!finished){finished=true;clearTimeout(timer);resolve()}};const timer=setTimeout(done,1200);try{const open=idb.open('novel-author-desk:'+account,1);open.onupgradeneeded=()=>{open.result.createObjectStore('profiles',{keyPath:'k'})};open.onerror=open.onblocked=done;open.onsuccess=()=>{const db=open.result;if(finished){db.close();return}const tx=db.transaction('profiles','readonly'),read=tx.objectStore('profiles').getAll();read.onsuccess=()=>{if(finished){db.close();return}for(const item of read.result||[]){if(typeof item?.k==='string'&&item.row&&typeof item.row==='object')privateRecords.set(item.k,item.row)}profileDb=db;db.onversionchange=()=>{db.close();profileDb=null};done()};read.onerror=()=>{db.close();done()}}}catch{done()}})}
-function currentProfile(){const [bookKey,sceneKey]=profileParts(),book=record(bookKey),part=record(sceneKey);return {styleId:Object.hasOwn(styles,book.styleId)?book.styleId:'general',authorConstraints:typeof book.authorConstraints==='string'?book.authorConstraints:'',revealNow:typeof part.revealNow==='string'?part.revealNow:'',holdBack:typeof book.holdBack==='string'?book.holdBack:''}}
-// Allowlist only fields that may appear on the wire, including preview and retry requests.
-function publicProfile(){const {styleId,authorConstraints,revealNow}=currentProfile();return {styleId,authorConstraints,revealNow}}
-const profileFields={'writing-style':'styleId','author-constraints':'authorConstraints','scene-reveal':'revealNow','private-holdback':'holdBack'};
-function updateProfile(id,value){const field=profileFields[id];if(!field)return false;const [book,part]=profileParts(),key=field==='revealNow'?part:book;if(field==='styleId'&&!Object.hasOwn(styles,value))return false;if(currentProfile()[field]===value)return true;putRecord(key,{...record(key),[field]:value.slice(0,field==='holdBack'?4000:2000)});if(field!=='holdBack'){ideaPreview=null;ideaPreviewInput=null;planPreview=null;planPreviewInput=null;previewInput=null;refreshRunButtons();for(const el of document.querySelectorAll('[data-prepared-profile]'))el.hidden=true;const note=document.querySelector('#context-safety');if(note){note.textContent='写作要求已变化，请重新预览。';note.className='note warn'}for(const b of document.querySelectorAll('[data-act="draft"],[data-act="review"],[data-act="apply"],[data-act="plan-run"],[data-act="plan-apply"]'))b.disabled=true}return true}
-function styleControl(){const p=currentProfile();return `<label class="field writing-style">写作风格<select id="writing-style">${Object.entries(styles).map(([id,label])=>`<option value="${id}" ${id===p.styleId?'selected':''}>${label}</option>`).join('')}</select></label>`}
-function authorDesk(){const p=currentProfile();return `<details class="author-desk" data-detail-key="author-desk"><summary>作者约束与线索</summary><label class="field">本书的写作约束<textarea id="author-constraints" maxlength="2000" placeholder="${p.styleId==='xuanhuan'?'例如：悟道须经选择与代价，不用童谣预言。':'例如：保持人物限知，不替叙述者解释动机。'}">${E(p.authorConstraints)}</textarea></label><label class="field">本轮允许揭示的线索<textarea id="scene-reveal" maxlength="2000" aria-describedby="reveal-help" placeholder="第2幕：铜铃内侧有第二道刻痕">${E(p.revealNow)}</textarea></label><p id="reveal-help" class="small">普通行从首幕可用；以“第2幕：”开头的线索到第二幕才交给写手。</p><label class="field private-notes">未揭谜底 · 作者手记<textarea id="private-holdback" maxlength="4000" aria-describedby="private-help" placeholder="在此记下布局者身份、伏笔答案或未来反转。">${E(p.holdBack)}</textarea></label><p id="private-help" class="small">${profileDb?'只保存在当前浏览器':'只保存在当前页签'}，不会发送给模型。准备揭示时，将选定的线索写到上方。</p></details>`}
-const scopedDefaults={planMode:'scenes',idea:'',instruction:'',moment:'',perspective:'omniscient',pov:'',factIds:[],writer:'',extract:'',reviewPrompt:'',projectName:'',sceneTitle:'',sceneCount:1,scenePlans:'',plannerPrompt:''};
-const briefKey=()=>'novel-canvas-brief:'+JSON.stringify([account,profileParts()[1]]);
-function saveBrief(){if(!account||!archive)return;const row={};for(const k of Object.keys(scopedDefaults))row[k]=form[k];try{sessionStorage.setItem(briefKey(),JSON.stringify(row))}catch{}}
-function readBrief(fallback=false){let row=null;try{row=JSON.parse(sessionStorage.getItem(briefKey())||'null')}catch{}if(!row&&fallback)return;for(const [k,value] of Object.entries(scopedDefaults)){const v=row?.[k];form[k]=Array.isArray(value)?(Array.isArray(v)?v.filter(x=>typeof x==='string').slice(0,40):[]):typeof v===typeof value?v:value}}
-function forgetOutput(){selectedPrefix=null;pasteBodies=[];pasteCount=1;checkpointNotice='';compatiblePlan=null;planStorageFailed=false;standalonePlan=false;acceptedPlan='';portableInput=portablePane='';plannerError='';planBase=null;planFeedback='';invalidate();ideaPreview=ideaPreviewInput=planPreview=planPreviewInput=planResult=null;plannerStatus='idle';reader=inspectedStage=lastFollow='';graphView='run';auto={status:'idle',stages:[],messages:[],draft:'',candidates:[],issues:[],scenes:[],notice:''};events=[];resultTab='manuscript'}
-function switchBrief(change){if(busy||pending||(auto.draft&&!auto.saved||candidate)&&!confirm('本次候选尚未保存。离开这个稿件会清空候选，继续吗？')){render();return false}saveBrief();change();readBrief();forgetOutput();restoreBookPlan();restorePlanError();persistForm();render();return true}
-// Local manuscript checkpoints: keep model outputs and observed check results, never author-only notes or full model messages.
-let selectedPrefix=null, pasteCount=1,pasteBodies=[],checkpointNotice='';
-function deskStamp(){let scope;if(form.runMode==='idea'){const k=profileParts()[0],r=record(k);if(!r.candidateDeskId)putRecord(k,{...r,candidateDeskId:crypto.randomUUID()});scope=record(k).candidateDeskId}else scope=[projectId,sceneId,revision()?.id];return JSON.stringify([account,scope,form.runMode,bookMode(),form.runMode==='idea'?form.idea.trim():[form.instruction.trim(),form.moment.trim(),form.perspective,form.pov,form.factIds],Number(form.sceneCount),form.scenePlans.trim(),bookMode()?planResult?.bookOutline?.title||'':''])}
-function prefixKey(stamp){let h=2166136261;for(let i=0;i<stamp.length;i++)h=Math.imul(h^stamp.charCodeAt(i),16777619);const base='manuscript:'+h.toString(36);for(let i=0;;i++){const key=i?base+':'+i:base,r=record(key);if(!r.stamp||r.stamp===stamp)return key}}
-function snapshotAt(stamp=deskStamp()){const r=record(prefixKey(stamp));return r.stamp===stamp&&Array.isArray(r.rows)&&r.rows.length?r:null}
-function frontRows(rows=[]){const out=[];for(let i=0;i<rows.length&&i<5;i++){const x=rows[i];if(x?.index!==i+1||typeof x.text!=='string'||!x.text.trim())break;out.push(x)}return out}
-function compatiblePrefix(oldRows,newRows){return (oldRows||[]).every((x,i)=>!x?.text||newRows[i]?.text===x.text)}
-function writeCheckpoint(stamp,rows,clear=false){if(!stamp)return;const key=prefixKey(stamp),old=record(key),clean=frontRows(rows);if(!clear&&(!clean.length||old.stamp===stamp&&!compatiblePrefix(old.rows,clean)))return false;const row=clear?{stamp,rows:[]}:{stamp,rows:clean.map(x=>({index:x.index,text:x.text,model:x.model||'',origin:x.origin||'site',checks:x.checks||{},...(Array.isArray(x.candidates)?{candidates:x.candidates}:{}),...(Array.isArray(x.issues)?{issues:x.issues}:{}),extractModel:x.extractModel||'',reviewModel:x.reviewModel||''})),at:Date.now()};privateRecords.set(key,row);let session=false;try{sessionStorage.setItem(cacheKey(key),JSON.stringify(row));session=true}catch{}if(profileDb)try{const tx=profileDb.transaction('profiles','readwrite'),os=tx.objectStore('profiles'),req=os.get(key);req.onsuccess=()=>{const previous=req.result?.row;if(previous?.stamp&&previous.stamp!==stamp||!clear&&previous?.rows?.length&&!compatiblePrefix(previous.rows,row.rows)){checkpointNotice='另一个页面已有不同的前稿。本页候选仍可阅读，请保存作品。';return}os.put({k:key,row})};tx.onabort=tx.onerror=()=>{checkpointNotice=session?'候选仅在当前页签可恢复。':'候选尚未保存到浏览器，请及时复制正文。'}}catch{if(!session)checkpointNotice='候选尚未保存到浏览器，请及时复制正文。'}else if(!session)checkpointNotice='候选仅在当前页面，请及时复制正文。';return true}
-function captureCandidate(){if(!auto.checkpointStamp||auto.saved||!auto.draft)return;writeCheckpoint(auto.checkpointStamp,auto.scenes)}
-function checkState(x,kind){if(x?.checks?.[kind])return x.checks[kind];if(Array.isArray(kind==='extract'?x?.candidates:x?.issues))return {state:'complete'};return {state:'missing',detail:x?.origin==='paste'?'作者带入的正文没有本站检查记录。':'尚未收到此步骤的检查结果。'}}
-function setCheck(idx,kind,state,detail=''){const x=auto.scenes[idx-1];if(x)x.checks={...x.checks,[kind]:{state,detail}}}
-const analysisName=k=>k==='extract'?'事实提取':'独立审阅';
-function chapterChecks(x){return ['extract','review'].map(k=>{const c=checkState(x,k);return `<div><span>${analysisName(k)}：${c.state==='complete'?'已返回':c.state==='failed'?'失败':c.state==='unknown'?'结果未知':'未返回'}</span>${c.detail&&c.state!=='complete'?`<small>${E(c.detail)}</small>`:''}</div>`}).join('')}
-function unitName(){return bookMode()?'章':'幕'}
-function checkGaps(kind){const rows=frontRows(auto.scenes),unit=auto.bookPlan?'章':'幕';const gaps=rows.filter(x=>checkState(x,kind).state!=='complete');return gaps.length?`<div class="check-gaps note warn"><strong>${analysisName(kind)}尚有缺口</strong>${gaps.map(x=>`<p>第 ${x.index} ${unit}：${E(checkState(x,kind).detail||'没有有效结果，不视为通过。')}</p>`).join('')}</div>`:''}
-function restoreRows(rows,stamp){const xs=frontRows(rows).map(x=>({...x,checks:{...x.checks}}));if(!xs.length)return false;auto={status:'restored',checkpointStamp:stamp,bookPlan:bookMode()&&planResult?{bookOutline:planResult.bookOutline,source:planResult.source,scenes:planResult.scenes}:null,sourceProfile:profileParts().map(k=>({...record(k)})),sceneCount:Number(form.sceneCount),stages:[],messages:[],scenes:xs,draft:xs.at(-1).text,candidates:[],issues:[],notice:'已恢复未确认候选；没有调用模型或写入作品。'};reader='results';resultTab='manuscript';readerReturn='[data-act=read-results]';return true}
-function resumeDock(){if(busy||pending||auto.saved||Number(form.sceneCount)<2)return '';const stamp=deskStamp(),xs=auto.checkpointStamp===stamp?frontRows(auto.scenes):snapshotAt(stamp)?.rows||[];return xs.length&&xs.length<form.sceneCount?`<button type="button" class="dock-action" data-act="resume-draft">接着写第 ${xs.length+1} ${unitName()}</button>`:''}
-function chapterDisplay(raw){const text=String(raw??''),m=/^(?:﻿)?#{1,6}[ \t]+(第[零〇一二三四五六七八九十百千万两0-9０-９]+[章回节][^\r\n]*)(?:\r?\n|$)/u.exec(text);return m?{title:m[1],body:text.slice(m[0].length)}:null}
-function readingText(text){const ch=chapterDisplay(text);return ch?`<h3 class="prose-title">${E(ch.title)}</h3>${E(ch.body)}`:E(text)}
-function stagePrefix(rows){const stamp=deskStamp(),xs=frontRows(rows),texts=xs.map(x=>x.text);if(!texts.length||texts.length>=Number(form.sceneCount))throw Error('请带入从第 1 章起的连续前稿，至少留一章待写。');if(texts.some(s=>s.length>12000)||texts.reduce((n,s)=>n+s.length,0)>20000)throw Error('每段前稿最多 12000 字符，合计最多 20000 字符；原稿不会自动截断。');if(auto.draft&&!auto.saved&&(auto.checkpointStamp!==stamp||!compatiblePrefix(frontRows(auto.scenes),xs)))throw Error('本页已有不同的未保存候选，请先保存或复制并明确清除旧稿。');const stored=snapshotAt(stamp);if(stored&&!compatiblePrefix(stored.rows,xs))throw Error('本机已有不同的候选，不能用粘贴稿覆盖。请先恢复并保存旧稿。');selectedPrefix={stamp,rows:xs};ideaPreview=ideaPreviewInput=null;restoreRows(xs,stamp);captureCandidate();render()}
-function recoveryPanel(){const count=Number(form.sceneCount)||1,stamp=deskStamp(),saved=snapshotAt(stamp);if(count<=1&&!saved)return '';const live=auto.checkpointStamp===stamp&&!auto.saved?frontRows(auto.scenes):[],rows=live.length?live:saved?.rows||[],n=rows.length,word=unitName(),selected=selectedPrefix?.stamp===stamp?selectedPrefix.rows.length:0,cut=Math.min(count-1,pasteCount);return `<details class="candidate-recovery" data-detail-key="candidate-recovery"><summary>接续已有正文${n?` · 已有 ${n} ${word}`:''}</summary><p class="small">前稿仅作未确认参考。续写不会重写前文，也不会补做此前缺失的提取或审阅。</p>${n?`<div class="actions"><button type="button" data-act="restore-candidate">阅读本机候选</button>${n<count?`<button type="button" data-act="choose-prefix">采用前 ${n} ${word}，从第 ${n+1} ${word}续写</button>`:''}<button type="button" data-act="clear-candidate">清除本机候选</button></div>`:''}${selected?`<p class="note">已选择前 ${selected} ${word}。预览或开始创作将从第 ${selected+1} ${word}开始。</p>`:''}${count>1?`<details data-detail-key="paste-prefix"><summary>粘贴已有前稿</summary><label class="field">已有几${word}<select id="prefix-count">${Array.from({length:count-1},(_,i)=>`<option value="${i+1}" ${cut===i+1?'selected':''}>${i+1}</option>`).join('')}</select></label>${Array.from({length:cut},(_,i)=>`<label class="field">第 ${i+1} ${word}正文<textarea id="prefix-paste-${i}" maxlength="12000" placeholder="粘贴原文，不会写入正式作品。">${E(pasteBodies[i]||'')}</textarea></label>`).join('')}<button type="button" data-act="adopt-paste">采用粘贴前稿</button></details>`:''}${checkpointNotice?`<p class="note warn">${E(checkpointNotice)}</p>`:''}</details>`}
+(() => {
+  'use strict';
 
-function step(label,state,detail){return `<div class="node ${E(state)}"><span class="step">${E(label)}</span><strong>${E(detail[0])}</strong><span class="state">${E(detail[1])}</span></div>`}
-const statusText=s=>({idle:'尚未开始',running:'请求中',complete:'已收到结果',failed:'请求失败',unknown:'结果未知'})[s]||'尚未开始';
-function view(){
-  const content=`<div class="canvas-page">${pending?'<div class="note warn recovery" role="status">上次保存的结果尚未确认。<button data-act="retry">恢复待确认操作</button><details><summary>了解恢复</summary>重试会沿用原来的操作，不重复创建。恢复记录保存在当前页签，可能包含候选正文。</details></div>':''}<div class="writing-desk ${briefCollapsed?'brief-collapsed':''}"><section class="brief-panel" aria-labelledby="brief-title">${ideaPanel()}</section><section class="canvas-work" aria-label="创作执行与结果">${planErrorView()}${actionError?`<div class="note warn canvas-error" role="alert">${E(actionError)}</div>`:''}${executionCanvas()}${readerPane()}</section></div></div>`;
-  return studioShell(content);
-}
-function studioShell(content){return window.NovelStudio?.shell?window.NovelStudio.shell({active:'canvas',title:'创作画布',content,actions:'<a class="canvas-header-link" href="model-settings.html" target="_blank" rel="noopener">模型设置</a>'}):`<main class="canvas-standalone"><h1>创作画布</h1>${content}</main>`}
-function sceneContext(){const p=project(),s=scene(),r=revision(),valid=!!r&&draftMatches(s,r);return `<div class="context-selects"><label class="field">作品<select id="project">${(archive?.projects||[]).map(x=>`<option value="${E(x.id)}" ${x.id===projectId?'selected':''}>${E(x.name)}</option>`).join('')||'<option value="">还没有作品</option>'}</select></label><label class="field">场景<select id="scene">${(p?.scenes||[]).map(x=>`<option value="${E(x.id)}" ${x.id===sceneId?'selected':''}>${E(x.title)}</option>`).join('')||'<option value="">还没有场景</option>'}</select></label></div>${!valid?`<div class="note">${s?'请先保存当前正文版本，再从这里续写。':'先创建作品与场景，或切换到「新建故事」。'} <a href="consistency.html?view=write">打开正文编辑</a></div>`:''}<label class="field">这一次想写什么<textarea id="instruction" maxlength="2000" placeholder="接下来会发生什么？希望人物做出怎样的选择？">${E(form.instruction)}</textarea></label><div class="field-pair"><label class="field">故事时点<input id="moment" value="${E(form.moment)}" placeholder="如 3 或 3.5" inputmode="decimal"></label><label class="field">叙事视角<select id="perspective"><option value="omniscient" ${form.perspective==='omniscient'?'selected':''}>全知视角</option><option value="limited" ${form.perspective==='limited'?'selected':''}>人物限知</option></select></label></div>${form.perspective==='limited'?`<label class="field">视角人物<input id="pov" maxlength="120" value="${E(form.pov)}" placeholder="角色标识，如 lin_yu"></label>`:''}<details class="context-facts" data-detail-key="context-facts"><summary>参考事实${form.factIds.length?` · 已选 ${form.factIds.length} 条`:''}</summary><p class="small">只选择此时点、此视角已经知道的事实，最多 40 条。</p><div class="checks">${(p?.facts||[]).map(f=>`<label class="check"><input type="checkbox" data-fact="${E(f.id)}" ${form.factIds.includes(f.id)?'checked':''}><span>${E(f.statement)}<small>${E(names[f.layer]||f.layer)}${f.storyTime?' · '+E(f.storyTime):''}</small></span></label>`).join('')||'<p class="small">尚未确认事实。可先续写，再审阅生成的内容。</p>'}</div></details>`}
-function promptEditors(){return `<div class="prompt-editors">${form.runMode==='idea'?`<label class="field">规划提示词<textarea id="role-planner-guidance" maxlength="2000" placeholder="大纲范围、线索安排、开篇章节的结构">${E(form.plannerPrompt)}</textarea></label>`:''}<label class="field">写作提示词<textarea id="idea-writer" maxlength="2000" placeholder="风格、叙事节奏、篇幅与语言偏好">${E(form.writer)}</textarea></label><label class="field">事实抽取提示词<textarea id="idea-extract" maxlength="2000" placeholder="重点提取人物、物品、时间或世界规则">${E(form.extract)}</textarea></label><label class="field">审阅提示词<textarea id="idea-review" maxlength="2000" placeholder="重点检查人物行为、设定或时间关系">${E(form.reviewPrompt)}</textarea></label><p class="small">这些指导会加入模型输入。预览可查看完整内容。</p></div>`}
-// Only curated server diagnostics (no upstream text or response body) are retained.
-function rememberPlanError(msg){plannerError=msg;try{const k='novel-plan-error:'+JSON.stringify([account,profileParts()[1]]);if(msg)sessionStorage.setItem(k,msg);else sessionStorage.removeItem(k)}catch{}}
-function restorePlanError(){try{plannerError=sessionStorage.getItem('novel-plan-error:'+JSON.stringify([account,profileParts()[1]]))||'';if(plannerError)plannerStatus='failed'}catch{}}
-function planErrorView(){return plannerError?`<div class="note warn" role="alert"><strong>规划未完成</strong><p>${E(plannerError)}</p></div>`:''}
-const localPlanScope=(mode=form.runMode,p=projectId)=> mode==='idea'?'new-draft':JSON.stringify(['project',p]);
-const localPlanKey=scope=>'portable-plan:'+scope;
-const bookReviewKey=()=>'novel-plan-review:'+JSON.stringify([account,profileParts()[1]]);
-function portablePlan(x){
- const fail=()=>{throw Error('大纲 JSON 需包含完整 bookOutline 和 1–5 张 scenes 章卡；没有导入任何内容。')},obj=v=>v&&typeof v==='object'&&!Array.isArray(v),str=(v,n)=>typeof v==='string'&&v.trim()&&v.trim().length<=n?v.trim():fail(),list=(v,min,max)=>Array.isArray(v)&&v.length>=min&&v.length<=max?v:fail();
- if(!obj(x)||x.schema!==undefined&&x.schema!=='novel-book-plan/1')fail();const o=x.bookOutline;if(!obj(o))fail();
- const bookOutline={title:str(o.title,100),premise:str(o.premise,1200),rules:list(o.rules,1,12).map(r=>str(r,600)),volumes:list(o.volumes,2,8).map(v=>({title:str(v?.title,90),turn:str(v?.turn,1200),reveal:str(v?.reveal,900)})),convergence:str(o.convergence,1200),ending:str(o.ending,1200)};
- const scenes=list(x.scenes,1,5).map(v=>{const title=str(v?.title,100),goal=str(v?.goal,1500);if(title.length+goal.length+1>1500)fail();return {title,goal}});return {schema:'novel-book-plan/1',bookOutline,scenes};
-}
-function safeLocalPlan(x){const packet=portablePlan(x),s=x?.source;
- if(s?.role==='book-planner'&&s.template==='book-outline-v1'&&typeof s.model==='string'&&/^[A-Za-z0-9][A-Za-z0-9._:-]{0,100}$/.test(s.model)&&! /^(sk-|sess-)/i.test(s.model)&&Number.isSafeInteger(s.round)&&s.round>0&&typeof s.previewHash==='string'&&/^[a-f0-9]{64}$/.test(s.previewHash))return {...packet,model:s.model,source:{role:s.role,template:s.template,model:s.model,round:s.round,previewHash:s.previewHash}};
- return {...packet,source:{role:'author-import'}};
-}
-async function writePlanArchive(row,scope=localPlanScope()){
- if(!account)return false;const key=localPlanKey(scope);if(row)privateRecords.set(key,row);else privateRecords.delete(key);
- try{if(row)sessionStorage.setItem(cacheKey(key),JSON.stringify(row));else sessionStorage.removeItem(cacheKey(key))}catch{}
- if(!profileDb)return false;
- const db=profileDb;return new Promise(resolve=>{try{const tx=db.transaction('profiles','readwrite'),store=tx.objectStore('profiles');tx.oncomplete=()=>resolve(true);tx.onerror=tx.onabort=()=>resolve(false);if(row)store.put({k:key,row});else store.delete(key)}catch{resolve(false)}});
-}
-async function cacheBookPlan(){if(!account||!planResult?.bookOutline)return false;const row={plan:safeLocalPlan(planResult),feedback:planBase===planResult?planFeedback.slice(0,2000):'',lastFeedback:planBase&&planBase!==planResult?planFeedback.slice(0,2000):''};const saved=await writePlanArchive(row);planStorageFailed=!saved;return saved}
-function restoreBookPlan(activate=false){if(!account||form.runMode==='idea'&&!bookMode()&&!activate)return;
- let c=record(localPlanKey(localPlanScope()));if(!c.plan){try{const old=JSON.parse(sessionStorage.getItem(bookReviewKey())||'null');if(old?.planResult){c={plan:safeLocalPlan(old.planResult),feedback:''};void writePlanArchive(c);sessionStorage.removeItem(bookReviewKey())}}catch{}}
- if(!c.plan)return;try{planResult=safeLocalPlan(c.plan)}catch{return}
- if(form.runMode==='idea'){form.planMode='book';form.sceneCount=planResult.scenes.length;openDetails.add('planning');openDetails.add('planner')}
- planFeedback=typeof c.feedback==='string'?c.feedback.slice(0,2000):'';planBase=planFeedback?planResult:null;planPreview=planPreviewInput=null;standalonePlan=true;acceptedPlan='';plannerStatus='complete';
-}
-function acceptedStamp(){return JSON.stringify([account,localPlanScope(),form.idea.trim(),form.model.trim(),form.plannerPrompt,Number(form.sceneCount),publicProfile()])}
-function acceptLocalPlan(){form.sceneCount=planResult.scenes.length;if(!form.idea.trim())form.idea='请依据采用的开篇章卡创作。';form.projectName=planResult.bookOutline.title;form.sceneTitle=planResult.scenes[0].title;form.scenePlans=planResult.scenes.map(x=>`${x.title}：${x.goal}`.replace(/[\r\n]+/g,' ')).join('\n');acceptedPlan=acceptedStamp();ideaPreview=ideaPreviewInput=null;persistForm()}
-function portableControls(book){if(!book&&!planResult?.bookOutline)return '';const has=!!planResult?.bookOutline;return `<div class="actions">${book?'<button type="button" data-act="open-plan-import">导入大纲</button>':''}${has?'<button type="button" data-act="export-plan">导出大纲</button><button type="button" data-act="clear-plan">清除本机计划</button>':''}</div>${has?`<p class="small">${profileDb&&!planStorageFailed?'在此浏览器按账号保存。':'目前只能保留到页签关闭，请先导出。'}</p>`:''}${portablePane==='import'?`<label class="field">大纲 JSON<textarea id="book-plan-import" maxlength="120000" placeholder="粘贴包含 bookOutline、scenes 的 JSON">${E(portableInput)}</textarea></label><p class="small">导入稿标为作者提供，不调用模型。</p><button type="button" data-act="import-plan">采用导入稿</button>`:''}${portablePane==='export'&&has?`<label class="field">导出 JSON<textarea id="book-plan-export" readonly>${E(JSON.stringify(portablePlan(planResult)))}</textarea></label><button type="button" data-act="copy-export">复制 JSON</button>`:''}`}
-function bookMode(){return form.runMode==='idea'&&form.planMode==='book'}
-function planSelector(){return form.runMode==='idea'?`<label class="field">创作方式<select id="planning-mode"><option value="scenes" ${!bookMode()?'selected':''}>按场景创作</option><option value="book" ${bookMode()?'selected':''}>全书大纲＋开篇章节</option></select></label>`:''}
-function outlineView(o){if(!o)return '';return `<article class="book-outline"><h3>${E(o.title)}</h3><p>${E(o.premise)}</p><h4>世界规则</h4><ol>${o.rules.map(r=>`<li>${E(r)}</li>`).join('')}</ol><h4>分卷大纲</h4>${o.volumes.map((v,i)=>`<section><strong>卷 ${i+1} · ${E(v.title)}</strong><p>${E(v.turn)}</p><p>${E(v.reveal)}</p></section>`).join('')}<h4>终局与收束</h4><p>${E(o.convergence)}</p><p>${E(o.ending)}</p></article>`}
-function sceneList(list){return `<ol class="plan-list">${list.map(x=>`<li><strong>${E(x.title)}</strong><p>${E(x.goal)}</p></li>`).join('')}</ol>`}
-function planOutput(p){if(!p)return '';return switchView(p.modelFallback)+(p.bookOutline?`<details class="book-result"><summary>全书大纲 · ${p.source?.role==='author-import'?'作者导入稿':('第 '+E(p.source?.round||1)+' 版')}</summary>${outlineView(p.bookOutline)}</details><p class="small">以下章卡给正文写手；整份大纲仅供作者审阅。</p>`:'')+sceneList(p.scenes||[])}
-function planningPanel(){const book=bookMode();return `<details class="planning" data-detail-key="planning"><summary>${book?'全书规划与开篇章卡':'场景计划'}</summary>${portableControls(book)}${!book&&planResult?.bookOutline?planOutput(planResult):''}<label class="field">${book?'每行一张开篇章卡':'每行一个场景'}<textarea id="idea-plans" maxlength="7500" placeholder="按发生顺序填写">${E(form.scenePlans)}</textarea></label>${form.runMode==='idea'?`<details data-detail-key="planner"><summary>${book?'让模型规划全书':'让 AI 帮我规划'}</summary><label class="field">规划要求<textarea id="planner-prompt" maxlength="2000" placeholder="填写大纲的范围和要求">${E(form.plannerPrompt)}</textarea></label>${book&&planBase?`<label class="field">${planBase.source?.role==='author-import'?'对导入稿的修改意见':('对第 '+E(planBase.source?.round)+' 版的修改意见')}<textarea id="plan-feedback" maxlength="2000" placeholder="指出要保留、舍弃或重写的部分">${E(planFeedback)}</textarea></label>`:''}<div class="actions"><button data-act="plan-preview" ${busy||pending?'disabled':''}>查看规划提示词</button><button data-act="plan-run" ${busy||pending||!planPreview?'disabled':''}>${book?(planBase?'按意见修订大纲':'生成全书大纲'):'生成计划'}</button></div>${planPreview?`<details data-prepared-profile><summary>规划输入</summary>${messagesView(planPreview.messages)}</details>`:''}${planResult?`${planOutput(planResult)}<div class="actions"><button data-act="plan-apply">${book?'采用开篇章卡':'采用计划'}</button>${book?'<button data-act="plan-revise">继续修订大纲</button>':''}</div><p class="small">${planResult.source?.role==='author-import'?'作者导入 · 未调用模型':E(planResult.model||'未提供模型名称')}${planResult.source?.template?' · '+E(planResult.source.template):''}</p>`:''}<p class="small">${book?'首次全书规划已计入总次数；采用章卡不会调用模型。':'每次生成或修订计划会额外调用一次模型。'}</p></details>`:''}</details>`}
+  const root = document.querySelector('#root');
+  const base = '/api/m/novel-studio/';
+  const E = (x) =>
+    String(x ?? '').replace(
+      /[&<>"']/g,
+      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])
+    );
 
-function messagesView(messages){return (messages||[]).map(m=>`<article class="prompt-message"><span class="message-role">${E(({system:'系统规则',user:'创作要求',assistant:'前文参考'})[m.role]||m.role)}</span><div class="text">${E(m.content)}</div></article>`).join('')||'<p class="small">尚无模型输入。</p>'}
-function toolbarActionLabel(){if(!busy&&selectedPrefix?.stamp===deskStamp())return `继续写第 ${selectedPrefix.rows.length+1} ${unitName()}`;if(bookMode()&&plannerStatus==='running')return '正在规划…';if(busy)return '正在创作…';if(!hasCreativeBrief())return form.runMode==='scene'?'填写续写要求':'填写构思';if(bookMode()&&!adoptedCurrentPlan())return planResult?'审阅全书大纲':'生成全书大纲';return '开始创作'}
-function hasCreativeBrief(){return form.runMode==='scene'?!!form.instruction.trim():!!form.idea.trim()}
-function adoptedCurrentPlan(){if(standalonePlan)return !!planResult&&acceptedPlan===acceptedStamp()&&form.scenePlans.trim()===planResult.scenes.map(x=>`${x.title}：${x.goal}`.replace(/[\r\n]+/g,' ')).join('\n').trim();let current=false;try{current=!!planResult&&!!planPreview&&planMatches(planPayload())}catch{}return current&&form.scenePlans.trim()===planResult.scenes.map(x=>`${x.title}：${x.goal}`.replace(/[\r\n]+/g,' ')).join('\n').trim()}
-function readerPane(){if(!reader)return '';const heading=reader==='history'?'运行记录':reader==='node'?'节点详情':'创作结果';const body=reader==='node'?stageInspector():reader==='history'?eventHistory():resultsPanel();return `<aside class="reader-pane" role="region" aria-label="${heading}" data-reader="${reader}"><header class="reader-head"><h2 id="reader-title" tabindex="-1">${heading}</h2><button type="button" class="reader-dismiss" data-act="close-reader" aria-label="关闭阅读面板">×</button></header><div class="reader-body">${body}</div></aside>`}
-function dismissReader(){const target=readerReturn;reader=inspectedStage='';render();if(target)document.querySelector(target)?.focus?.({preventScroll:true})}
-function executionCanvas(){
-  const book=bookMode(),unit=book?'章':'幕',actual=auto.stages||[],count=Number(auto.sceneCount)||Number(form.sceneCount)||1;
-  const statusFor=kind=>{
-    const matches=actual.filter(x=>x.kind===kind),last=matches.at(-1),running=matches.some(x=>x.status==='running'),rows=frontRows(auto.scenes);
-    if(kind==='draft'&&rows.length){const retained=auto.status==='restored'?rows.length:Number(auto.continuedCount)||0,newCount=Math.max(0,rows.length-retained);return {state:running?'running':rows.length===count?'complete':'partial',detail:`已有 ${rows.length}/${count} ${unit} · 本轮新写 ${newCount} ${unit}`}}
-    if(kind!=='draft'&&rows.length&&(matches.length||['partial','complete','failed','unknown','restored'].includes(auto.status))){
-      const by=Array.from({length:count},(_,i)=>checkState(rows[i],kind).state),n=(k)=>by.filter(x=>x===k).length,done=n('complete'),failed=n('failed'),unknown=n('unknown'),missing=count-done-failed-unknown;
-      const gaps=[[failed,'失败'],[unknown,'未知'],[missing,'未返回']].filter(([n])=>n).map(([n,label])=>`${n} ${label}`).join('、');
-      return {state:running?'running':done===count?'complete':done?'partial':failed===count?'failed':unknown===count?'unknown':missing===count?'missing':'incomplete',detail:`已返回 ${done}/${count} ${unit}${running?' · 执行中':gaps?' · '+gaps:''}`};
-    }
-    return last?{state:running?'running':last.status,detail:last.status==='complete'?`已完成 ${matches.filter(x=>x.status==='complete').length} / ${count} ${unit}`:last.detail}:((kind==='draft'||kind==='review')&&runs[kind]!=='idle'?{state:runs[kind],detail:statusText(runs[kind])}:{state:'idle',detail:'尚未调用'});
+  const LAYER_LABELS = {
+    world: '世界设定',
+    belief: '人物认知',
+    speech: '角色台词',
+    plan: '剧情伏笔',
+    unknown: '待归类',
   };
-  const prep=auto.status!=='idle'||ideaPreview||preview?'complete':'idle';
-  let currentPlan=standalonePlan&&!!planResult;if(!currentPlan)try{currentPlan=!!planPreview&&planMatches(planPayload())}catch{}const plan=plannerStatus==='running'?'running':plannerStatus==='failed'?'failed':(planResult||planPreview)&&!currentPlan?'stale':planResult?'complete':planPreview?'ready':book?'idle':'skipped';
-  const draft=statusFor('draft'),extract=statusFor('extract'),check=statusFor('review');
-  const planAdopted=auto.status!=='idle'&&typeof auto.usedPlan==='boolean'?auto.usedPlan:adoptedCurrentPlan();
-  const plannedHere=!standalonePlan&&currentPlan&&!!planResult;
-  const plannerInputState=plannerStatus==='running'?'running':plannedHere?'complete':'idle';
-  const save=auto.saved||runs.apply==='complete'?'complete':runs.apply==='running'?'running':pending?'unknown':auto.draft&&auto.status!=='running'?'ready':'idle';
-  const nodes=[
-    {id:'prepare',title:'创作构思',state:prep,detail:prep==='complete'?'输入已准备':form.runMode==='scene'?'从现有场景续写':'新建故事',x:30,y:38,icon:'idea'},
-    {id:'plan',title:book?'全书规划':'场景规划',state:plan,detail:plannerStatus==='running'?(book?'正在生成全书大纲':'正在生成计划'):plannerStatus==='failed'?'规划未完成':plan==='stale'?'构思已变，请重新规划':planResult?(standalonePlan?((planResult.source?.role==='author-import'?'作者导入':'已恢复')+(planAdopted?' · 已采用':' · 待采用')):planAdopted?`已采用 ${planResult.scenes?.length||0} ${book?'张章卡':'幕计划'}`:(book?'大纲已生成，待采用章卡':'已生成，等待采用')):planPreview?'已预览，尚未调用':book?'先规划，再采用章卡':'可选 · 尚未调用',x:260,y:38,icon:'plan'},
-    {id:'draft',title:'正文生成',...draft,x:490,y:38,icon:'draft'},
-    {id:'extract',title:'事实提取',...extract,x:490,y:246,icon:'extract'},
-    {id:'review',title:'独立审阅',...check,x:260,y:246,icon:'review'},
-    {id:'save',title:'保存作品',state:save,detail:auto.saved||runs.apply==='complete'?'草稿已保存':pending?'保存结果待确认':auto.draft?'等待你确认':'等待生成结果',x:30,y:246,icon:'save'}
-  ];
-  const summary=auto.status==='partial'?'正文已返回 · 检查有缺口':auto.status==='restored'?'候选已恢复':auto.status==='complete'?'等待审阅':auto.status==='running'?'正在创作':auto.status==='unknown'?'结果未知':auto.status==='failed'?'创作未完成':book&&plannerStatus==='running'?'正在规划全书':book&&plannerStatus==='failed'?'规划未完成':book&&currentPlan&&planResult&&!planAdopted?'等待采用章卡':ideaPreview?'输入已准备':'准备创作';
-  const blueprint=graphView==='blueprint',stageSeen={prepare:true,plan:!!(planPreview||planResult||plannerStatus!=='idle'||auto.usedPlan),draft:draft.state!=='idle'||!!candidate,extract:extract.state!=='idle',review:check.state!=='idle',save:save!=='idle'},shown=id=>blueprint||stageSeen[id];
-  const clipped=s=>{const v=String(s||'').trim();return Array.from(v).slice(0,67).join('')+(Array.from(v).length>67?'…':'')};
-  const lineFor=id=>{if(id==='prepare')return form.runMode==='idea'?form.idea:form.instruction;if(id==='plan')return planResult?.bookOutline?.title||planResult?.scenes?.[0]?.title;if(id==='draft'){const text=auto.scenes.filter(x=>x?.text).at(-1)?.text||candidate?.text,d=chapterDisplay(text);return d?d.title+' · '+d.body.trimStart():text}if(id==='extract')return auto.candidates?.[0]?.statement;if(id==='review')return auto.issues?.[0]?.description;if(id==='save'&&auto.draft)return auto.saved?'已存入我的作品':'阅读正文后可保存';return ''};
-  const linkDock=(name,label)=>`<button type="button" data-act="${name}" class="dock-action">${label}</button>`;
-  const seedOnly=!blueprint&&!Object.entries(stageSeen).some(([id,seen])=>id!=='prepare'&&seen);
-  const arrow=(name,path,state,optional=false)=>name.split('-').every(shown)?`<path class="graph-edge ${E(state||'idle')}${optional?' optional':''}" d="${path}" marker-end="url(#arrow-${state==='complete'?'complete':state==='running'?'running':'idle'})" data-edge="${name}"/>`:'';
-  return `<section class="execution-panel" data-view="${graphView}"><div class="section-title canvas-toolbar ${briefCollapsed?'has-primary':''}"><div class="canvas-title"><h2>执行画布</h2><span class="run-status ${auto.status==='running'?'is-running':''}" role="status">${E(summary)}</span></div>${briefCollapsed?`<button class="primary canvas-primary" data-act="canvas-primary" ${busy||pending?'disabled':''}>${toolbarActionLabel()}</button>`: ''}<div class="canvas-controls"><button class="text-button" data-act="toggle-brief" aria-expanded="${!briefCollapsed}">${briefCollapsed?'展开设置':'收起设置'}</button><div class="zoom-controls"><button data-act="zoom-out" aria-label="缩小画布" title="缩小">−</button><span>${Math.round(canvasZoom*100)}%</span><button data-act="zoom-in" aria-label="放大画布" title="放大">+</button><button data-act="zoom-fit" title="适应画布" aria-label="适应画布">适应</button></div></div></div><div class="graph-modebar"><div class="view-buttons" aria-label="画布视图"><button type="button" data-act="graph-view" data-view="run" aria-pressed="${!blueprint}">本次执行</button><button type="button" data-act="graph-view" data-view="blueprint" aria-pressed="${blueprint}">完整流程</button></div><span class="graph-progress">${blueprint?'包含尚未执行的步骤':seedOnly?(auto.status==='running'?'等待执行事件':auto.status==='failed'||auto.status==='unknown'?'尚未收到步骤事件':'尚未调用模型'):`${Object.values(stageSeen).filter(Boolean).length} 个步骤已出现`}</span></div><div class="graph-viewport" tabindex="0" role="region" aria-label="创作流程画布，可滚动查看节点"><div class="graph-size" style="width:${700*canvasZoom}px;height:${424*canvasZoom}px"><div class="graph-plane" style="transform:scale(${canvasZoom})"><svg class="graph-connectors" width="700" height="424" viewBox="0 0 700 424" fill="none" aria-hidden="true"><defs>${['idle','complete','running'].map(st=>`<marker id="arrow-${st}" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M1 1 7 4 1 7" class="arrow-tip ${st}"/></marker>`).join('')}</defs>${arrow('prepare-plan','M208 97 H250',plannerInputState,!book&&!plannedHere&&plannerStatus!=='running')}${arrow('plan-draft','M438 97 H480',planAdopted?draft.state:'idle',!book&&!planAdopted)}${!book&&!planAdopted?arrow('prepare-draft','M119 156 V182 Q119 190 127 190 H458 Q466 190 466 182 V105 Q466 97 474 97 H480',draft.state):''}${arrow('draft-extract','M579 156 V236',extract.state==='idle'?draft.state:extract.state)}${arrow('extract-review','M490 305 H448',check.state==='idle'?extract.state:check.state)}${arrow('review-save','M260 305 H218',save==='idle'?check.state:save)}</svg>${nodes.filter(n=>shown(n.id)).map((n,i)=>`<button class="graph-node ${E(n.state)} ${inspectedStage===n.id?'selected':''}" data-act="inspect-stage" data-stage="${n.id}" aria-pressed="${reader==='node'&&inspectedStage===n.id}" data-observed="${!!stageSeen[n.id]}" style="left:${n.x}px;top:${n.y}px"><span class="node-heading"><span class="graph-node-icon">${nodeIcon(n.icon)}</span><span class="node-state">${({complete:'已完成',partial:'部分完成',missing:'未返回',incomplete:'未完成',running:'执行中',failed:'失败',unknown:'结果未知',ready:'已就绪',skipped:'可选',stale:'待更新',idle:'等待'})[n.state]||'等待'}</span></span><strong>${E(n.title)}</strong><span class="node-detail">${E(n.detail)}</span>${lineFor(n.id)?`<span class="node-excerpt" ${n.id==='prepare'?'data-brief-excerpt':''}>${E(clipped(lineFor(n.id)))}</span>`:n.id==='prepare'?'<span class="node-excerpt" data-brief-excerpt>从一个想法开始创作</span>':''}</button>`).join('')}${!book&&!planAdopted&&(blueprint||stageSeen.draft)?'<span class="canvas-bypass-label">直接起草</span>':''}${seedOnly?`<div class="seed-hint"><strong>${hasCreativeBrief()?'构思已就绪':'等待故事构思'}</strong><span>${book?'生成全书大纲后，规划节点会出现在这里。':'启动创作后，正在执行的步骤会依次出现。'}</span></div>`:''}<span class="canvas-path-label" style="left:276px;top:388px">${book?`采用大纲章卡后，依次创作 ${count} 章`:`${count} 个场景按顺序执行`}</span></div></div></div><div class="canvas-foot"><span>${typeof matchMedia==='function'&&matchMedia('(max-width:760px)').matches?'横向滑动查看完整流程':'点击节点查看提示词与结果'}</span><span data-effective-model>${auto.modelFallback?E(auto.modelFallback.selectedModel):auto.requestModel?E(auto.requestModel):form.model?E(form.model):defaultModel?E(defaultModel):'尚未选择模型'}</span></div><div class="canvas-dock">${linkDock('read-results',auto.draft||candidate?'阅读正文':'创作结果')}${resumeDock()}${linkDock('read-history','运行记录')}<button class="dock-action" type="button" data-act="result-tab" data-tab="prompts">提示词</button></div>${switchView(auto.modelFallback)}${auto.notice?`<div class="run-notice ${['failed','unknown'].includes(auto.status)?'note warn':''}" role="status">${E(auto.notice)}</div>`:''}</section>`;
-}
-function nodeIcon(name){const paths={idea:'<path d="M9 18h6m-6 3h6M8.1 14.5a6 6 0 1 1 7.8 0c-.8.6-.9 1.5-.9 2.5H9c0-1-.1-1.9-.9-2.5Z"/>',plan:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>',draft:'<path d="m14 4 6 6M4 20l5-1L21 7a2 2 0 0 0-4-4L5 15zM13 20h8"/>',extract:'<circle cx="6" cy="5" r="2"/><circle cx="18" cy="12" r="2"/><circle cx="6" cy="19" r="2"/><path d="m8 6 8 5m-8 7 8-5"/>',review:'<circle cx="10" cy="10" r="6"/><path d="m14.5 14.5 6 6M7 10l2 2 4-4"/>',save:'<path d="M5 3h12l4 4v14H3V3h2Z"/><path d="M7 3v6h10V3M7 21v-8h10v8"/>'};return `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]||paths.draft}</svg>`}
-function stageInspector(){
-  const name=({prepare:'创作构思',plan:bookMode()?'全书规划':'场景规划',draft:'正文生成',extract:'事实提取',review:'独立审阅',save:'保存作品'})[inspectedStage];
-  const groups=inspectedStage==='prepare'?[{stage:'起草输入',messages:ideaPreview?.messages||[]}]:inspectedStage==='plan'?[{stage:'规划输入',messages:planPreview?.messages||[]}]:auto.messages.filter(x=>x.kind===inspectedStage);
-  let output='';
-  if(inspectedStage==='prepare')output=`<p>${E(form.runMode==='scene'?form.instruction:form.idea)||'在创作设置中写下故事构思。'}</p>`;
-  else if(inspectedStage==='plan')output=planResult?planOutput(planResult):bookMode()?'<p class="small">全书规划是第一步。先生成全书大纲，审阅并采用开篇章卡后，才会逐章起草、提取事实和审阅。</p>':form.scenePlans?`<div class="text">${E(form.scenePlans)}</div>`:'<p class="small">场景规划是可选步骤。可在创作设置中填写计划，或让 AI 生成；未规划时将直接依据构思创作。</p>';
-  else if(inspectedStage==='draft')output=candidate?`<div class="text">${E(candidate.text)}</div>`:auto.scenes.some(x=>x?.text)?auto.scenes.filter(x=>x?.text).map(x=>`<section class="node-output"><h3>第 ${E(x.index)} ${auto.bookPlan?'章':'幕'} · ${auto.status==='restored'||x.index<=(auto.continuedCount||0)?'保留前稿（本轮未重写）':'本轮新写'}</h3><div class="text">${readingText(x.text)}</div></section>`).join(''):`<p class="small">${bookMode()?'采用开篇章卡并开始创作后，这里会逐章显示正文。':'还没有生成正文。开始创作后，这里显示每个场景的实际返回结果。'}</p>`;
-  else if(inspectedStage==='extract')output=factsOutput();
-  else if(inspectedStage==='review')output=reviewOutput();
-  else output=auto.saved||runs.apply==='complete'?`<p>本次生成的${auto.bookPlan?'章节':'场景'}已保存为作品草稿。</p><a href="consistency.html?view=write">打开正文编辑</a>`:auto.draft?'<p>生成的候选正文需要你的确认。</p><button data-act="result-tab" data-tab="manuscript">查看正文并保存</button>':'<p class="small">正文生成后，可在正文页签中审阅并保存。</p>';
-  if(inspectedStage==='plan'&&standalonePlan&&planResult)output='<p class="small">'+(planResult.source?.role==='author-import'?'此稿由作者导入，本次未调用规划模型。':'已恢复先前模型返回的大纲，本次未重新规划。')+'</p>'+output;
-  if(inspectedStage==='plan'&&plannerError)output=planErrorView()+output;
-  return `<div class="stage-inspector"><div class="section-title"><h3>${E(name)}</h3></div><div class="inspector-tabs"><button data-act="inspector-tab" data-tab="output" class="${inspectorTab==='output'?'active':''}">内容与结果</button><button data-act="inspector-tab" data-tab="input" class="${inspectorTab==='input'?'active':''}">模型输入</button></div><div class="inspector-content">${inspectorTab==='input'?(groups.some(x=>x.messages.length)?groups.map(x=>`<h3>${E(x.stage)}</h3>${x.model?`<p class="small">${E(x.model)}${x.rerouted?' → '+E(x.rerouted):''}</p>`:''}${messagesView(x.messages)}`).join(''):'<p class="small">尚未发起此阶段的模型请求。可先预览提示词；实际执行后会显示完整输入。</p>'):output}</div></div>`;
-}
-function fitCanvas(){const viewport=document.querySelector('.graph-viewport');if(!viewport)return;canvasZoom=Math.max(.5,Math.min(1,(viewport.clientWidth-32)/700));render()}
-function resultsPanel(){const tabs=[['manuscript','正文'],['facts','事实'],['review','审阅'],['prompts','提示词']];return `<section class="result-panel"><div class="result-nav" role="tablist" aria-label="查看创作结果">${tabs.map(([key,label])=>`<button id="result-tab-${key}" type="button" role="tab" aria-selected="${resultTab===key}" aria-controls="result-content" data-act="result-tab" data-tab="${key}" class="${resultTab===key?'active':''}">${label}${key==='facts'&&auto.scenes.some(x=>x?.candidates?.length)?`<span>${auto.scenes.reduce((n,x)=>n+(x?.candidates?.length||0),0)}</span>`:key==='review'&&auto.scenes.some(x=>x?.issues?.length)?`<span>${auto.scenes.reduce((n,x)=>n+(x?.issues?.length||0),0)}</span>`:''}</button>`).join('')}</div><div id="result-content" class="result-content" role="tabpanel" aria-labelledby="result-tab-${E(resultTab)}">${resultTab==='facts'?factsOutput():resultTab==='review'?reviewOutput():resultTab==='prompts'?promptOutput():manuscriptOutput()}</div></section>`}
-function emptyResult(title,body){return `<div class="result-empty"><svg width="48" height="56" viewBox="0 0 48 56" fill="none" aria-hidden="true"><path d="M10 4h20l9 9v38H10V4Z" stroke="currentColor" stroke-width="1.5"/><path d="M30 4v10h9M18 24h14M18 31h14M18 38h9" stroke="currentColor" stroke-width="1.5"/></svg><h3>${E(title)}</h3><p>${E(body)}</p></div>`}
-function manuscriptOutput(){
- const scenes=auto.scenes.filter(x=>x?.text);
- if(!scenes.length&&runs.apply==='complete')return `<div class="result-empty"><h3>草稿已保存</h3><p>本次创作已追加到当前场景。你可以继续编辑并保存正文版本。</p><a href="consistency.html?view=write">打开正文编辑</a></div>`;
- if(!scenes.length)return `<div>${candidate?`<article class="manuscript"><div class="manuscript-meta"><span>待作者审阅</span><span>${E(candidate.model||'')}</span></div>${switchView(candidate.modelFallback)}<div class="prose">${E(candidate.text)}</div><button class="primary" data-act="apply" ${busy||pending||!sameInput(true)?'disabled':''}>追加到当前草稿</button></article>`:emptyResult('尚无候选正文','写下一段构思，开始创作。每个场景完成后，正文会出现在这里。')}</div>`;
- return `<div class="manuscript-actions"><span>${scenes.length} ${auto.bookPlan?'章':'幕'} · ${scenes.reduce((n,x)=>n+x.text.length,0).toLocaleString('zh-CN')} 字</span><button class="text-button" data-act="copy-idea">复制正文</button></div>${scenes.map(x=>`<article class="manuscript"><div class="manuscript-meta"><span>第 ${E(x.index)} ${auto.bookPlan?'章':'幕'}</span><span>${E(x.model||'未提供模型名称')}</span></div><div class="prose">${readingText(x.text)}</div><div class="chapter-checks">${x.origin==='paste'?'<strong>作者粘贴恢复 · 未确认</strong>':auto.continuedCount&&x.index<=auto.continuedCount?'<strong>保留前稿 · 本轮未重写、未重查</strong>':''}${chapterChecks(x)}</div></article>`).join('')}<textarea id="idea-result" class="sr-only" readonly aria-label="全部候选正文">${E(scenes.map(x=>x.text).join('\n\n'))}</textarea>${auto.saved?'<div class="saved-result">已保存到作品。<a href="consistency.html?view=write">打开正文编辑</a></div>':`<div class="save-result"><h3>保存本次创作</h3><div class="field-pair"><label class="field">作品名称<input id="idea-project-name" maxlength="100" value="${E(form.projectName)}" placeholder="为故事取一个名字"></label><label class="field">首个场景名称<input id="idea-scene-title" maxlength="100" value="${E(form.sceneTitle)}" placeholder="如：第一封来信"></label></div><button class="primary" data-act="save-idea" ${busy||pending?'disabled':''}>保存为新作品草稿</button><p class="small">保存已收到的 ${scenes.length} ${auto.bookPlan?'章和审阅过的全书大纲':'个场景'}。事实与审阅结果仍需确认。</p></div>`}`
-}
-function factsOutput(){return checkGaps('extract')+factResults()}
-function factResults(){const scenes=auto.scenes.filter(x=>x?.candidates?.length);if(!scenes.length)return emptyResult('事实与原文证据','正文生成后，AI 会提取人物、物品、时间与设定。这里显示候选事实，供你核对后采用。');return `<p class="output-note">以下是候选事实，尚未写入作品设定。</p>${scenes.map(x=>`<section class="result-group"><h3>第 ${E(x.index)} ${auto.bookPlan?'章':'幕'}</h3>${x.candidates.map(f=>`<article class="evidence-item"><strong>${E(f.statement)}</strong><blockquote>${E(f.evidence?.quote||f.quote||'未返回原文证据')}</blockquote></article>`).join('')}</section>`).join('')}`}
-function reviewOutput(){return checkGaps('review')+reviewResults()}
-function reviewResults(){const completed=auto.stages.some(x=>x.kind==='review'&&x.status==='complete');const scenes=auto.scenes.filter(x=>x?.issues?.length);if(!scenes.length)return review?reviewView():emptyResult(completed?'本次审阅未列出问题':'审阅意见与依据',completed?'这表示本次模型未发现问题。请结合正文判断，仍可能有遗漏。':'每个场景完成后会独立审阅。问题、原文依据与待确认事项会集中在这里。');return `<p class="output-note">${scenes.reduce((n,x)=>n+x.issues.length,0)} 条待审阅意见。请结合原文判断。</p>${scenes.map(x=>`<section class="result-group"><h3>第 ${E(x.index)} ${auto.bookPlan?'章':'幕'}</h3>${x.issues.map(i=>`<article class="evidence-item"><strong>${E(i.description)}</strong><blockquote>${E(i.evidence?.quote||i.quote||'未返回原文依据')}</blockquote>${i.baseSceneEvidence?`<p class="small">对照所选已保存正文</p><blockquote>${E(i.baseSceneEvidence.quote)}</blockquote>`:''}${i.priorDraftEvidence?`<p class="small">对照第 ${E(i.priorDraftEvidence.sceneIndex)} 幕 · 未确认正文</p><blockquote>${E(i.priorDraftEvidence.quote)}</blockquote>`:''}</article>`).join('')}</section>`).join('')}`}
-function promptOutput(){return `<div class="prompt-heading"><h3>控制每一步如何写</h3><p>当前风格：${E(styles[currentProfile().styleId])}。下方可分别补充每个步骤的要求。</p></div><fieldset ${busy?'disabled':''}>${promptEditors()}</fieldset><a class="prompt-catalog" href="prompt-library.html">开源提示词资料库</a><button data-act="idea-preview" ${busy||pending?'disabled':''}>预览完整提示词</button>${ideaPreview?`<details class="prompt-preview" data-prepared-profile open><summary>预览模型 · ${E(ideaPreview.model||'默认模型')}</summary><h3>起草正文</h3>${messagesView(ideaPreview.messages)}${Object.entries(ideaPreview.analysisTemplates||{}).map(([name,msgs])=>`<details><summary>${E(({extract:'事实抽取模板',review:'审阅模板'})[name]||name)}</summary><p class="small">生成的正文将在执行时填入模板。</p>${messagesView(Array.isArray(msgs)?msgs:[])}</details>`).join('')}</details>`:''}${auto.messages.length?`<details class="prompt-preview"><summary>本次实际发送的输入</summary>${switchView(auto.modelFallback)}${auto.messages.map(x=>`<section class="result-group"><h3>${E(x.stage)}</h3>${messagesView(x.messages)}</section>`).join('')}</details>`:''}`}
-function eventHistory(){return `<details class="event-history" data-detail-key="event-history"><summary>运行记录${events.length?' · '+events.length+' 条':''}</summary><ol class="timeline">${events.map(x=>`<li><time>${E(x.time)}</time><span>${E(x.message)}</span></li>`).join('')||'<li>尚未发起请求。</li>'}</ol><p class="small">记录保存在当前页面，刷新后清空。</p></details>`}
-function ideaPanel(){return `<div class="brief-heading"><h2 id="brief-title">创作设置</h2><button class="text-button brief-collapse" data-act="toggle-brief" type="button" aria-label="收起创作设置">收起</button></div><fieldset ${busy?'disabled':''}><div class="mode-switch" aria-label="创作方式"><button type="button" data-act="set-mode" data-mode="idea" aria-pressed="${form.runMode==='idea'}" class="${form.runMode==='idea'?'active':''}">新建故事</button><button type="button" data-act="set-mode" data-mode="scene" aria-pressed="${form.runMode==='scene'}" class="${form.runMode==='scene'?'active':''}">续写场景</button></div>${form.runMode==='scene'?sceneContext():`<label class="field idea-field">故事构思<textarea id="idea" maxlength="4000" placeholder="从一个想法开始创作。一个人、一种处境，或者一个你一直想写的故事。">${E(form.idea)}</textarea></label><button class="text-button fresh-brief" type="button" data-act="new-brief" hidden>另起新稿</button>`}${planSelector()}${styleControl()}${modelControl('idea-model',form.model)}<div class="scene-count"><label for="idea-count">${bookMode()?'本次写几章':'本次写几个场景'}</label><select id="idea-count">${[1,2,3,4,5].map(n=>`<option value="${n}" ${Number(form.sceneCount)===n?'selected':''}>${n} ${bookMode()?'章':'个'}</option>`).join('')}</select></div><div class="brief-actions"><button class="primary start-button" data-act="start-creation" ${busy||pending?'disabled':''}>${auto.status==='running'?'正在创作…':bookMode()&&!adoptedCurrentPlan()?(planResult?'审阅全书大纲':'生成全书大纲'):selectedPrefix?.stamp===deskStamp()?`继续写第 ${selectedPrefix.rows.length+1} ${unitName()}`:auto.draft?'再次创作':'开始创作'}</button><button class="text-button" data-act="preview-prompts" ${busy||pending?'disabled':''}>预览提示词</button></div><p class="brief-help">${bookMode()?`首次全书规划 1 次；${Number(form.sceneCount)} 章的正文、事实提取和审阅共 ${Number(form.sceneCount)*3} 次，合计 ${1+Number(form.sceneCount)*3} 次模型调用。每次修订大纲另计 1 次。`:form.sceneCount===1?'每次创作依次起草、提取事实和审阅。':`本次最多 ${Number(form.sceneCount)*3} 次模型调用。`}调用按用量计费，请保持页面打开。</p>${authorDesk()}${planningPanel()}${recoveryPanel()}<button class="prompt-shortcut" type="button" data-act="result-tab" data-tab="prompts"><span>写作与审阅提示词</span><span>${form.writer||form.extract||form.reviewPrompt?'已自定义':'可编辑'}</span></button>${form.runMode==='scene'?`<details class="scene-tools" data-detail-key="scene-tools"><summary>单独生成或检查当前场景</summary><p class="small">仅对选中场景操作，不启动连续创作。</p><button data-act="preview" ${busy||pending?'disabled':''}>预览当前场景输入</button>${preview?previewView(sameInput()):''}</details>`:''}${ideaPreview&&resultTab!=='prompts'?`<details class="quick-preview" data-detail-key="quick-preview" data-prepared-profile><summary>已准备的提示词</summary>${messagesView(ideaPreview.messages)}<button class="primary" data-act="auto-run" ${busy||pending?'disabled':''}>按此输入开始创作</button></details>`:''}</fieldset>`}
-function setPlanMode(next){rememberPlanError('');forgetOutput();form.planMode=next;form.scenePlans='';if(next==='book'){openDetails.add('planning');openDetails.add('planner');if(form.sceneCount===1)form.sceneCount=2;restoreBookPlan()}persistForm();render()}
-function planPayload(){const idea=form.idea.trim()||(planBase?'请根据作者反馈修订所选大纲。':'');if(!idea)throw Error('请先填写故事构思');const book=bookMode();let revision;if(book&&planBase){if(!planFeedback.trim())throw Error('请填写本轮要修改的内容');revision={previousOutline:planBase.bookOutline,previousChapters:planBase.scenes,source:planBase.source,feedback:planFeedback.trim()}}return {idea,sceneCount:Number(form.sceneCount)||1,model:form.model.trim(),plannerPrompt:form.plannerPrompt,writingProfile:publicProfile(),...(book?{planMode:'book',...(revision?{planRevision:revision}:{})}:{})}}
-async function previewPlan(){let input;try{input=planPayload()}catch(e){toast(e.message);return}busy=true;plannerStatus='idle';render();try{let r=await fetch(base+'plan-preview',{method:'POST',headers:headers(),body:JSON.stringify(input)}),v=await r.json();if(!r.ok||typeof v.previewHash!=='string')throw Error(v.error||'规划预览失败');planPreview=v;planPreviewInput=input;if(!bookMode())planResult=null;log('已预览规划提示词；未调用模型')}catch(e){planPreview=null;toast(e.message||'规划预览失败')}finally{busy=false;render()}}
-async function runPlan(){let input;try{input=planPayload()}catch(e){toast(e.message);return}if(!planPreview||JSON.stringify(input)!==JSON.stringify(planPreviewInput)){toast('构思、模型或规划指导已变化，请重新预览');return}busy=true;plannerStatus='running';rememberPlanError('');render();try{let r;try{r=await fetch(base+'plan',{method:'POST',headers:headers(),body:JSON.stringify({...input,previewHash:planPreview.previewHash})})}catch{throw Error('未收到规划响应，模型可能已执行或计费，不会自动重试。')}let v;try{v=await r.json()}catch{throw Error(`规划接口返回 HTTP ${r.status}，未收到可解析的 JSON 诊断。模型可能已执行或计费，不会自动重试。`)}if(!r.ok){let definite=r.status>=400&&r.status<500&&![408,409,429].includes(r.status)||r.status===503&&(v.error||'').includes('尚未配置');const safe=v.status==='ERROR'&&typeof v.error==='string'&&v.error.length<=240&&!/[<>]|https?:|Bearer |sk-[a-z0-9]/i.test(v.error)?v.error:'未收到站点提供的具体诊断。';throw Error(`规划接口 HTTP ${r.status}：${safe}`+(definite?'':'；模型可能已执行或计费，不会自动重试。'))}if(!Array.isArray(v.scenes)||v.scenes.length!==input.sceneCount)throw Error('规划返回格式无效；模型可能已执行或计费。');if(bookMode()&&(!v.bookOutline||!v.source))throw Error('模型未返回完整全书大纲，未采用。');planResult=v;compatiblePlan=null;applySwitch(v.modelFallback);standalonePlan=false;acceptedPlan='';plannerStatus='complete';if(bookMode()){const stored=await cacheBookPlan();if(!stored)log('当前浏览器未启用持久保存，请导出大纲。')}log('已收到场景计划，等待作者审阅')}catch(e){plannerStatus='failed';rememberPlanError(e.message||'结果未知，模型可能已执行或计费，不会自动重试。');log(plannerError);toast(plannerError)}finally{busy=false;render()}}
-function ideaPayload(){if(selectedPrefix&&selectedPrefix.stamp!==deskStamp())throw Error('构思、章卡或作品已变化。请重新核对并明确选择适用于当前稿的前文。');const plans=form.scenePlans.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);if(plans.length>form.sceneCount||plans.some(x=>x.length>1500))throw Error('场景计划不能多于场景数，每行最多 1500 字');if(bookMode()&&!adoptedCurrentPlan())throw Error('请先生成并采用本轮全书大纲的开篇章卡，或切换到按场景创作。');const common={...(selectedPrefix?{continuedDrafts:selectedPrefix.rows.map(x=>x.text)}:{}),...(bookMode()?{proseUnit:'chapter'}:{}),model:form.model.trim(),writingProfile:publicProfile(),sceneCount:Number(form.sceneCount)||1,scenePlans:plans,prompts:{writer:form.writer,extract:form.extract,review:form.reviewPrompt}};if(form.runMode==='scene'){const r=revision();if(!r||!draftMatches(scene(),r))throw Error('请先选择场景并保存正文版本');if(!form.instruction.trim()||!form.moment.trim())throw Error('请填写写作要求与故事时点');return {mode:'scene',projectId,sceneId,revisionId:r.id,instruction:form.instruction.trim(),storyMoment:form.moment.trim(),perspective:form.perspective,pov:form.pov.trim(),factIds:form.factIds.slice(),...common}}if(!form.idea.trim())throw Error('请先填写故事构思');return {mode:'idea',idea:form.idea.trim(),instruction:'',...common}}
-async function previewIdea(){let input;try{input=ideaPayload()}catch(e){toast(e.message);return}busy=true;render();try{let response=await fetch(base+'auto-preview',{method:'POST',headers:headers(),body:JSON.stringify(input)}),d=await response.json();if(!response.ok||typeof d.previewHash!=='string')throw Error(d.error||'预览失败');if(input.continuedDrafts&&d.startSceneIndex!==input.continuedDrafts.length+1)throw Error('续写起点与所选前稿不一致，未启动创作。');ideaPreview=d;ideaPreviewInput=input;log('作者预览了实际起草输入；未调用模型')}catch(e){ideaPreview=null;ideaPreviewInput=null;toast(e.message||'预览失败')}finally{busy=false;render()}}
-async function runIdea(){const stamp=deskStamp(),old=snapshotAt(stamp);if(!selectedPrefix&&(old||(auto.draft&&!auto.saved))){toast('已有未保存候选。请在「接续已有正文」采用前稿，或先保存、明确清除旧稿再开始。');return}if(selectedPrefix&&((old&&!compatiblePrefix(old.rows,selectedPrefix.rows))||auto.draft&&!auto.saved&&(auto.checkpointStamp!==stamp||!compatiblePrefix(frontRows(auto.scenes),selectedPrefix.rows)))){toast('前稿与本机候选不一致，现有候选已保留。');return}let input;try{input=ideaPayload()}catch(e){toast(e.message);return}if(!ideaPreview||JSON.stringify(input)!==JSON.stringify(ideaPreviewInput)){toast('构思、提示词或模型已变化，请重新预览');return}input={...input,previewHash:ideaPreview.previewHash};busy=true;resultTab='manuscript';reader=inspectedStage='';graphView='run';runs={preview:'idle',draft:'idle',review:'idle',apply:'idle'};const kept=selectedPrefix?.rows.map(x=>({...x,checks:{...x.checks}}))||[];auto={status:'running',checkpointStamp:stamp,continuedCount:kept.length,bookPlan:bookMode()&&adoptedCurrentPlan()?{bookOutline:planResult.bookOutline,source:planResult.source,scenes:planResult.scenes}:null,sourceProfile:profileParts().map(k=>({...record(k)})),usedPlan:adoptedCurrentPlan(),sceneCount:input.sceneCount,stages:[],messages:[],draft:kept.at(-1)?.text||'',candidates:[],issues:[],scenes:kept,notice:''};log('作者启动自动创作');render();let completed=false,received=false;try{const response=await fetch(base+'auto-run',{method:'POST',headers:headers(),body:JSON.stringify(input)});log(`自动创作：收到 HTTP ${response.status}`);if(!response.ok){let d=await response.json().catch(()=>({}));const err=Error(d.error||`请求失败（HTTP ${response.status}）`);err.definite=response.status>=400&&response.status<500||response.status===503&&(d.error||'').includes('尚未配置');throw err}if(!response.body)throw Error('没有收到执行事件，结果未知。');const reader=response.body.getReader(),decoder=new TextDecoder();let buffer='';const accept=block=>{let kind='',data='';for(const line of block.split(/\r?\n/)){if(line.startsWith('event:'))kind=line.slice(6).trim();else if(line.startsWith('data:'))data+=line.slice(5).trim()}if(!kind||!data)return;let d;try{d=JSON.parse(data)}catch{throw Error('执行事件格式无效，结果未知。')}received=true;if(d.sceneIndex&&Number(d.sceneIndex)<=auto.continuedCount)throw Error('执行起点与已选前稿不一致。已保留前文，不会覆盖。');if(kind==='context_ready'){auto.notice=d.notice||'';auto.requestModel=d.model||input.model||defaultModel||'站点默认';auto.messages.push({stage:'起草上下文',messages:d.messages||[]});log('上下文已准备')}else if(kind==='model_switched'){auto.modelFallback=applySwitch(d.modelFallback||d);if(auto.modelFallback&&auto.messages.length){const active=auto.messages.at(-1);if(active.kind)active.rerouted=auto.modelFallback.selectedModel}}else if(kind==='stage_start'){auto.stages.push({label:`第 ${d.sceneIndex||1} ${auto.bookPlan?'章':'幕'} · ${{draft:'起草',extract:'抽取事实',review:'审阅'}[d.stage]||d.stage}`,kind:d.stage,index:d.sceneIndex||1,status:'running',detail:'请求中'});auto.messages.push({stage:`第 ${d.sceneIndex||1} ${auto.bookPlan?'章':'幕'} · ${{draft:'起草正文',extract:'提取事实',review:'独立审阅'}[d.stage]||d.stage}`,kind:d.stage,model:d.model||auto.modelFallback?.selectedModel||auto.requestModel,messages:d.messages||[]});log(`${d.stage} 请求已开始`)}else if(kind==='draft_ready'){let idx=d.sceneIndex||1;auto.draft=typeof d.text==='string'?d.text:'';auto.scenes[idx-1]={...(auto.scenes[idx-1]||{}),index:idx,text:auto.draft,model:d.model||'未提供',origin:'site'};let stage=auto.stages.findLast(x=>x.kind==='draft'&&x.index===idx);if(stage){stage.status='complete';stage.detail='已收到候选'}log('已收到候选正文')}else if(kind==='extract_ready'){let idx=d.sceneIndex||1;auto.candidates=Array.isArray(d.candidates)?d.candidates:[];auto.scenes[idx-1]={...(auto.scenes[idx-1]||{}),index:idx,candidates:auto.candidates,extractModel:d.model||'未提供'};setCheck(idx,'extract','complete');let stage=auto.stages.findLast(x=>x.kind==='extract'&&x.index===idx);if(stage){stage.status='complete';stage.detail='已收到结果'}log('已收到事实候选')}else if(kind==='review_ready'){let idx=d.sceneIndex||1;auto.issues=Array.isArray(d.issues)?d.issues:[];auto.scenes[idx-1]={...(auto.scenes[idx-1]||{}),index:idx,issues:auto.issues,reviewModel:d.model||'未提供'};auto.notice=d.notice||auto.notice;setCheck(idx,'review','complete');let stage=auto.stages.findLast(x=>x.kind==='review'&&x.index===idx);if(stage){stage.status='complete';stage.detail='等待作者审阅'}log('已收到审阅结果')}else if(kind==='analysis_incomplete'){const idx=Number(d.sceneIndex),kind=d.stage,err=d.error||'检查没有返回有效证据';if(['extract','review'].includes(kind)&&auto.scenes[idx-1]){setCheck(idx,kind,'failed',err);const step=auto.stages.findLast(s=>s.kind===kind&&s.index===idx);if(step){step.status='failed';step.detail=err}log(`第 ${idx} ${unitName()} · ${analysisName(kind)}未完成：${err}`)}}else if(kind==='complete'){completed=true;for(const m of d.incompleteStages||[]){if(['extract','review'].includes(m.stage))setCheck(Number(m.sceneIndex),m.stage,'failed',m.error||'未完成')}const gaps=frontRows(auto.scenes).some(x=>['extract','review'].some(k=>checkState(x,k).state!=='complete'));auto.status=d.status==='PARTIAL_REVIEW'||gaps?'partial':'complete';auto.notice=(d.notice||'结果需要作者审阅。')+(gaps?' 部分章节的检查尚未完成，请查看各章状态。':'');selectedPrefix=null;log('自动创作已完成，等待作者审阅')}else if(kind==='error'){completed=true;auto.status=d.uncertain?'unknown':'failed';auto.notice=(d.error||'执行未完成')+(d.notice?' '+d.notice:'');let stage=auto.stages.at(-1);if(stage?.status==='running'){stage.status=d.uncertain?'unknown':'failed';stage.detail=d.uncertain?'结果未知':'执行失败'}log(auto.notice)}if(kind==='error'){const last=auto.stages.at(-1);if(last&&['extract','review'].includes(last.kind))setCheck(last.index,last.kind,d.uncertain?'unknown':'failed',d.error||'执行中断')}if(['draft_ready','extract_ready','review_ready','analysis_incomplete','complete','error'].includes(kind))captureCandidate();render()};while(true){const part=await reader.read();if(part.done)break;buffer+=decoder.decode(part.value,{stream:true});let m;while((m=/\r?\n\r?\n/.exec(buffer))){const block=buffer.slice(0,m.index);buffer=buffer.slice(m.index+m[0].length);accept(block)}}buffer+=decoder.decode();if(!completed)throw Error('连接中断，模型是否已执行或产生费用无法确认；不会自动重试。')}catch(e){if(!completed){auto.status=e.definite?'failed':'unknown';for(const stage of auto.stages){if(stage.status==='running'){stage.status=auto.status;stage.detail=e.definite?'执行失败':'结果未知'}}auto.notice=(e.message||'无法取得结果')+(e.definite?'':'；模型是否执行或计费无法确认，不会自动重试。');log(auto.notice)}}finally{captureCandidate();busy=false;render()}}
-function previewView(compiled){return `<div id="context-safety" class="note ${compiled?'':'warn'}">${compiled?'已准备当前场景的输入。':'输入已变化，请重新预览。'}</div><p class="small">${E(preview.model||'尚未选择模型')} · 参考 ${preview.included?.length||0} 条事实</p><details><summary>参考事实与证据</summary>${(preview.included||[]).map(f=>`<article class="evidence-item"><strong>${E(f.statement)}</strong><blockquote>${E(f.source?.evidence||'')}</blockquote></article>`).join('')||'<p class="small">没有纳入事实。</p>'}${(preview.excluded||[]).length?`<p class="small">${preview.excluded.length} 条事实未采用。</p><details><summary>查看原因</summary>${preview.excluded.map(f=>`<p class="small">${E(f.reason)}</p>`).join('')}</details>`:''}</details><details><summary>完整起草输入</summary>${messagesView(preview.messages)}</details><details><summary>完整审阅输入</summary>${messagesView(preview.checkMessages)}</details><div class="actions"><button class="primary" data-act="draft" ${!compiled||busy||pending?'disabled':''}>生成候选正文</button><button data-act="review" ${!compiled||busy||pending?'disabled':''}>独立检查场景</button></div><p class="small">生成与检查会调用模型。候选需确认后保存。</p>`}
-function reviewView(){let issues=review.issues||[];return `${switchView(review.modelFallback)}<div class="note warn">结果为 REVIEW，需要人工判断；未列出问题也不代表整书一致。</div><p class="small">模型：${E(review.model||'未提供')} · ${issues.length} 条问题</p><div class="records">${issues.map((x,i)=>`<article class="item"><p>${E(x.description)}</p><div class="text">${E(x.evidence?.quote||x.quote||'')}</div><p class="small">证据出现在正文 ${E(x.evidence?.occurrences??0)} 处 · 关联事实：${E((x.factIds||[]).join('、')||'无')}</p><button data-act="mark" data-index="${i}" ${checked.has(i)?'disabled':''}>${checked.has(i)?'本页已标记复核':'标记本页已复核'}</button></article>`).join('')||'<div class="empty">模型未列出问题；不代表没有遗漏。</div>'}</div><p class="small">复核标记只保存在当前页面，不会自动写入事实。</p>`}
-function render(){
- const oldViewport=document.querySelector('.graph-viewport'),oldReader=document.querySelector('.reader-body'),scrollReader=oldReader?.scrollTop||0;
- const viewScroll=oldViewport?{left:oldViewport.scrollLeft,top:oldViewport.scrollTop}:null;
- const active=document.activeElement,focusId=active?.id,focusStage=active?.dataset?.stage;
- if(!archive){const signedOut=!account;root.innerHTML=studioShell(`<div class="canvas-page"><section class="canvas-entry"><div class="entry-symbol" aria-hidden="true">${nodeIcon('draft')}</div><h2>${signedOut?'让故事从这里开始':'暂时无法打开创作画布'}</h2><p>${signedOut?'写下构思，选择模型，查看正文、事实与审阅如何逐步完成。登录后继续你的创作。':E(loadError||'作品暂时无法读取，请重试。')}</p>${signedOut?'<a class="primary" href="/signin-with-chatgpt?return_to=%2Fapps%2Fnovel-studio%2Fcanvas.html" target="_top">登录并开始创作</a>':'<button data-act="reload">重新读取</button>'}</section></div>`);return}
- root.innerHTML=view();
- for(const detail of document.querySelectorAll('details[data-detail-key]'))detail.open=openDetails.has(detail.dataset.detailKey);
- refreshRunButtons();
- const nextViewport=document.querySelector('.graph-viewport');if(viewScroll&&nextViewport){nextViewport.scrollLeft=viewScroll.left;nextViewport.scrollTop=viewScroll.top}
- const pane=document.querySelector('.reader-body');if(pane&&oldReader)pane.scrollTop=scrollReader;const activeNode=auto.stages?.findLast(x=>x.status==='running');const signature=activeNode?activeNode.kind+':'+activeNode.index:'';if(signature&&signature!==lastFollow&&graphView==='run'&&!reader&&nextViewport){const node=nextViewport.querySelector?.('[data-stage='+activeNode.kind+']');if(node&&nextViewport.clientWidth<700*canvasZoom){nextViewport.scrollLeft=Math.max(0,node.offsetLeft*canvasZoom-(nextViewport.clientWidth-node.offsetWidth*canvasZoom)/2)}}lastFollow=signature;
- if(focusId)document.getElementById?.(focusId)?.focus?.({preventScroll:true});else if(focusStage)document.querySelector('[data-act=inspect-stage][data-stage='+focusStage+']')?.focus?.({preventScroll:true});
-}
-function persistForm(){if(!account)return;saveBrief();try{sessionStorage.setItem('novel-canvas-form:'+account,JSON.stringify({form,projectId,sceneId}));if(projectId)sessionStorage.setItem('novel-active-context:'+account,JSON.stringify({projectId,sceneId}))}catch{}}
-function restoreForm(){try{const raw=JSON.parse(sessionStorage.getItem('novel-canvas-form:'+account)||'null');if(!raw||!raw.form||typeof raw.form!=='object')return;for(const key of Object.keys(form)){if(key==='model'&&sessionStorage.getItem('novel-model-choice:'+account)!==null)continue;const value=raw.form[key];if(key==='factIds'){if(Array.isArray(value))form.factIds=value.filter(x=>typeof x==='string').slice(0,40)}else if(key==='sceneCount'){if(Number.isInteger(value)&&value>=1&&value<=5)form.sceneCount=value}else if(typeof value==='string'&&value.length<=7500)form[key]=value}if(!['idea','scene'].includes(form.runMode))form.runMode='idea';if(!['omniscient','limited'].includes(form.perspective))form.perspective='omniscient';if(typeof raw.projectId==='string')projectId=raw.projectId;if(typeof raw.sceneId==='string')sceneId=raw.sceneId}catch{}}
-function refreshRunButtons(){const snippet=document.querySelector('[data-brief-excerpt]');if(snippet){const v=(form.runMode==='idea'?form.idea:form.instruction).trim();snippet.textContent=Array.from(v).slice(0,67).join('')+(Array.from(v).length>67?'…':'')||'从一个想法开始创作'}const seed=document.querySelector('.seed-hint strong');if(seed)seed.textContent=hasCreativeBrief()?'构思已就绪':'等待故事构思';const fresh=document.querySelector('[data-act=new-brief]');if(fresh){const p=currentProfile();fresh.hidden=!form.idea&&!form.scenePlans&&!p.authorConstraints&&!p.revealNow&&!p.holdBack&&p.styleId==='general'}const primary=document.querySelector('[data-act=canvas-primary]');if(primary){primary.textContent=toolbarActionLabel();primary.disabled=busy||!!pending}let valid=false;try{valid=!!ideaPreview&&JSON.stringify(ideaPayload())===JSON.stringify(ideaPreviewInput)}catch{}for(const button of document.querySelectorAll('[data-act="auto-run"]'))button.disabled=!valid||busy||!!pending}
 
-let loadError='';
-function updateForm(e){let t=e.target;if(t.id?.startsWith('prefix-paste-')){const i=Number(t.id.slice(13));if(Number.isInteger(i)&&i>=0&&i<4) pasteBodies[i]=t.value;return}if(updateProfile(t.id,t.value))return;if(t.id==='book-plan-import'){portableInput=t.value;return}if(t.id==='plan-feedback'){planFeedback=t.value;ideaPreview=ideaPreviewInput=planPreview=planPreviewInput=null;cacheBookPlan();refreshRunButtons();for(const b of document.querySelectorAll('[data-act="plan-run"],[data-act="plan-apply"]'))b.disabled=true;return;}if(t.id==='instruction')form.instruction=t.value;else if(t.id==='moment')form.moment=t.value;else if(t.id==='pov')form.pov=t.value;else if(t.id==='model'||t.id==='idea-model'){form.model=t.value;let peer=document.getElementById(t.id==='model'?'idea-model':'model');if(peer)peer.value=t.value;try{sessionStorage.setItem('novel-model-choice:'+account,form.model)}catch{}syncModelControls()}else if(t.id==='idea')form.idea=t.value;else if(t.id==='idea-writer')form.writer=t.value;else if(t.id==='idea-extract')form.extract=t.value;else if(t.id==='idea-review')form.reviewPrompt=t.value;else if(t.id==='idea-plans')form.scenePlans=t.value;else if(t.id==='planner-prompt'||t.id==='role-planner-guidance'){form.plannerPrompt=t.value;const peer=document.getElementById?.(t.id==='planner-prompt'?'role-planner-guidance':'planner-prompt');if(peer)peer.value=t.value}else if(t.id==='idea-project-name')form.projectName=t.value;else if(t.id==='idea-scene-title')form.sceneTitle=t.value;else return;persistForm();refreshRunButtons(); if(preview){const valid=sameInput();const btns=document.querySelectorAll('[data-act="draft"],[data-act="review"],[data-act="apply"]');btns.forEach(b=>b.disabled=!valid||busy||!!pending);let note=document.querySelector('#context-safety');if(note){note.textContent=valid?(preview.notice||'请人工审阅上下文。'):'表单已变化，请重新预览后再调用模型。';note.className=valid?'note':'note warn'}}}
-root.addEventListener('input',updateForm);
-root.addEventListener('toggle',event=>{const detail=event.target;if(!detail.dataset?.detailKey)return;if(detail.open)openDetails.add(detail.dataset.detailKey);else openDetails.delete(detail.dataset.detailKey)},true);
-root.addEventListener('keydown',event=>{if(event.key==='Escape'&&reader){event.preventDefault();dismissReader();return}const tab=event.target.closest?.('[role=tab][data-tab]');if(!tab||!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const tabs=['manuscript','facts','review','prompts'],index=tabs.indexOf(tab.dataset.tab);resultTab=tabs[event.key==='Home'?0:event.key==='End'?3:(index+(event.key==='ArrowRight'?1:3))%4];render();document.getElementById?.('result-tab-'+resultTab)?.focus?.()});
-root.addEventListener('change',e=>{let t=e.target;if(t.id==='prefix-count'){pasteCount=Math.max(1,Math.min(Number(form.sceneCount)-1,Number(t.value)||1));render();return}if(Object.hasOwn(profileFields,t.id)){updateProfile(t.id,t.value);if(t.id==='writing-style')render();return}if(t.dataset?.modelPicker){const input=document.getElementById(t.dataset.modelPicker);if(t.value==='__manual__'){if(input){const detail=input.closest?.('details');if(detail)detail.open=true;input.focus?.()}return}if(input)input.value=t.value;updateForm({target:{id:t.dataset.modelPicker,value:t.value}});return}if(t.id==='planning-mode'){const next=t.value==='book'?'book':'scenes';if(next!==form.planMode)switchBrief(()=>{} )&&setPlanMode(next);return}if(t.id==='idea-mode'){const mode=t.value==='scene'?'scene':'idea';if(mode!==form.runMode)switchBrief(()=>{form.runMode=mode})}else if(t.id==='idea-count'){form.sceneCount=Number(t.value)||1;persistForm();refreshRunButtons();render()}else if(t.id==='project'){if(t.value!==projectId)switchBrief(()=>{projectId=t.value;sceneId=project()?.scenes[0]?.id||''})}else if(t.id==='scene'){if(t.value!==sceneId)switchBrief(()=>{sceneId=t.value})}else if(t.id==='perspective'){form.perspective=t.value;persistForm();refreshRunButtons();render();if(preview){const valid=sameInput();const btns=document.querySelectorAll('[data-act="draft"],[data-act="review"],[data-act="apply"]');btns.forEach(b=>b.disabled=!valid||busy||!!pending);let note=document.querySelector('#context-safety');if(note){note.textContent=valid?(preview.notice||'请人工审阅上下文。'):'表单已变化，请重新预览后再调用模型。';note.className=valid?'note':'note warn'}}}else if(t.dataset.fact){form.factIds=t.checked?[...form.factIds,t.dataset.fact]:form.factIds.filter(x=>x!==t.dataset.fact);persistForm();refreshRunButtons();if(preview){const valid=sameInput();const btns=document.querySelectorAll('[data-act="draft"],[data-act="review"],[data-act="apply"]');btns.forEach(b=>b.disabled=!valid||busy||!!pending);let note=document.querySelector('#context-safety');if(note){note.textContent=valid?(preview.notice||'请人工审阅上下文。'):'表单已变化，请重新预览后再调用模型。';note.className=valid?'note':'note warn'}}}});
-async function sendPending(){if(!pending||busy)return;actionError='';busy=true;runs.apply='running';let response;try{const task=fetch(base+'canon',{method:'POST',headers:headers(),body:JSON.stringify(pending)});log('草稿保存：已发起请求');render();response=await task;let d=await response.json().catch(()=>null);log(`草稿保存：收到 HTTP ${response.status}`);if(!d||response.status>=500||response.status===408||response.status===429||response.status===401||response.status===403)throw Error(d?.error||'结果尚未确认，请重试相同命令。');if(!response.ok){sessionStorage.removeItem(sessionKey()+':profile:'+pending.commandId);pending=null;sessionStorage.removeItem(sessionKey());runs.apply='failed';throw Error(d.error||'保存未成功');}if(!d.state||!Number.isSafeInteger(d.version))throw Error('回执格式无效，请重试相同命令。');archive=d.state;version=d.version;if(pending.command?.type==='create_project_with_scene_drafts'){try{const prefs=JSON.parse(sessionStorage.getItem(sessionKey()+':profile:'+pending.commandId)||'null');if(Array.isArray(prefs)){const next=profileParts('scene',pending.command.projectId,pending.command.scenes[0].sceneId);for(let i=0;i<2;i++)putRecord(next[i],prefs[i]||{});sessionStorage.removeItem(sessionKey()+':profile:'+pending.commandId)}}catch{}if(pending.command.bookPlan&&auto.bookPlan?.scenes){try{await writePlanArchive({plan:safeLocalPlan(auto.bookPlan),feedback:''},localPlanScope('scene',pending.command.projectId))}catch{}}projectId=pending.command.projectId;sceneId=pending.command.scenes[0].sceneId;auto.saved=true;if(auto.checkpointStamp)writeCheckpoint(auto.checkpointStamp,[],true);selectedPrefix=null;persistForm();auto.notice='已保存为新作品草稿；请在创作工作台审阅并保存版本。'}pending=null;sessionStorage.removeItem(sessionKey());runs.apply='complete';candidate=null;log(d.receipt?.replayed?'服务端返回原操作回执，未重复写入':'草稿已由服务端确认保存');toast('已保存到草稿；请回工作台审阅与保存版本。')}catch(e){runs.apply='failed';actionError=e.message||'草稿保存结果尚未确认';log(pending?'草稿保存：结果未确认，可恢复待确认操作':`草稿保存：${e.message}`);toast(e.message||'操作结果尚未确认')}finally{busy=false;render()}}
-root.addEventListener('click',async e=>{let b=e.target.closest('[data-act]');if(!b)return;let action=b.dataset.act;
-if(action==='close-reader'){dismissReader();return}
-if(action==='graph-view'){graphView=b.dataset.view==='blueprint'?'blueprint':'run';render();document.querySelector('[data-act=graph-view][data-view='+graphView+']')?.focus?.({preventScroll:true});return}
-if(action==='read-history'||action==='read-results'){reader=action==='read-history'?'history':'results';if(reader==='history')openDetails.add('event-history');else resultTab='manuscript';readerReturn='[data-act='+action+']';render();document.getElementById?.('reader-title')?.focus?.({preventScroll:true});return}
-if(action==='result-tab'){if(['manuscript','facts','review','prompts'].includes(b.dataset.tab)){resultTab=b.dataset.tab;reader='results';readerReturn='[data-act=read-results]';render();document.getElementById?.('result-tab-'+resultTab)?.focus?.()}return}
-if(action==='inspect-stage'){if(reader==='node'&&inspectedStage===b.dataset.stage){dismissReader();return}inspectedStage=b.dataset.stage;reader='node';readerReturn='[data-act=inspect-stage][data-stage='+inspectedStage+']';inspectorTab='output';render();document.getElementById?.('reader-title')?.focus?.({preventScroll:true});return}
-if(action==='inspector-tab'){inspectorTab=b.dataset.tab==='input'?'input':'output';render();return}
-if(action==='toggle-brief'){briefCollapsed=!briefCollapsed;render();return}
-if(action==='zoom-in'||action==='zoom-out'){canvasZoom=Math.max(.5,Math.min(1.5,canvasZoom+(action==='zoom-in'?.1:-.1)));render();return}
-if(action==='zoom-fit'){fitCanvas();return}
-if(busy)return;
-if(['restore-candidate','choose-prefix','resume-draft','adopt-paste','clear-candidate'].includes(action)){try{if(pending)return;const stamp=deskStamp(),stored=snapshotAt(stamp),live=auto.checkpointStamp===stamp?frontRows(auto.scenes):[],xs=live.length?live:stored?.rows||[];if(action==='clear-candidate'){if(!confirm('仅清除这份稿件的本机候选和检查记录？之前保存的作品不变。'))return;writeCheckpoint(stamp,[],true);if(auto.checkpointStamp===stamp)auto={status:'idle',stages:[],messages:[],scenes:[],draft:'',candidates:[],issues:[],notice:''};selectedPrefix=null;pasteBodies=[];ideaPreview=ideaPreviewInput=null;render();return}if(action==='restore-candidate'){if(auto.draft&&!auto.saved&&auto.checkpointStamp!==stamp)throw Error('请先保存本页未保存的候选。');if(!restoreRows(xs,stamp))throw Error('当前稿件没有可恢复的候选。');render();return}if(action==='choose-prefix'||action==='resume-draft'){stagePrefix(xs);if(action==='resume-draft'){await previewIdea();if(ideaPreview&&JSON.stringify(ideaPreviewInput)===JSON.stringify(ideaPayload()))await runIdea()}return}if(action==='adopt-paste'){const n=Math.min(Number(form.sceneCount)-1,pasteCount);const next=Array.from({length:n},(_,i)=>{const text=pasteBodies[i];if(!text?.trim())throw Error(`请完整粘贴第 ${i+1} ${unitName()}正文。`);return xs[i]?.text===text?xs[i]:{index:i+1,text,origin:'paste',model:'作者恢复'}});stagePrefix(next);return}}catch(e){toast(e.message);return}}
-if(action==='canvas-primary'){if(pending)return;if(!hasCreativeBrief()){briefCollapsed=false;render();const target=document.getElementById?.(form.runMode==='scene'?'instruction':'idea');target?.focus?.();return}action='start-creation'}
-if(action==='set-mode'){const mode=b.dataset.mode==='scene'?'scene':'idea';if(mode!==form.runMode)switchBrief(()=>{form.runMode=mode});return}
-if(action==='new-brief'){if(pending||form.runMode!=='idea'||!confirm('清空当前新稿的构思、写作设置与未保存的候选，另起新稿？以前保存的作品保持不变。'))return;if(!await writePlanArchive(null)&&profileDb){toast('浏览器未能清除旧计划，请重试。');return}for(const k of profileParts())putRecord(k,{});try{sessionStorage.removeItem(bookReviewKey())}catch{}rememberPlanError('');Object.assign(form,{...scopedDefaults,factIds:[]});forgetOutput();persistForm();render();return}
-if(action==='reload'){loadError='';try{await load();render()}catch(err){loadError=err.message;render()}return}
-if(action==='preview-prompts'){reader='results';readerReturn='[data-act=preview-prompts]';resultTab='prompts';await previewIdea();return}
-if(action==='start-creation'){if(pending)return;if(bookMode()&&!adoptedCurrentPlan()){briefCollapsed=false;openDetails.add('planning');openDetails.add('planner');if(!planResult){await previewPlan();if(planPreview)await runPlan()}else{render();toast('请先审阅并采用本轮开篇章卡，或填写修改意见后重新规划。')}return}await previewIdea();let current;try{current=ideaPayload()}catch{return}if(ideaPreview&&JSON.stringify(current)===JSON.stringify(ideaPreviewInput))await runIdea();return}
-if(action==='refresh-models'){await refreshModels();return}
-if(action==='plan-preview'){await previewPlan();return}
-if(action==='plan-run'){await runPlan();return}
-if(action==='open-plan-import'){portablePane=portablePane==='import'?'':'import';portableInput='';openDetails.add('planning');render();document.getElementById?.('book-plan-import')?.focus?.();return}
-if(action==='export-plan'){if(!planResult?.bookOutline)return;portablePane='export';render();document.getElementById?.('book-plan-export')?.select?.();return}
-if(action==='copy-export'){if(!planResult?.bookOutline)return;try{await navigator.clipboard.writeText(JSON.stringify(portablePlan(planResult)));toast('大纲 JSON 已复制')}catch{document.getElementById?.('book-plan-export')?.select?.();toast('已选中导出 JSON，请使用复制快捷键')}return}
-if(action==='import-plan'){if(!bookMode())return;let next;try{if(portableInput.length>120000)throw Error('导入文件过大');next=portablePlan(JSON.parse(portableInput))}catch(e){toast(e instanceof SyntaxError?'大纲 JSON 无法解析。':e.message);return}if(planResult&&!confirm('以导入稿替换当前规划？需要保留旧稿，可以先导出。'))return;planResult={...next,source:{role:'author-import'}};standalonePlan=true;planBase=planPreview=planPreviewInput=null;planFeedback=portablePane=portableInput='';plannerStatus='complete';rememberPlanError('');openDetails.add('planner');acceptLocalPlan();await cacheBookPlan();log('已采用作者导入的大纲；未调用模型');render();return}
-if(action==='clear-plan'){if(!planResult||!confirm('清除当前稿件保存在本浏览器的大纲和修改意见？已经存进作品的资料不会改变。'))return;if(!await writePlanArchive(null)&&profileDb){toast('浏览器未能清除计划，请重试。');return}try{sessionStorage.removeItem(bookReviewKey())}catch{}planBase=planResult=planPreview=planPreviewInput=ideaPreview=ideaPreviewInput=null;standalonePlan=false;portablePane=portableInput=planFeedback=acceptedPlan=form.scenePlans='';plannerStatus='idle';rememberPlanError('');persistForm();render();return}
-if(action==='plan-revise'){if(!bookMode()||!planResult?.bookOutline)return;planBase=planResult;standalonePlan=false;acceptedPlan='';planFeedback='';form.scenePlans='';if(!form.idea.trim())form.idea='请根据作者反馈修订所选大纲。';ideaPreview=ideaPreviewInput=planPreview=planPreviewInput=null;openDetails.add('planning');openDetails.add('planner');cacheBookPlan();persistForm();render();document.getElementById?.('plan-feedback')?.focus?.();return}
-if(action==='plan-apply'){if(!planResult?.scenes)return;if(standalonePlan&&bookMode()){acceptLocalPlan();render();return}let current;try{current=planPayload()}catch(e){toast(e.message);return}if(!planMatches(current)){toast('构思、模型或幕数已变化，请重新规划');return}if(bookMode()){form.projectName=planResult.bookOutline.title;form.sceneTitle=planResult.scenes[0].title;}form.scenePlans=planResult.scenes.map(x=>`${x.title}：${x.goal}`.replace(/[\r\n]+/g,' ')).join('\n');ideaPreview=null;ideaPreviewInput=null;persistForm();render();return}
-if(action==='idea-preview'){await previewIdea();return}
-if(action==='auto-run'){await runIdea();return}
-if(action==='save-idea'){if(auto.saved){toast('本次创作已经保存');return}if(!auto.draft||!form.projectName.trim()||!form.sceneTitle.trim()){toast('请填写作品名称和场景名称');return}let drafts=auto.scenes.filter(x=>x?.text).map((x,i)=>({sceneId:crypto.randomUUID(),title:(auto.bookPlan&&i===0?form.sceneTitle.trim():auto.bookPlan?.scenes?.[i]?.title)||form.sceneTitle.trim().slice(0,94)+(auto.scenes.length>1?` · ${i+1}`:''),body:x.text}));if(!confirm(`将已收到的 ${drafts.length} 个候选保存为新作品草稿？${auto.bookPlan?'全书大纲也将存入设定资料的「大纲」，状态为计划。':''}不会自动确认事实。`))return;pending={commandId:crypto.randomUUID(),expectedVersion:version,command:{type:'create_project_with_scene_drafts',projectId:crypto.randomUUID(),name:form.projectName.trim(),description:'',scenes:drafts,...(auto.bookPlan?{bookPlan:{bookOutline:auto.bookPlan.bookOutline,source:auto.bookPlan.source}}:{})}};try{sessionStorage.setItem(sessionKey()+':profile:'+pending.commandId,JSON.stringify(auto.sourceProfile||profileParts().map(k=>record(k))));sessionStorage.setItem(sessionKey(),JSON.stringify(pending))}catch{pending=null;toast('无法保存恢复记录，本次未发送。');return}log('作者确认创建作品草稿');await sendPending();return}
-if(action==='copy-idea'){const el=document.getElementById('idea-result');if(el){el.focus();el.select();try{await navigator.clipboard.writeText(auto.scenes.filter(x=>x?.text).map(x=>x.text).join('\n\n'));toast('候选正文已复制')}catch{toast('已选中正文，请使用复制快捷键')}}return}
-if(action==='preview'){form.runMode='scene';let r=revision();if(!r||!draftMatches(scene(),r)){toast('请先保存草稿和正文版本');return}if(!form.instruction.trim()||!form.moment.trim()){toast('请填写写作要求和数字故事时点');return}if(form.factIds.length>40){toast('最多选择 40 条事实');return}if(form.perspective==='limited'&&!form.pov.trim()){toast('限知视角需要填写人物名称');return}let input={projectId,sceneId,revisionId:r.id,instruction:form.instruction.trim(),storyMoment:form.moment.trim(),perspective:form.perspective,pov:form.pov.trim(),factIds:form.factIds.slice(),model:form.model.trim(),writingProfile:publicProfile()};busy=true;runs.preview='running';preview=null;candidate=null;review=null;checked.clear();runs.draft='idle';runs.review='idle';runs.apply='idle';log('作者发起上下文预览');try{preview=await request('context',input,'上下文预览');if(typeof preview.previewHash!=='string'||!Array.isArray(preview.messages)||!Array.isArray(preview.checkMessages)||!Array.isArray(preview.included)||!Array.isArray(preview.excluded)||preview.revisionId!==input.revisionId){preview=null;throw Error('预览响应缺少必要字段。')}previewInput=input;routedPreview=false;runs.preview='complete';log(`上下文已编译：纳入 ${preview.included?.length||0} 条，排除 ${preview.excluded?.length||0} 条`)}catch(err){runs.preview='failed';log(`上下文预览失败：${err.message}`);toast(err.message)}finally{busy=false;render()}return}
-if(action==='draft'||action==='review'){if(!sameInput()){toast('输入已变化，请重新预览');return}busy=true;runs[action]='running';if(action==='draft')candidate=null;else{review=null;checked.clear()}log(action==='draft'?'作者发起候选生成':'作者发起独立检查');try{let d=await request(action,{...previewInput,previewHash:preview.previewHash},action==='draft'?'候选生成':'独立检查');if(d.previewHash!==preview.previewHash||d.stateVersion!==version||d.revisionId!==previewInput.revisionId){const err=Error('返回结果与当前预览不一致；模型可能已执行或产生费用，请重新读取。');err.unknown=true;throw err;}if(action==='draft'){reader='results';readerReturn='[data-act=read-results]';resultTab='manuscript';if(typeof d.text!=='string'||!d.text.trim()){const err=Error('模型没有返回有效候选；本次请求可能产生费用。');err.unknown=true;throw err;}candidate=d;log('已收到候选，等待作者审阅')}else{resultTab='review';reader='results';readerReturn='[data-act=read-results]';resultTab='review';if(!Array.isArray(d.issues)){const err=Error('检查响应缺少问题列表；本次请求可能产生费用。');err.unknown=true;throw err;}review=d;log(`已收到检查结果：${d.issues.length} 条待审问题`)}if(applySwitch(d.modelFallback))routedPreview=true;runs[action]='complete'}catch(err){runs[action]=err.unknown?'unknown':'failed';actionError=`${action==='draft'?'候选生成':'独立检查'}${err.unknown?'结果未知':'失败'}${err.httpStatus?`（HTTP ${err.httpStatus}）`:''}：${err.message}`;log(actionError);toast(err.message)}finally{busy=false;render()}return}
-if(action==='mark'){let i=Number(b.dataset.index);if(!review?.issues?.[i])return;checked.add(i);runs.apply='complete';log(`作者在本页标记问题 ${i+1} 已复核`);render();return}
-if(action==='apply'){let s=scene(),r=revision();if(!candidate||!sameInput(true)||candidate.stateVersion!==version||candidate.revisionId!==r?.id||!draftMatches(s,r)){toast('档案或场景已变化，请重新预览。');return}if(!confirm('将候选正文追加到当前场景草稿？已保存版本与事实不会自动修改。'))return;pending={commandId:crypto.randomUUID(),expectedVersion:version,command:{type:'save_draft',projectId,sceneId,title:s.title,body:s.draft+'\n\n'+candidate.text}};try{sessionStorage.setItem(sessionKey(),JSON.stringify(pending))}catch{pending=null;toast('无法保存恢复记录，本次未发送。');return}log('作者确认追加候选到草稿');await sendPending();return}
-if(action==='retry'){log('作者重试待确认的保存操作');await sendPending()}
-});
-document.addEventListener?.('visibilitychange',()=>{if(document.visibilityState==='visible'&&!busy&&account)void refreshModels()});
-let approvedLeave=false;
-function hasUnsavedResults(){return !!(busy||pending||candidate||(auto.draft&&!auto.saved))}
-window.HubBeforeLeave=async()=>{persistForm();if(hasUnsavedResults()&&!confirm(busy?'创作正在执行。离开后无法继续接收结果，确定离开吗？':'本次生成的内容尚未全部保存，确定离开吗？'))return false;approvedLeave=true;return true};
-window.HubCancelLeave=()=>{approvedLeave=false};
-window.addEventListener('beforeunload',e=>{if(!approvedLeave&&hasUnsavedResults()){e.preventDefault();e.returnValue=''}});
-try{let r=await fetch('/api/hub/session',{cache:'no-store'}),id=await r.json();if(!r.ok||!id.authenticated||!id.userId)throw Error('请先使用工作台账号登录。');account=id.userId;try{form.model=sessionStorage.getItem('novel-model-choice:'+account)||''}catch{}try{pending=JSON.parse(sessionStorage.getItem(sessionKey())||'null')}catch{throw Error('无法读取待确认操作，已停止。')}restoreForm();const restoredProject=projectId,restoredScene=sceneId;try{const context=JSON.parse(sessionStorage.getItem('novel-active-context:'+account)||'null');if(context&&typeof context.projectId==='string'){projectId=context.projectId;sceneId=typeof context.sceneId==='string'?context.sceneId:''}}catch{}await load();await openAuthorDesk();readBrief(form.runMode==='idea'||projectId===restoredProject&&sceneId===restoredScene);restoreBookPlan(!sessionStorage.getItem('novel-canvas-form:'+account));restorePlanError();try{let mr=await fetch(base+'model-status',{cache:'no-store'});let md=await mr.json();if(mr.ok&&typeof md.model==='string')defaultModel=md.model}catch{}log('已读取当前账号的服务端档案');render();void refreshModels()}catch(e){loadError=e.message||'请求失败';render()}
+  let account = '';
+  let archive = null;
+  let version = 0;
+  let projectId = '';
+  let sceneId = '';
+  let busy = false;
+  let dirty = false;
+  let loadError = '';
+
+  // Local editor draft state
+  let draftTitle = '';
+  let draftBody = '';
+  let activeRightTab = 'assistant'; // 'assistant' | 'canon' | 'review'
+
+  // AI Assistant state
+  let aiInstruction = '';
+  let aiStyle = 'general';
+  let aiModel = '';
+  let defaultModel = '';
+  let availableModels = [];
+  let aiPreview = null;
+  let aiCandidate = '';
+  let aiIssues = [];
+  let aiNotice = '';
+
+  // Modals
+  let modal = ''; // '' | 'new-project' | 'new-scene' | 'new-fact'
+
+  const getProject = () => archive?.projects?.find((p) => p.id === projectId) || archive?.projects?.[0] || null;
+  const getScene = () => {
+    const p = getProject();
+    return p?.scenes?.find((s) => s.id === sceneId) || p?.scenes?.[0] || null;
+  };
+  const getRevision = () => getScene()?.revisions?.at(-1) || null;
+
+  function headers() {
+    return { 'Content-Type': 'application/json', 'X-Hub-User-Id': account };
+  }
+
+  function showToast(msg) {
+    document.querySelector('.nv-toast')?.remove();
+    const el = document.createElement('div');
+    el.className = 'nv-toast';
+    el.setAttribute('role', 'status');
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 4000);
+  }
+
+  function syncDraftFromScene() {
+    const p = getProject();
+    if (p && p.id !== projectId) projectId = p.id;
+    const s = getScene();
+    if (s && s.id !== sceneId) sceneId = s.id;
+    draftTitle = s?.title || '';
+    draftBody = s?.draft ?? s?.revisions?.at(-1)?.body ?? '';
+    dirty = false;
+    aiPreview = null;
+    aiCandidate = '';
+    aiIssues = [];
+    aiNotice = '';
+  }
+
+  async function loadCanon() {
+    const res = await fetch(base + 'canon', {
+      cache: 'no-store',
+      headers: { 'X-Hub-User-Id': account },
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data?.state || !Array.isArray(data.state.projects)) {
+      throw new Error(data?.error || '无法读取小说档案');
+    }
+    archive = data.state;
+    version = data.version;
+    if (!archive.projects.some((p) => p.id === projectId)) {
+      projectId = archive.projects[0]?.id || '';
+    }
+    const p = getProject();
+    if (!p?.scenes?.some((s) => s.id === sceneId)) {
+      sceneId = p?.scenes?.[0]?.id || '';
+    }
+    syncDraftFromScene();
+  }
+
+  async function sendCanonCommand(command, successToast) {
+    if (busy) return false;
+    busy = true;
+    render();
+    try {
+      const payload = {
+        commandId: crypto.randomUUID(),
+        expectedVersion: version,
+        command,
+      };
+      const res = await fetch(base + 'canon', {
+        method: 'POST',
+        headers: headers(),
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.state) {
+        throw new Error(data?.error || `保存失败 (HTTP ${res.status})`);
+      }
+      archive = data.state;
+      version = data.version;
+      if (successToast) showToast(successToast);
+      return true;
+    } catch (err) {
+      showToast(err.message || '操作未成功');
+      return false;
+    } finally {
+      busy = false;
+      render();
+    }
+  }
+
+  async function loadModels() {
+    try {
+      const pr = await fetch(base + 'model-preference', {
+        cache: 'no-store',
+        headers: { 'X-Hub-User-Id': account },
+      });
+      const pd = await pr.json().catch(() => null);
+      if (pr.ok && pd) {
+        defaultModel = pd.model || pd.fallbackModel || '';
+      }
+    } catch {}
+    try {
+      const r = await fetch(base + 'models', {
+        cache: 'no-store',
+        headers: { 'X-Hub-User-Id': account },
+      });
+      const d = await r.json().catch(() => null);
+      if (r.ok && Array.isArray(d?.models)) {
+        availableModels = (Array.isArray(d.writingModels) ? d.writingModels : d.models).filter(
+          (x) => x && typeof x.id === 'string'
+        );
+      }
+    } catch {}
+    render();
+  }
+
+  async function handleSaveChapter(commitVersion = false) {
+    const p = getProject();
+    const s = getScene();
+    if (!p || !s) {
+      showToast('请先创建一部作品与章节');
+      return;
+    }
+    const title = draftTitle.trim() || s.title || '未命名章节';
+    const body = draftBody;
+    const savedDraft = await sendCanonCommand(
+      {
+        type: 'save_draft',
+        projectId: p.id,
+        sceneId: s.id,
+        title,
+        body,
+      },
+      commitVersion ? '' : '章节草稿已保存'
+    );
+    if (!savedDraft) return;
+    dirty = false;
+
+    if (commitVersion) {
+      const ok = await sendCanonCommand(
+        {
+          type: 'save_revision',
+          projectId: p.id,
+          sceneId: s.id,
+          revisionId: crypto.randomUUID(),
+          title,
+          body,
+          summary: `正式版本 v${(s.revisions?.length || 0) + 1}`,
+        },
+        '已保存为正式章节版本（可用于 AI 续写与设定审阅）'
+      );
+      if (ok) dirty = false;
+    }
+    render();
+  }
+
+  async function handleRunAIAssistant(mode) {
+    // mode: 'draft' | 'review'
+    if (busy) return;
+    const p = getProject();
+    const s = getScene();
+    if (!p || !s) {
+      showToast('请先创建作品与章节');
+      return;
+    }
+    if (dirty || !getRevision() || getRevision().body !== draftBody || getRevision().title !== draftTitle) {
+      await handleSaveChapter(true);
+    }
+    const rev = getRevision();
+    if (!rev) {
+      showToast('请先点击「保存并定稿」生成基线版本后再调用 AI');
+      return;
+    }
+    const instruction =
+      aiInstruction.trim() ||
+      (mode === 'review'
+        ? '请检查当前章节正文与已收录设定是否存在人物性格、时间线或世界观冲突。'
+        : '请顺着当前章节末尾的情节自然续写下一段场景，注重人物动作与细节张力。');
+
+    busy = true;
+    aiNotice = '正在编译上下文与设定集…';
+    render();
+
+    try {
+      const ctxInput = {
+        projectId: p.id,
+        sceneId: s.id,
+        revisionId: rev.id,
+        instruction,
+        storyMoment: '1',
+        perspective: 'omniscient',
+        pov: '',
+        factIds: (p.facts || []).slice(0, 30).map((f) => f.id),
+        model: aiModel,
+        writingProfile: {
+          styleId: aiStyle,
+          authorConstraints: '',
+          revealNow: '',
+        },
+      };
+      const ctxRes = await fetch(base + 'context', {
+        method: 'POST',
+        headers: headers(),
+        body: JSON.stringify(ctxInput),
+      });
+      const ctxData = await ctxRes.json().catch(() => null);
+      if (!ctxRes.ok || !ctxData?.previewHash) {
+        throw new Error(ctxData?.error || '上下文编译失败，请检查模型设置');
+      }
+      aiPreview = ctxData;
+      aiNotice = mode === 'draft' ? '正在调用模型生成续写段落…' : '正在调用模型执行一致性审阅…';
+      render();
+
+      const runRes = await fetch(base + mode, {
+        method: 'POST',
+        headers: headers(),
+        body: JSON.stringify({
+          ...ctxInput,
+          previewHash: ctxData.previewHash,
+        }),
+      });
+      const runData = await runRes.json().catch(() => null);
+      if (!runRes.ok) {
+        throw new Error(runData?.error || `模型调用未完成 (HTTP ${runRes.status})`);
+      }
+
+      if (mode === 'draft') {
+        aiCandidate = runData?.text || '';
+        aiNotice = '已生成候选段落，可一键追加到正文编辑器。';
+        showToast('AI 续写候选已生成');
+      } else {
+        aiIssues = Array.isArray(runData?.issues) ? runData.issues : [];
+        aiNotice = aiIssues.length
+          ? `审阅完成：发现 ${aiIssues.length} 条潜在设定或逻辑提醒。`
+          : '审阅完成：未发现明显的设定冲突。';
+        activeRightTab = 'review';
+        showToast('AI 一致性审阅已完成');
+      }
+    } catch (err) {
+      aiNotice = err.message || 'AI 调用未成功';
+      showToast(aiNotice);
+    } finally {
+      busy = false;
+      render();
+    }
+  }
+
+  function studioShell(content) {
+    const p = getProject();
+    const s = getScene();
+    const wordCount = Array.from(draftBody || '').length;
+    const statusHtml = `
+      <span class="nv-top-status">
+        ${busy ? '正在同步…' : dirty ? '● 有未保存修改' : '✓ 已同步'}
+        · 本章 ${wordCount.toLocaleString('zh-CN')} 字
+      </span>
+    `;
+    const actionsHtml = `
+      <a class="nv-top-link" href="consistency.html?view=records">设定档案库</a>
+      <a class="nv-top-link" href="prompt-library.html">提示词库</a>
+      <a class="nv-top-link" href="model-settings.html">模型设置</a>
+    `;
+    return window.NovelStudio?.shell
+      ? window.NovelStudio.shell({
+          active: 'canvas',
+          title: p ? `${p.name} · ${s?.title || '创作工作台'}` : 'AI 小说工坊',
+          content,
+          status: statusHtml,
+          actions: actionsHtml,
+        })
+      : `<main>${content}</main>`;
+  }
+
+  function renderView() {
+    if (!account || !archive) {
+      const signedOut = !account;
+      return studioShell(`
+        <div class="nv-onboarding">
+          <div class="nv-onboarding-card">
+            <h2>${signedOut ? '登录以开启 AI 小说工坊' : '暂时无法读取小说档案'}</h2>
+            <p>${
+              signedOut
+                ? '在统一的三栏沉浸式写作台里管理小说章节、人物世界观设定与 AI 续写审阅。'
+                : E(loadError || '请检查网络连接后重试。')
+            }</p>
+            ${
+              signedOut
+                ? '<a class="nv-btn is-primary" href="/signin-with-chatgpt?return_to=%2Fapps%2Fnovel-studio%2Fcanvas.html" target="_top">登录工作台账号</a>'
+                : '<button class="nv-btn is-primary" data-nv-act="reload">重新加载</button>'
+            }
+          </div>
+        </div>
+      `);
+    }
+
+    const projects = archive.projects || [];
+    const p = getProject();
+    const scenes = p?.scenes || [];
+    const s = getScene();
+    const facts = p?.facts || [];
+    const rev = getRevision();
+    const isRevisionSynced = !!rev && rev.body === draftBody && rev.title === draftTitle;
+
+    return studioShell(`
+      <div class="nv-workbench">
+        <!-- Column 1: Works & Chapters Directory -->
+        <aside class="nv-col-left" aria-label="作品与章节目录">
+          <div class="nv-panel-block">
+            <div class="nv-block-head">
+              <strong>当前作品</strong>
+              <button class="nv-btn is-small is-primary" type="button" data-nv-act="open-modal" data-modal="new-project">
+                + 新建小说
+              </button>
+            </div>
+            <select id="nv-project-select" class="nv-select" aria-label="切换小说作品">
+              ${
+                projects.length
+                  ? projects
+                      .map(
+                        (item) =>
+                          `<option value="${E(item.id)}" ${item.id === p?.id ? 'selected' : ''}>${E(
+                            item.name
+                          )} (${item.scenes?.length || 0}章)</option>`
+                      )
+                      .join('')
+                  : '<option value="">尚无作品，请点击右上角新建</option>'
+              }
+            </select>
+          </div>
+
+          <div class="nv-panel-block nv-chapters-block">
+            <div class="nv-block-head">
+              <strong>章节目录 (${scenes.length})</strong>
+              ${
+                p
+                  ? '<button class="nv-btn is-small" type="button" data-nv-act="open-modal" data-modal="new-scene">+ 新建章节</button>'
+                  : ''
+              }
+            </div>
+
+            ${
+              scenes.length === 0
+                ? `<div class="nv-empty-small">
+                    <p>这部作品还没有章节。</p>
+                    ${
+                      p
+                        ? '<button class="nv-btn is-small is-primary" type="button" data-nv-act="open-modal" data-modal="new-scene">创建第一章</button>'
+                        : '<button class="nv-btn is-small is-primary" type="button" data-nv-act="open-modal" data-modal="new-project">创建第一部小说</button>'
+                    }
+                  </div>`
+                : `<div class="nv-chapter-list">
+                    ${scenes
+                      .map((item, idx) => {
+                        const active = item.id === s?.id;
+                        const chars = Array.from(item.draft || item.revisions?.at(-1)?.body || '').length;
+                        return `
+                          <button type="button" class="nv-chapter-item ${active ? 'is-active' : ''}" data-nv-act="select-scene" data-scene-id="${E(item.id)}">
+                            <div class="nv-chapter-item-top">
+                              <span class="nv-chapter-num">CH.${String(idx + 1).padStart(2, '0')}</span>
+                              <span class="nv-chapter-words">${chars} 字</span>
+                            </div>
+                            <strong>${E(item.title || '未命名章节')}</strong>
+                          </button>
+                        `;
+                      })
+                      .join('')}
+                  </div>`
+            }
+          </div>
+        </aside>
+
+        <!-- Column 2: Immersive Distraction-Free Chapter Editor -->
+        <section class="nv-col-center" aria-label="沉浸式正文编辑器">
+          ${
+            !p || !s
+              ? `<div class="nv-empty-editor">
+                  <h2>开始你的小说创作</h2>
+                  <p>在左侧新建一部小说作品或章节，即可在此开启沉浸式正文写作与 AI 协同续写。</p>
+                  <button class="nv-btn is-primary" type="button" data-nv-act="open-modal" data-modal="${
+                    p ? 'new-scene' : 'new-project'
+                  }">
+                    ${p ? '+ 创建第一章' : '+ 创建新小说作品'}
+                  </button>
+                </div>`
+              : `
+                <div class="nv-editor-header">
+                  <input
+                    id="nv-draft-title"
+                    class="nv-title-input"
+                    value="${E(draftTitle)}"
+                    placeholder="输入章节标题，如：第一章 雨夜来信"
+                    maxlength="100"
+                  />
+                  <div class="nv-editor-actions">
+                    <span class="nv-version-badge ${isRevisionSynced ? 'is-synced' : 'is-draft'}">
+                      ${
+                        isRevisionSynced
+                          ? `已定稿 v${s.revisions?.length || 1}`
+                          : dirty
+                            ? '编辑中（未保存）'
+                            : '草稿待定稿'
+                      }
+                    </span>
+                    <button class="nv-btn is-small" type="button" data-nv-act="save-draft" ${busy ? 'disabled' : ''}>
+                      保存草稿
+                    </button>
+                    <button class="nv-btn is-small is-primary" type="button" data-nv-act="save-revision" ${busy ? 'disabled' : ''}>
+                      保存并定稿
+                    </button>
+                  </div>
+                </div>
+
+                <textarea
+                  id="nv-draft-body"
+                  class="nv-body-textarea"
+                  placeholder="在这里直接撰写或修改小说正文…（右侧可随时唤起 AI 续写段落或检查设定冲突）"
+                >${E(draftBody)}</textarea>
+              `
+          }
+        </section>
+
+        <!-- Column 3: AI Co-Pilot & Worldbuilding Canon -->
+        <aside class="nv-col-right" aria-label="AI 创作助手与设定集">
+          <div class="nv-right-tabs">
+            <button
+              type="button"
+              class="${activeRightTab === 'assistant' ? 'is-active' : ''}"
+              data-nv-act="right-tab"
+              data-tab="assistant"
+            >
+              AI 续写助手
+            </button>
+            <button
+              type="button"
+              class="${activeRightTab === 'canon' ? 'is-active' : ''}"
+              data-nv-act="right-tab"
+              data-tab="canon"
+            >
+              设定集 (${facts.length})
+            </button>
+            <button
+              type="button"
+              class="${activeRightTab === 'review' ? 'is-active' : ''}"
+              data-nv-act="right-tab"
+              data-tab="review"
+            >
+              审阅 (${aiIssues.length})
+            </button>
+          </div>
+
+          ${
+            activeRightTab === 'assistant'
+              ? `
+                <div class="nv-right-body">
+                  <label class="nv-field">
+                    <span>叙事风格</span>
+                    <select id="nv-ai-style" class="nv-select">
+                      <option value="general" ${aiStyle === 'general' ? 'selected' : ''}>通用文学叙事</option>
+                      <option value="xuanhuan" ${aiStyle === 'xuanhuan' ? 'selected' : ''}>东方玄幻 · 布局悟道</option>
+                      <option value="mystery" ${aiStyle === 'mystery' ? 'selected' : ''}>悬疑推理 · 线索伏笔</option>
+                    </select>
+                  </label>
+
+                  <label class="nv-field">
+                    <span>写作模型</span>
+                    <select id="nv-ai-model" class="nv-select">
+                      <option value="">默认模型${defaultModel ? ' (' + E(defaultModel) + ')' : ''}</option>
+                      ${availableModels
+                        .map(
+                          (m) =>
+                            `<option value="${E(m.id)}" ${m.id === aiModel ? 'selected' : ''}>${E(
+                              m.id
+                            )}</option>`
+                        )
+                        .join('')}
+                    </select>
+                  </label>
+
+                  <label class="nv-field">
+                    <span>本段续写或扩写指令</span>
+                    <textarea
+                      id="nv-ai-instruction"
+                      rows="4"
+                      placeholder="告诉 AI 接下来这一幕发生什么：例如“主角推开旧祠堂的木门，发现铜铃内侧刻着第二道暗纹”…"
+                    >${E(aiInstruction)}</textarea>
+                  </label>
+
+                  <div class="nv-btn-row">
+                    <button
+                      type="button"
+                      class="nv-btn is-primary"
+                      style="flex:1"
+                      data-nv-act="ai-draft"
+                      ${busy || !p || !s ? 'disabled' : ''}
+                    >
+                      ${busy ? 'AI 思考中…' : '✨ AI 生成续写段落'}
+                    </button>
+                    <button
+                      type="button"
+                      class="nv-btn"
+                      data-nv-act="ai-review"
+                      ${busy || !p || !s ? 'disabled' : ''}
+                    >
+                      审阅一致性
+                    </button>
+                  </div>
+
+                  ${aiNotice ? `<div class="nv-notice">${E(aiNotice)}</div>` : ''}
+
+                  ${
+                    aiCandidate
+                      ? `
+                        <div class="nv-candidate-card">
+                          <div class="nv-candidate-head">
+                            <strong>AI 候选正文</strong>
+                            <button type="button" class="nv-btn is-small is-primary" data-nv-act="append-candidate">
+                              一键追加到正文末尾
+                            </button>
+                          </div>
+                          <div class="nv-candidate-prose">${E(aiCandidate)}</div>
+                        </div>
+                      `
+                      : ''
+                  }
+                </div>
+              `
+              : activeRightTab === 'canon'
+                ? `
+                  <div class="nv-right-body">
+                    <div class="nv-block-head">
+                      <span>已确认的人物与世界观事实</span>
+                      ${
+                        p
+                          ? '<button type="button" class="nv-btn is-small is-primary" data-nv-act="open-modal" data-modal="new-fact">+ 新增设定</button>'
+                          : ''
+                      }
+                    </div>
+                    ${
+                      facts.length === 0
+                        ? '<div class="nv-empty-small"><p>尚未收录设定事实。添加角色性格、核心设定或时间线后，AI 续写与审阅会自动遵循这些设定。</p></div>'
+                        : `<div class="nv-fact-list">
+                            ${facts
+                              .map(
+                                (f) => `
+                                <article class="nv-fact-card">
+                                  <div class="nv-fact-top">
+                                    <span class="nv-fact-tag">${E(LAYER_LABELS[f.layer] || f.layer)}</span>
+                                    ${f.storyTime ? `<small>时点 ${E(f.storyTime)}</small>` : ''}
+                                  </div>
+                                  <p>${E(f.statement)}</p>
+                                </article>
+                              `
+                              )
+                              .join('')}
+                          </div>`
+                    }
+                  </div>
+                `
+                : `
+                  <div class="nv-right-body">
+                    <div class="nv-block-head">
+                      <span>本章设定与逻辑审阅报告</span>
+                      <button type="button" class="nv-btn is-small" data-nv-act="ai-review" ${
+                        busy || !p || !s ? 'disabled' : ''
+                      }>
+                        重新审阅
+                      </button>
+                    </div>
+                    ${
+                      aiIssues.length === 0
+                        ? '<div class="nv-empty-small"><p>点击「审阅一致性」，AI 会自动对照你的设定集检查本章是否存在前后矛盾。</p></div>'
+                        : `<div class="nv-fact-list">
+                            ${aiIssues
+                              .map(
+                                (iss) => `
+                                <article class="nv-fact-card is-warn">
+                                  <strong>${E(iss.description)}</strong>
+                                  ${
+                                    iss.evidence?.quote || iss.quote
+                                      ? `<blockquote>${E(iss.evidence?.quote || iss.quote)}</blockquote>`
+                                      : ''
+                                  }
+                                </article>
+                              `
+                              )
+                              .join('')}
+                          </div>`
+                    }
+                  </div>
+                `
+          }
+        </aside>
+      </div>
+
+      ${renderModal()}
+    `);
+  }
+
+  function renderModal() {
+    if (!modal) return '';
+    if (modal === 'new-project') {
+      return `
+        <div class="nv-modal-backdrop" data-nv-act="close-backdrop">
+          <section class="nv-modal" role="dialog" aria-modal="true" aria-label="新建小说作品">
+            <header class="nv-modal-head">
+              <h3>新建小说作品</h3>
+              <button type="button" data-nv-act="close-modal">×</button>
+            </header>
+            <form id="nv-form-new-project" class="nv-form">
+              <label class="nv-field">
+                <span>小说名称</span>
+                <input name="name" required maxlength="100" placeholder="如：长夜余火 / 雾港纪事" autofocus />
+              </label>
+              <label class="nv-field">
+                <span>首章标题</span>
+                <input name="sceneTitle" required maxlength="100" defaultValue="第一章 序幕" value="第一章 序幕" />
+              </label>
+              <label class="nv-field">
+                <span>故事一句话简介或开篇草稿（可选）</span>
+                <textarea name="body" rows="4" placeholder="写下开篇第一段或核心故事设定…"></textarea>
+              </label>
+              <div class="nv-modal-actions">
+                <button type="button" class="nv-btn" data-nv-act="close-modal">取消</button>
+                <button type="submit" class="nv-btn is-primary" ${busy ? 'disabled' : ''}>创建作品</button>
+              </div>
+            </form>
+          </section>
+        </div>
+      `;
+    }
+
+    if (modal === 'new-scene') {
+      return `
+        <div class="nv-modal-backdrop" data-nv-act="close-backdrop">
+          <section class="nv-modal" role="dialog" aria-modal="true" aria-label="新建章节">
+            <header class="nv-modal-head">
+              <h3>新建章节</h3>
+              <button type="button" data-nv-act="close-modal">×</button>
+            </header>
+            <form id="nv-form-new-scene" class="nv-form">
+              <label class="nv-field">
+                <span>章节标题</span>
+                <input name="title" required maxlength="100" placeholder="如：第二章 旧巷重逢" autofocus />
+              </label>
+              <label class="nv-field">
+                <span>初始正文草稿（可选）</span>
+                <textarea name="body" rows="4" placeholder="可留空直接进入编辑器撰写…"></textarea>
+              </label>
+              <div class="nv-modal-actions">
+                <button type="button" class="nv-btn" data-nv-act="close-modal">取消</button>
+                <button type="submit" class="nv-btn is-primary" ${busy ? 'disabled' : ''}>创建章节</button>
+              </div>
+            </form>
+          </section>
+        </div>
+      `;
+    }
+
+    if (modal === 'new-fact') {
+      return `
+        <div class="nv-modal-backdrop" data-nv-act="close-backdrop">
+          <section class="nv-modal" role="dialog" aria-modal="true" aria-label="新增设定事实">
+            <header class="nv-modal-head">
+              <h3>新增人物或世界观设定</h3>
+              <button type="button" data-nv-act="close-modal">×</button>
+            </header>
+            <form id="nv-form-new-fact" class="nv-form">
+              <label class="nv-field">
+                <span>设定类型</span>
+                <select name="layer" class="nv-select">
+                  <option value="world">世界设定 / 规则</option>
+                  <option value="belief">人物性格 / 认知</option>
+                  <option value="plan">剧情伏笔 / 计划</option>
+                </select>
+              </label>
+              <label class="nv-field">
+                <span>设定描述</span>
+                <textarea name="statement" required rows="3" placeholder="如：林羽左手腕有一道旧剑痕，且在第三章前不知道幕后黑手是城主。"></textarea>
+              </label>
+              <div class="nv-modal-actions">
+                <button type="button" class="nv-btn" data-nv-act="close-modal">取消</button>
+                <button type="submit" class="nv-btn is-primary" ${busy ? 'disabled' : ''}>保存设定</button>
+              </div>
+            </form>
+          </section>
+        </div>
+      `;
+    }
+    return '';
+  }
+
+  function render() {
+    const activeEl = document.activeElement;
+    const activeId = activeEl?.id;
+    const selStart = activeEl?.selectionStart;
+    const selEnd = activeEl?.selectionEnd;
+
+    root.innerHTML = renderView();
+
+    if (activeId) {
+      const nextEl = document.getElementById(activeId);
+      if (nextEl) {
+        nextEl.focus({ preventScroll: true });
+        if (typeof selStart === 'number' && typeof nextEl.setSelectionRange === 'function') {
+          try {
+            nextEl.setSelectionRange(selStart, selEnd);
+          } catch {}
+        }
+      }
+    }
+  }
+
+  // Event Delegation
+  root.addEventListener('input', (e) => {
+    const t = e.target;
+    if (t.id === 'nv-draft-title') {
+      draftTitle = t.value;
+      dirty = true;
+    } else if (t.id === 'nv-draft-body') {
+      draftBody = t.value;
+      dirty = true;
+    } else if (t.id === 'nv-ai-instruction') {
+      aiInstruction = t.value;
+    }
+  });
+
+  root.addEventListener('change', (e) => {
+    const t = e.target;
+    if (t.id === 'nv-project-select') {
+      if (dirty && !confirm('当前章节有未保存修改，切换作品将放弃未保存内容，是否继续？')) {
+        t.value = projectId;
+        return;
+      }
+      projectId = t.value;
+      sceneId = getProject()?.scenes?.[0]?.id || '';
+      syncDraftFromScene();
+      render();
+    } else if (t.id === 'nv-ai-style') {
+      aiStyle = t.value;
+    } else if (t.id === 'nv-ai-model') {
+      aiModel = t.value;
+    }
+  });
+
+  root.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-nv-act]');
+    if (!btn) return;
+    const act = btn.dataset.nvAct;
+
+    if (act === 'close-backdrop' && e.target !== btn) return;
+    if (act === 'close-modal' || act === 'close-backdrop') {
+      modal = '';
+      render();
+      return;
+    }
+    if (act === 'open-modal') {
+      modal = btn.dataset.modal || '';
+      render();
+      return;
+    }
+    if (act === 'reload') {
+      try {
+        await loadCanon();
+        render();
+      } catch (err) {
+        loadError = err.message;
+        render();
+      }
+      return;
+    }
+    if (act === 'select-scene') {
+      const nextId = btn.dataset.sceneId;
+      if (nextId === sceneId) return;
+      if (dirty && !confirm('当前章节有未保存修改，切换章节将丢弃修改，确定切换吗？')) return;
+      sceneId = nextId;
+      syncDraftFromScene();
+      render();
+      return;
+    }
+    if (act === 'right-tab') {
+      activeRightTab = btn.dataset.tab || 'assistant';
+      render();
+      return;
+    }
+    if (act === 'save-draft') {
+      await handleSaveChapter(false);
+      return;
+    }
+    if (act === 'save-revision') {
+      await handleSaveChapter(true);
+      return;
+    }
+    if (act === 'ai-draft') {
+      await handleRunAIAssistant('draft');
+      return;
+    }
+    if (act === 'ai-review') {
+      await handleRunAIAssistant('review');
+      return;
+    }
+    if (act === 'append-candidate') {
+      if (!aiCandidate) return;
+      draftBody = (draftBody ? draftBody.trimEnd() + '\n\n' : '') + aiCandidate.trim();
+      dirty = true;
+      aiCandidate = '';
+      showToast('已追加到正文末尾，记得点击「保存并定稿」');
+      render();
+      return;
+    }
+  });
+
+  root.addEventListener('submit', async (e) => {
+    const formEl = e.target;
+    if (formEl.id === 'nv-form-new-project') {
+      e.preventDefault();
+      const fd = new FormData(formEl);
+      const name = String(fd.get('name') || '').trim();
+      const sceneTitle = String(fd.get('sceneTitle') || '第一章 序幕').trim();
+      const body = String(fd.get('body') || '（在此开始撰写第一章正文…）').trim() || '（在此开始撰写第一章正文…）';
+      const newPid = crypto.randomUUID();
+      const newSid = crypto.randomUUID();
+      const ok = await sendCanonCommand(
+        {
+          type: 'create_project_with_scene_drafts',
+          projectId: newPid,
+          name,
+          description: '',
+          scenes: [{ sceneId: newSid, title: sceneTitle, body }],
+        },
+        '新小说作品已创建'
+      );
+      if (ok) {
+        projectId = newPid;
+        sceneId = newSid;
+        modal = '';
+        syncDraftFromScene();
+        render();
+      }
+    } else if (formEl.id === 'nv-form-new-scene') {
+      e.preventDefault();
+      const p = getProject();
+      if (!p) return;
+      const fd = new FormData(formEl);
+      const title = String(fd.get('title') || '').trim();
+      const body = String(fd.get('body') || '').trim();
+      const newSid = crypto.randomUUID();
+      const ok = await sendCanonCommand(
+        {
+          type: 'create_scene',
+          projectId: p.id,
+          sceneId: newSid,
+          title,
+        },
+        '新章节已创建'
+      );
+      if (ok) {
+        sceneId = newSid;
+        modal = '';
+        if (body) {
+          await sendCanonCommand(
+            {
+              type: 'save_draft',
+              projectId: p.id,
+              sceneId: newSid,
+              title,
+              body,
+            },
+            ''
+          );
+        }
+        syncDraftFromScene();
+        render();
+      }
+    } else if (formEl.id === 'nv-form-new-fact') {
+      e.preventDefault();
+      const p = getProject();
+      const s = getScene();
+      if (!p) return;
+      const fd = new FormData(formEl);
+      const statement = String(fd.get('statement') || '').trim();
+      const layer = String(fd.get('layer') || 'world');
+      // Ensure we have a revision to anchor the fact, or save one first
+      if (!getRevision() && s) {
+        await handleSaveChapter(true);
+      }
+      const rev = getRevision();
+      if (!s || !rev) {
+        showToast('请先创建并定稿一个章节，再添加设定事实');
+        return;
+      }
+      const quote = (rev.body || '').slice(0, 60) || statement;
+      const ok = await sendCanonCommand(
+        {
+          type: 'record_fact',
+          projectId: p.id,
+          factId: crypto.randomUUID(),
+          statement,
+          layer,
+          subject: 'story',
+          storyTime: '1',
+          source: {
+            sceneId: s.id,
+            revisionId: rev.id,
+            evidence: quote,
+          },
+        },
+        '新设定已加入作品设定集'
+      );
+      if (ok) {
+        modal = '';
+        render();
+      }
+    }
+  });
+
+  // Hub Leave Guards
+  let approvedLeave = false;
+  function hasUnsavedResults() {
+    return !!(busy || dirty || aiCandidate);
+  }
+  window.HubBeforeLeave = async () => {
+    if (
+      hasUnsavedResults() &&
+      !confirm(
+        busy
+          ? '正在与服务器同步小说内容，确定离开吗？'
+          : '当前章节或 AI 续写候选尚未保存，确定离开吗？'
+      )
+    ) {
+      return false;
+    }
+    approvedLeave = true;
+    return true;
+  };
+  window.HubCancelLeave = () => {
+    approvedLeave = false;
+  };
+  window.addEventListener('beforeunload', (e) => {
+    if (!approvedLeave && hasUnsavedResults()) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+
+  // Boot
+  (async () => {
+    try {
+      const r = await fetch('/api/hub/session', { cache: 'no-store' });
+      const id = await r.json().catch(() => ({}));
+      if (!r.ok || !id.authenticated || !id.userId) {
+        throw new Error('请先使用工作台账号登录');
+      }
+      account = id.userId;
+      await loadCanon();
+      render();
+      void loadModels();
+    } catch (err) {
+      loadError = err.message || '加载失败';
+      render();
+    }
+  })();
 })();
