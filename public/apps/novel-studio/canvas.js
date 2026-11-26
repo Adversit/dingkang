@@ -29,6 +29,9 @@
   // Local editor draft state
   let draftTitle = '';
   let draftBody = '';
+  let centerMode = 'editor'; // 'editor' | 'canvas'
+  let canvasZoom = 1;
+  let inspectedNodeId = 'prepare';
   let activeRightTab = 'assistant'; // 'assistant' | 'canon' | 'review'
 
   // AI Assistant state
@@ -437,6 +440,28 @@
                     maxlength="100"
                   />
                   <div class="nv-editor-actions">
+                    <div class="nv-mode-toggle" role="tablist" aria-label="创作视图切换">
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected="${centerMode === 'editor'}"
+                        class="nv-mode-btn ${centerMode === 'editor' ? 'is-active' : ''}"
+                        data-nv-act="center-mode"
+                        data-mode="editor"
+                      >
+                        沉浸正文
+                      </button>
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected="${centerMode === 'canvas'}"
+                        class="nv-mode-btn ${centerMode === 'canvas' ? 'is-active' : ''}"
+                        data-nv-act="center-mode"
+                        data-mode="canvas"
+                      >
+                        执行流程画布
+                      </button>
+                    </div>
                     <span class="nv-version-badge ${isRevisionSynced ? 'is-synced' : 'is-draft'}">
                       ${
                         isRevisionSynced
@@ -455,11 +480,17 @@
                   </div>
                 </div>
 
-                <textarea
-                  id="nv-draft-body"
-                  class="nv-body-textarea"
-                  placeholder="在这里直接撰写或修改小说正文…（右侧可随时唤起 AI 续写段落或检查设定冲突）"
-                >${E(draftBody)}</textarea>
+                ${
+                  centerMode === 'canvas'
+                    ? renderExecutionCanvas(p, s, facts, isRevisionSynced)
+                    : `
+                      <textarea
+                        id="nv-draft-body"
+                        class="nv-body-textarea"
+                        placeholder="在这里直接撰写或修改小说正文…（右侧可随时唤起 AI 续写段落或检查设定冲突，或切换到上方「执行流程画布」查看 6 节点创作流水线）"
+                      >${E(draftBody)}</textarea>
+                    `
+                }
               `
           }
         </section>
@@ -639,6 +670,163 @@
 
       ${renderModal()}
     `);
+  }
+
+  function renderExecutionCanvas(p, s, facts, isRevisionSynced) {
+    const hasBrief = !!(aiInstruction.trim() || draftBody.trim());
+    const hasPlan = (p?.scenes?.length || 0) > 0;
+    const hasDraft = !!(aiCandidate || draftBody.trim());
+    const hasFacts = (facts?.length || 0) > 0;
+    const hasReview = aiIssues.length > 0 || (aiNotice && aiNotice.includes('审阅完成'));
+
+    const nodes = [
+      {
+        id: 'prepare',
+        code: '01 · IDEA',
+        title: '创作构思',
+        state: hasBrief ? 'complete' : 'idle',
+        stateText: hasBrief ? '构思已就绪' : '等待输入',
+        detail: aiInstruction.trim() || '顺着当前章节情节自然续写，保持人物张力',
+        x: 28,
+        y: 34,
+      },
+      {
+        id: 'plan',
+        code: '02 · PLAN',
+        title: '章节规划',
+        state: hasPlan ? 'complete' : 'idle',
+        stateText: hasPlan ? `已规划 ${p.scenes.length} 章` : '待规划',
+        detail: `${s?.title || '当前章节'} · 风格：${
+          aiStyle === 'xuanhuan' ? '东方玄幻' : aiStyle === 'mystery' ? '悬疑推理' : '通用文学'
+        }`,
+        x: 268,
+        y: 34,
+      },
+      {
+        id: 'draft',
+        code: '03 · DRAFT',
+        title: '正文生成',
+        state: busy ? 'running' : hasDraft ? 'complete' : 'idle',
+        stateText: busy ? '生成中' : aiCandidate ? '候选待采用' : hasDraft ? '已有正文' : '待起草',
+        detail: aiCandidate
+          ? `最新候选 (${Array.from(aiCandidate).length} 字)`
+          : `当前正文 (${Array.from(draftBody || '').length} 字)`,
+        x: 508,
+        y: 34,
+      },
+      {
+        id: 'extract',
+        code: '04 · CANON',
+        title: '事实与设定锚定',
+        state: hasFacts ? 'complete' : 'idle',
+        stateText: hasFacts ? `${facts.length} 条设定` : '可添加设定',
+        detail: facts[0]?.statement || '在右侧设定集收录人物认知与世界规则',
+        x: 508,
+        y: 236,
+      },
+      {
+        id: 'review',
+        code: '05 · REVIEW',
+        title: '独立一致性审阅',
+        state: hasReview ? 'complete' : 'idle',
+        stateText: aiIssues.length ? `${aiIssues.length} 条提醒` : hasReview ? '审阅通过' : '待审阅',
+        detail: aiIssues[0]?.description || '对照已确认设定集检查人物与时间线冲突',
+        x: 268,
+        y: 236,
+      },
+      {
+        id: 'save',
+        code: '06 · SAVE',
+        title: '定稿与版本入库',
+        state: isRevisionSynced ? 'complete' : dirty ? 'ready' : 'idle',
+        stateText: isRevisionSynced ? `已定稿 v${s.revisions?.length || 1}` : '待定稿保存',
+        detail: isRevisionSynced ? '当前正文与云端最新定稿版本一致' : '点击上方「保存并定稿」持久化版本',
+        x: 28,
+        y: 236,
+      },
+    ];
+
+    const inspected = nodes.find((n) => n.id === inspectedNodeId) || nodes[0];
+
+    return `
+      <div class="nv-canvas-panel">
+        <div class="nv-canvas-bar">
+          <div>
+            <strong>6 节点小说创作执行画布 (Directed Execution Graph)</strong>
+            <span>点击任意节点查看该阶段输入/输出，或一键触发对应动作</span>
+          </div>
+          <div class="nv-canvas-zoom">
+            <button type="button" class="nv-btn is-small" data-nv-act="zoom-out">−</button>
+            <span>${Math.round(canvasZoom * 100)}%</span>
+            <button type="button" class="nv-btn is-small" data-nv-act="zoom-in">+</button>
+            <button type="button" class="nv-btn is-small" data-nv-act="zoom-reset">100%</button>
+          </div>
+        </div>
+
+        <div class="nv-graph-viewport" role="region" aria-label="6 节点创作流程画布">
+          <div class="nv-graph-size" style="width:${720 * canvasZoom}px;height:${390 * canvasZoom}px">
+            <div class="nv-graph-plane" style="transform:scale(${canvasZoom})">
+              <svg class="nv-graph-svg" width="720" height="390" viewBox="0 0 720 390" fill="none" aria-hidden="true">
+                <defs>
+                  <marker id="nv-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                    <path d="M1 1 L7 4 L1 7" stroke="#52524a" stroke-width="1.5" fill="none"/>
+                  </marker>
+                </defs>
+                <path d="M 218 96 H 258" class="nv-graph-edge" marker-end="url(#nv-arrow)"/>
+                <path d="M 458 96 H 498" class="nv-graph-edge" marker-end="url(#nv-arrow)"/>
+                <path d="M 603 158 V 226" class="nv-graph-edge" marker-end="url(#nv-arrow)"/>
+                <path d="M 508 298 H 468" class="nv-graph-edge" marker-end="url(#nv-arrow)"/>
+                <path d="M 268 298 H 228" class="nv-graph-edge" marker-end="url(#nv-arrow)"/>
+              </svg>
+
+              ${nodes
+                .map(
+                  (n) => `
+                  <button
+                    type="button"
+                    class="nv-graph-node is-${n.state} ${inspected.id === n.id ? 'is-selected' : ''}"
+                    style="left:${n.x}px;top:${n.y}px"
+                    data-nv-act="inspect-node"
+                    data-node-id="${n.id}"
+                  >
+                    <div class="nv-graph-node-top">
+                      <span class="nv-graph-code">${E(n.code)}</span>
+                      <span class="nv-graph-state">${E(n.stateText)}</span>
+                    </div>
+                    <strong>${E(n.title)}</strong>
+                    <span class="nv-graph-excerpt">${E(n.detail)}</span>
+                  </button>
+                `
+                )
+                .join('')}
+            </div>
+          </div>
+        </div>
+
+        <div class="nv-node-inspector">
+          <div class="nv-node-inspector-head">
+            <div>
+              <span class="nv-fact-tag">${E(inspected.code)} · ${E(inspected.stateText)}</span>
+              <h4>${E(inspected.title)}</h4>
+            </div>
+            <div class="nv-btn-row">
+              ${
+                inspected.id === 'draft'
+                  ? `<button type="button" class="nv-btn is-small is-primary" data-nv-act="ai-draft" ${busy ? 'disabled' : ''}>✨ 运行 AI 续写</button>`
+                  : inspected.id === 'extract'
+                    ? `<button type="button" class="nv-btn is-small is-primary" data-nv-act="open-modal" data-modal="new-fact">+ 新增设定事实</button>`
+                    : inspected.id === 'review'
+                      ? `<button type="button" class="nv-btn is-small is-primary" data-nv-act="ai-review" ${busy ? 'disabled' : ''}>执行一致性审阅</button>`
+                      : inspected.id === 'save'
+                        ? `<button type="button" class="nv-btn is-small is-primary" data-nv-act="save-revision" ${busy ? 'disabled' : ''}>保存并定稿本章</button>`
+                        : `<button type="button" class="nv-btn is-small" data-nv-act="center-mode" data-mode="editor">切回沉浸正文编辑</button>`
+              }
+            </div>
+          </div>
+          <p>${E(inspected.detail)}</p>
+        </div>
+      </div>
+    `;
   }
 
   function renderModal() {
@@ -824,6 +1012,24 @@
     }
     if (act === 'right-tab') {
       activeRightTab = btn.dataset.tab || 'assistant';
+      render();
+      return;
+    }
+    if (act === 'center-mode') {
+      centerMode = btn.dataset.mode === 'canvas' ? 'canvas' : 'editor';
+      render();
+      return;
+    }
+    if (act === 'inspect-node') {
+      inspectedNodeId = btn.dataset.nodeId || 'prepare';
+      render();
+      return;
+    }
+    if (act === 'zoom-in' || act === 'zoom-out' || act === 'zoom-reset') {
+      canvasZoom =
+        act === 'zoom-reset'
+          ? 1
+          : Math.max(0.7, Math.min(1.3, Number((canvasZoom + (act === 'zoom-in' ? 0.1 : -0.1)).toFixed(2))));
       render();
       return;
     }

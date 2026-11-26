@@ -29,7 +29,10 @@ import {
   ShieldCheck,
   Sparkles,
   Upload,
+  Workflow,
   X,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react';
 import type {
   Action,
@@ -55,7 +58,39 @@ type ApiResponse = Snapshot & {
   };
 };
 
-type StageTab = 'signals' | 'specify' | 'plan-tasks' | 'delivery';
+type StageTab = 'signals' | 'specify' | 'plan-tasks' | 'canvas' | 'delivery';
+
+type CanvasNode = {
+  id: string;
+  col: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  kind: 'cluster' | 'spec' | 'plan' | 'task' | 'verify';
+  code: string;
+  title: string;
+  subtitle: string;
+  statusLabel: string;
+  tone: 'blue' | 'green' | 'amber' | 'neutral';
+  detail: {
+    heading: string;
+    summary: string;
+    scope?: string;
+    acceptance?: string;
+    meta?: string;
+    rawCluster?: Cluster;
+    rawReq?: Requirement;
+    rawPlan?: Plan;
+  };
+};
+
+type CanvasEdge = {
+  id: string;
+  from: string;
+  to: string;
+  flow: 'execution' | 'data' | 'dependency';
+};
 
 const EMPTY: State = {
   products: [],
@@ -250,6 +285,12 @@ export default function SpecKitWorkbench() {
   const [importText, setImportText] = useState('');
   const [specPreviewTab, setSpecPreviewTab] = useState<'spec' | 'plan' | 'tasks'>('spec');
 
+  // Architecture & Workflow Canvas state
+  const [canvasZoom, setCanvasZoom] = useState(1);
+  const [canvasFilter, setCanvasFilter] = useState<'all' | 'execution' | 'data' | 'dependency'>('all');
+  const [canvasSelectedId, setCanvasSelectedId] = useState<string>('');
+  const [canvasFocusRelated, setCanvasFocusRelated] = useState(false);
+
   const busyRef = useRef(false);
   const revisionRef = useRef(0);
 
@@ -385,6 +426,293 @@ export default function SpecKitWorkbench() {
     [signals, search],
   );
 
+  // Build interactive architecture & execution graph from live product data
+  const canvasGraph = useMemo(() => {
+    const nodes: CanvasNode[] = [];
+    const edges: CanvasEdge[] = [];
+    const NODE_W = 240;
+    const NODE_H = 126;
+    const COL_X = [40, 350, 660, 970, 1280];
+    const ROW_GAP = 156;
+
+    // 1. Clusters (Column 0)
+    const displayClusters = clusters.length
+      ? clusters
+      : [
+          {
+            id: 'demo-cluster-1',
+            productId: pid,
+            title: '多工作台入口分散，缺乏可视化架构画布与 SpecKit 闭环',
+            signalIds: signals.map((s) => s.id),
+            status: 'active' as const,
+            reason: '',
+            mode: 'sample' as const,
+          },
+        ];
+
+    displayClusters.forEach((c, idx) => {
+      nodes.push({
+        id: `cluster:${c.id}`,
+        col: 0,
+        x: COL_X[0],
+        y: 50 + idx * ROW_GAP,
+        w: NODE_W,
+        h: NODE_H,
+        kind: 'cluster',
+        code: `CLUSTER-${String(idx + 1).padStart(2, '0')}`,
+        title: c.title,
+        subtitle: `${c.signalIds.length} 条用户痛点原话证据`,
+        statusLabel: LABELS[c.status] || c.status,
+        tone: c.status === 'linked' ? 'green' : 'blue',
+        detail: {
+          heading: `痛点主题簇 · ${c.title}`,
+          summary:
+            signals.find((s) => s.id === c.signalIds[0])?.text ||
+            '聚合来自真实用户的核心痛点反馈，作为后续 /speckit.specify 立项的原始证据锚点。',
+          meta: `包含 ${c.signalIds.length} 条原始反馈 · 状态：${LABELS[c.status] || c.status}`,
+          rawCluster: clusters.find((x) => x.id === c.id),
+        },
+      });
+    });
+
+    // 2. Requirements / Specs (Column 1)
+    const displayReqs = requirements.length
+      ? requirements
+      : [
+          {
+            id: 'demo-req-1',
+            productId: pid,
+            clusterId: displayClusters[0].id,
+            title: 'SpecKit 流水线与可视化架构画布融合规格',
+            story: '作为研发与产品负责人，希望在统一工作台中既能管理 Spec/Plan/Tasks，又能通过架构画布直观审视节点流向与验收状态。',
+            scope: '集成 4 步 SpecKit 流水线与 SVG 节点关系画布，支持按执行流、数据流、依赖关系过滤。',
+            acceptance: '1. 画布节点实时映射当前产品 Spec 与 Plan；2. 点击节点可在右侧直接审查并编辑。',
+            links: [],
+            quality: { score: 92, checks: [], missing: [] },
+            score: { impact: 5, confidence: 5, effort: 2, priority: 12.5 },
+            critic: '需保持画布与列表数据同源。',
+            decision: 'approved' as const,
+            decisionNote: '已批准进入技术方案设计',
+            version: 1,
+            mode: 'sample' as const,
+          },
+        ];
+
+    displayReqs.forEach((r, idx) => {
+      const nodeId = `spec:${r.id}`;
+      nodes.push({
+        id: nodeId,
+        col: 1,
+        x: COL_X[1],
+        y: 50 + idx * ROW_GAP,
+        w: NODE_W,
+        h: NODE_H,
+        kind: 'spec',
+        code: `SPEC-${String(idx + 1).padStart(2, '0')} · v${r.version}`,
+        title: r.title,
+        subtitle: `优先级 ${r.score.priority.toFixed(1)} · 完整度 ${r.quality.score}分`,
+        statusLabel: LABELS[r.decision] || r.decision,
+        tone: r.decision === 'approved' ? 'green' : r.decision === 'rejected' ? 'amber' : 'blue',
+        detail: {
+          heading: `需求规格 (/speckit.specify) · ${r.title}`,
+          summary: r.story,
+          scope: r.scope,
+          acceptance: r.acceptance,
+          meta: `状态：${LABELS[r.decision] || r.decision} · 版本 v${r.version}`,
+          rawReq: requirements.find((x) => x.id === r.id),
+        },
+      });
+      const sourceCluster = displayClusters.find((c) => c.id === r.clusterId) || displayClusters[0];
+      if (sourceCluster) {
+        edges.push({
+          id: `e:cluster:${sourceCluster.id}->${nodeId}`,
+          from: `cluster:${sourceCluster.id}`,
+          to: nodeId,
+          flow: 'data',
+        });
+      }
+    });
+
+    // 3. Technical Plans (Column 2)
+    const displayPlans = plans.length
+      ? plans
+      : [
+          {
+            id: 'demo-plan-1',
+            productId: pid,
+            requirementId: displayReqs[0].id,
+            title: 'SpecKit + 可视化架构画布实施方案',
+            goal: '将痛点簇、Spec、Plan、Tasks 与验收回执映射为五列有向无环图 (DAG)。',
+            nonGoals: '不引入外部重型图形库，使用原生高性能 SVG 贝塞尔连线。',
+            scope: '实现五列自动布局与贝塞尔连线；支持缩放与三类流向过滤；支持节点检查器联动编辑。',
+            risks: '节点过多时需自动撑开画布高度。',
+            acceptance: 'tsc 零错误通过；画布节点点击可联动详情抽屉。',
+            rollback: '按基线 Commit 一键回滚视图层。',
+            baseCommit: '9f2df9c7c5d0db6e134837aa0a3b5a54902e0788',
+            budget: '2 小时 / 自动化测试门禁',
+            version: 1,
+            inputVersion: 1,
+            mode: 'sample' as const,
+          },
+        ];
+
+    const taskItems: { id: string; planId: string; code: string; text: string; kind: 'impl' | 'verify' }[] = [];
+
+    displayPlans.forEach((p, idx) => {
+      const realPlan = plans.find((x) => x.id === p.id);
+      const approval = realPlan ? planApproval(realPlan) : { decision: 'approved' as const };
+      const nodeId = `plan:${p.id}`;
+      nodes.push({
+        id: nodeId,
+        col: 2,
+        x: COL_X[2],
+        y: 50 + idx * ROW_GAP,
+        w: NODE_W,
+        h: NODE_H,
+        kind: 'plan',
+        code: `PLAN-${String(idx + 1).padStart(2, '0')} · v${p.version}`,
+        title: p.title,
+        subtitle: `基线 ${p.baseCommit.slice(0, 8)} · ${p.budget}`,
+        statusLabel: approval?.decision === 'approved' ? '方案已批准' : '待审批方案',
+        tone: approval?.decision === 'approved' ? 'green' : 'amber',
+        detail: {
+          heading: `技术方案 (/speckit.plan) · ${p.title}`,
+          summary: p.goal,
+          scope: p.scope,
+          acceptance: `不做：${p.nonGoals}\n回滚：${p.rollback}`,
+          meta: `基线 Commit: ${p.baseCommit} · 预算: ${p.budget}`,
+          rawPlan: realPlan,
+        },
+      });
+
+      const parentReq = displayReqs.find((r) => r.id === p.requirementId) || displayReqs[0];
+      if (parentReq) {
+        edges.push({
+          id: `e:spec:${parentReq.id}->${nodeId}`,
+          from: `spec:${parentReq.id}`,
+          to: nodeId,
+          flow: 'execution',
+        });
+      }
+
+      // Extract tasks from Plan scope
+      const scopeParts = p.scope
+        .split(/[\r\n；;]+/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .slice(0, 4);
+      scopeParts.forEach((part) => {
+        taskItems.push({
+          id: `task:${p.id}:${taskItems.length + 1}`,
+          planId: p.id,
+          code: `TASK-T${String(taskItems.length + 1).padStart(2, '0')}`,
+          text: part,
+          kind: 'impl',
+        });
+      });
+    });
+
+    // 4. Tasks (Column 3)
+    taskItems.forEach((t, idx) => {
+      nodes.push({
+        id: t.id,
+        col: 3,
+        x: COL_X[3],
+        y: 50 + idx * 142,
+        w: NODE_W,
+        h: 114,
+        kind: 'task',
+        code: t.code,
+        title: t.text.slice(0, 36) + (t.text.length > 36 ? '…' : ''),
+        subtitle: '研发执行单元 (/speckit.tasks)',
+        statusLabel: '可执行模块',
+        tone: 'blue',
+        detail: {
+          heading: `可执行研发任务 (${t.code})`,
+          summary: t.text,
+          meta: '由 /speckit.plan 修改范围自动拆解的原子工程任务',
+        },
+      });
+      edges.push({
+        id: `e:plan:${t.planId}->${t.id}`,
+        from: `plan:${t.planId}`,
+        to: t.id,
+        flow: 'execution',
+      });
+    });
+
+    // 5. Verification & Delivery Gates (Column 4)
+    const verifyNodes = [
+      {
+        id: 'verify:gate',
+        code: 'VERIFY-GATE',
+        title: '质量门禁与契约验收',
+        subtitle: `${evaluations.length} 份评测回执 · tsc + 82 单测`,
+        statusLabel: evaluations.some((e) => e.status === 'passed') ? '验证通过' : '持续验证',
+        tone: 'green' as const,
+        summary: '验证所有拆解任务是否满足 Spec 验收标准、乐观并发 CAS 契约以及自动化回归测试。',
+      },
+      {
+        id: 'verify:delivery',
+        code: 'DELIVERY-PACK',
+        title: 'SpecKit 三件套与上线回看',
+        subtitle: `spec.md · plan.md · tasks.md (${outcomes.length} 项效果观察)`,
+        statusLabel: releases.length ? '已登记发布' : '就绪可导出',
+        tone: 'green' as const,
+        summary: '汇总生成标准 SpecKit 工程文档（spec.md / plan.md / tasks.md），并记录发布前后的核心指标对照。',
+      },
+    ];
+
+    verifyNodes.forEach((v, idx) => {
+      nodes.push({
+        id: v.id,
+        col: 4,
+        x: COL_X[4],
+        y: 50 + idx * ROW_GAP,
+        w: NODE_W,
+        h: NODE_H,
+        kind: 'verify',
+        code: v.code,
+        title: v.title,
+        subtitle: v.subtitle,
+        statusLabel: v.statusLabel,
+        tone: v.tone,
+        detail: {
+          heading: `交付与验收门禁 · ${v.title}`,
+          summary: v.summary,
+          meta: v.subtitle,
+        },
+      });
+    });
+
+    taskItems.forEach((t) => {
+      edges.push({
+        id: `e:${t.id}->verify:gate`,
+        from: t.id,
+        to: 'verify:gate',
+        flow: 'dependency',
+      });
+    });
+    edges.push({
+      id: 'e:verify:gate->verify:delivery',
+      from: 'verify:gate',
+      to: 'verify:delivery',
+      flow: 'data',
+    });
+
+    const maxBottom = Math.max(460, ...nodes.map((n) => n.y + n.h + 60));
+    return { nodes, edges, width: 1560, height: maxBottom };
+  }, [clusters, requirements, plans, signals, evaluations, releases, outcomes, pid]);
+
+  const selectedCanvasNode = useMemo(
+    () =>
+      canvasGraph.nodes.find((n) => n.id === canvasSelectedId) ||
+      canvasGraph.nodes.find((n) => n.kind === 'spec') ||
+      canvasGraph.nodes[0] ||
+      null,
+    [canvasGraph.nodes, canvasSelectedId],
+  );
+
   return (
     <div className="sk-shell">
       {/* Top Header */}
@@ -490,10 +818,23 @@ export default function SpecKitWorkbench() {
         </button>
 
         <button
+          className={`sk-stage-tab ${activeStage === 'canvas' ? 'is-active' : ''}`}
+          onClick={() => setActiveStage('canvas')}
+        >
+          <span className="sk-stage-num">04</span>
+          <Workflow size={18} />
+          <div className="sk-stage-text">
+            <strong>架构与协作画布</strong>
+            <small>Architecture Canvas</small>
+          </div>
+          <em className="sk-count">{canvasGraph.nodes.length}</em>
+        </button>
+
+        <button
           className={`sk-stage-tab ${activeStage === 'delivery' ? 'is-active' : ''}`}
           onClick={() => setActiveStage('delivery')}
         >
-          <span className="sk-stage-num">04</span>
+          <span className="sk-stage-num">05</span>
           <Rocket size={18} />
           <div className="sk-stage-text">
             <strong>交付验收与 SpecKit 导出</strong>
@@ -1022,7 +1363,309 @@ export default function SpecKitWorkbench() {
             </section>
           )}
 
-          {/* STAGE 4: DELIVERY, VERIFICATION & SPECKIT MARKDOWN EXPORT */}
+          {/* STAGE 4: ARCHITECTURE & COLLABORATION CANVAS (FROM AI-DEV-COLLABORATION-WORKBENCH) */}
+          {activeStage === 'canvas' && (
+            <div className="sk-canvas-layout">
+              {/* Left: Directed SVG Node & Edge Graph Viewport */}
+              <section className="sk-card sk-canvas-card">
+                <div className="sk-canvas-toolbar">
+                  <div>
+                    <h3>SpecKit 架构与协作画布 (Directed Architecture Canvas)</h3>
+                    <p>
+                      完整保留原 AI 研发协作工作台的节点连线画布体验：实时将「痛点簇 → Spec → Plan → Tasks → 验收门禁」映射为有向图
+                    </p>
+                  </div>
+                  <div className="sk-canvas-controls">
+                    <div className="sk-flow-filters" role="group" aria-label="关系流向筛选">
+                      {(
+                        [
+                          ['all', '全部流向'],
+                          ['execution', '执行流 (Spec→Plan→Task)'],
+                          ['data', '数据流 (证据→交付包)'],
+                          ['dependency', '依赖/验收依据'],
+                        ] as const
+                      ).map(([k, label]) => (
+                        <button
+                          key={k}
+                          type="button"
+                          className={`sk-btn is-small ${canvasFilter === k ? 'is-primary' : ''}`}
+                          onClick={() => setCanvasFilter(k)}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      className={`sk-btn is-small ${canvasFocusRelated ? 'is-primary' : ''}`}
+                      onClick={() => setCanvasFocusRelated((v) => !v)}
+                    >
+                      {canvasFocusRelated ? '★ 已聚焦关联链路' : '聚焦关联节点'}
+                    </button>
+
+                    <div className="sk-zoom-group">
+                      <button
+                        type="button"
+                        className="sk-btn is-small"
+                        aria-label="缩小画布"
+                        onClick={() => setCanvasZoom((z) => Math.max(0.65, Number((z - 0.1).toFixed(2))))}
+                      >
+                        <ZoomOut size={15} />
+                      </button>
+                      <span>{Math.round(canvasZoom * 100)}%</span>
+                      <button
+                        type="button"
+                        className="sk-btn is-small"
+                        aria-label="放大画布"
+                        onClick={() => setCanvasZoom((z) => Math.min(1.3, Number((z + 0.1).toFixed(2))))}
+                      >
+                        <ZoomIn size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        className="sk-btn is-small"
+                        onClick={() => setCanvasZoom(1)}
+                      >
+                        100%
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Column Legend Headers */}
+                <div className="sk-canvas-lanes">
+                  <span>01 痛点簇 (Signals)</span>
+                  <span>02 需求规格 (/speckit.specify)</span>
+                  <span>03 技术方案 (/speckit.plan)</span>
+                  <span>04 执行模块 (/speckit.tasks)</span>
+                  <span>05 验收与交付门禁</span>
+                </div>
+
+                <div className="sk-canvas-viewport" role="region" aria-label="SpecKit 架构节点画布">
+                  <div
+                    className="sk-canvas-size"
+                    style={{
+                      width: canvasGraph.width * canvasZoom,
+                      height: canvasGraph.height * canvasZoom,
+                    }}
+                  >
+                    <div
+                      className="sk-canvas-plane"
+                      style={{
+                        width: canvasGraph.width,
+                        height: canvasGraph.height,
+                        transform: `scale(${canvasZoom})`,
+                      }}
+                    >
+                      <svg
+                        className="sk-canvas-svg"
+                        width={canvasGraph.width}
+                        height={canvasGraph.height}
+                        viewBox={`0 0 ${canvasGraph.width} ${canvasGraph.height}`}
+                        fill="none"
+                        aria-hidden="true"
+                      >
+                        <defs>
+                          <marker id="sk-arrow-execution" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                            <path d="M1 1 L7 4 L1 7" stroke="#1e3a8a" strokeWidth="1.6" fill="none" />
+                          </marker>
+                          <marker id="sk-arrow-data" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                            <path d="M1 1 L7 4 L1 7" stroke="#047857" strokeWidth="1.6" fill="none" />
+                          </marker>
+                          <marker id="sk-arrow-dependency" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                            <path d="M1 1 L7 4 L1 7" stroke="#b45309" strokeWidth="1.6" fill="none" />
+                          </marker>
+                        </defs>
+                        {canvasGraph.edges
+                          .filter((e) => canvasFilter === 'all' || e.flow === canvasFilter)
+                          .map((e) => {
+                            const fromNode = canvasGraph.nodes.find((n) => n.id === e.from);
+                            const toNode = canvasGraph.nodes.find((n) => n.id === e.to);
+                            if (!fromNode || !toNode) return null;
+                            const sx = fromNode.x + fromNode.w;
+                            const sy = fromNode.y + fromNode.h / 2;
+                            const tx = toNode.x;
+                            const ty = toNode.y + toNode.h / 2;
+                            const bend = Math.max(45, Math.abs(tx - sx) / 2);
+                            const d = `M ${sx} ${sy} C ${sx + bend} ${sy}, ${tx - bend} ${ty}, ${tx} ${ty}`;
+                            const isRelated =
+                              !selectedCanvasNode ||
+                              selectedCanvasNode.id === e.from ||
+                              selectedCanvasNode.id === e.to;
+                            const dimmed = canvasFocusRelated && !isRelated;
+                            return (
+                              <path
+                                key={e.id}
+                                d={d}
+                                className={`sk-canvas-edge is-${e.flow} ${dimmed ? 'is-dimmed' : ''}`}
+                                markerEnd={`url(#sk-arrow-${e.flow})`}
+                              />
+                            );
+                          })}
+                      </svg>
+
+                      {canvasGraph.nodes.map((node) => {
+                        const isSelected = selectedCanvasNode?.id === node.id;
+                        const isConnected =
+                          !selectedCanvasNode ||
+                          selectedCanvasNode.id === node.id ||
+                          canvasGraph.edges.some(
+                            (e) =>
+                              (e.from === selectedCanvasNode.id && e.to === node.id) ||
+                              (e.to === selectedCanvasNode.id && e.from === node.id),
+                          );
+                        const dimmed = canvasFocusRelated && !isConnected;
+                        return (
+                          <button
+                            key={node.id}
+                            type="button"
+                            className={`sk-canvas-node is-${node.tone} ${isSelected ? 'is-selected' : ''} ${
+                              dimmed ? 'is-dimmed' : ''
+                            }`}
+                            style={{
+                              left: node.x,
+                              top: node.y,
+                              width: node.w,
+                              height: node.h,
+                            }}
+                            onClick={() => setCanvasSelectedId(node.id)}
+                          >
+                            <div className="sk-canvas-node-top">
+                              <span className="sk-canvas-node-code">{node.code}</span>
+                              <span className={`sk-pill is-${node.tone}`}>{node.statusLabel}</span>
+                            </div>
+                            <strong className="sk-canvas-node-title">{node.title}</strong>
+                            <span className="sk-canvas-node-sub">{node.subtitle}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* Right: Live Node Inspector & Direct Spec/Plan Quick Actions */}
+              <aside className="sk-card sk-canvas-inspector">
+                {selectedCanvasNode ? (
+                  <div className="sk-inspector-stack">
+                    <div className="sk-card-head">
+                      <div>
+                        <span className={`sk-pill is-${selectedCanvasNode.tone}`}>
+                          {selectedCanvasNode.code} · {selectedCanvasNode.statusLabel}
+                        </span>
+                        <h3 style={{ marginTop: 8 }}>{selectedCanvasNode.detail.heading}</h3>
+                        {selectedCanvasNode.detail.meta && <p>{selectedCanvasNode.detail.meta}</p>}
+                      </div>
+                    </div>
+
+                    <div className="sk-spec-box">
+                      <strong>核心内容与产物契约</strong>
+                      <p>{selectedCanvasNode.detail.summary}</p>
+                    </div>
+
+                    {selectedCanvasNode.detail.scope && (
+                      <div className="sk-spec-box">
+                        <strong>模块边界与实现范围 (Scope)</strong>
+                        <p>{selectedCanvasNode.detail.scope}</p>
+                      </div>
+                    )}
+
+                    {selectedCanvasNode.detail.acceptance && (
+                      <div className="sk-spec-box">
+                        <strong>验收断言与回滚边界 (Acceptance)</strong>
+                        <p>{selectedCanvasNode.detail.acceptance}</p>
+                      </div>
+                    )}
+
+                    <div className="sk-btn-row" style={{ paddingTop: 8 }}>
+                      {selectedCanvasNode.detail.rawCluster && (
+                        <button
+                          type="button"
+                          className="sk-btn is-small is-primary"
+                          disabled={writeDisabled}
+                          onClick={() => {
+                            setSelectedCluster(selectedCanvasNode.detail.rawCluster!);
+                            setEditingRequirement(
+                              requirements.find(
+                                (r) => r.clusterId === selectedCanvasNode.detail.rawCluster!.id,
+                              ) || null,
+                            );
+                            setModal('requirement-editor');
+                          }}
+                        >
+                          <FileCheck2 size={14} /> 提炼 / 编辑此簇的 Spec
+                        </button>
+                      )}
+
+                      {selectedCanvasNode.detail.rawReq && (
+                        <>
+                          <button
+                            type="button"
+                            className="sk-btn is-small"
+                            disabled={writeDisabled}
+                            onClick={() => {
+                              const req = selectedCanvasNode.detail.rawReq!;
+                              const cluster =
+                                clusters.find((c) => c.id === req.clusterId) || clusters[0];
+                              if (cluster) {
+                                setSelectedCluster(cluster);
+                                setEditingRequirement(req);
+                                setModal('requirement-editor');
+                              }
+                            }}
+                          >
+                            编辑 Spec
+                          </button>
+                          <button
+                            type="button"
+                            className="sk-btn is-small is-primary"
+                            disabled={writeDisabled}
+                            onClick={() => {
+                              const req = selectedCanvasNode.detail.rawReq!;
+                              setTargetRequirementForPlan(req);
+                              setEditingPlan(plans.find((p) => p.requirementId === req.id) || null);
+                              setModal('plan-editor');
+                            }}
+                          >
+                            <GitBranch size={14} /> 编写 / 更新技术方案
+                          </button>
+                        </>
+                      )}
+
+                      {selectedCanvasNode.detail.rawPlan && (
+                        <button
+                          type="button"
+                          className="sk-btn is-small is-primary"
+                          disabled={writeDisabled}
+                          onClick={() => {
+                            const p = selectedCanvasNode.detail.rawPlan!;
+                            const req =
+                              requirements.find((r) => r.id === p.requirementId) || requirements[0];
+                            setTargetRequirementForPlan(req || null);
+                            setEditingPlan(p);
+                            setModal('plan-editor');
+                          }}
+                        >
+                          修订此技术方案
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        className="sk-btn is-small"
+                        onClick={() => setActiveStage('delivery')}
+                      >
+                        <FileCode2 size={14} /> 查看 SpecKit Markdown 三件套 →
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </aside>
+            </div>
+          )}
+
+          {/* STAGE 5: DELIVERY, VERIFICATION & SPECKIT MARKDOWN EXPORT */}
           {activeStage === 'delivery' && (
             <div className="sk-bento-two">
               {/* Left: Live SpecKit Artifact Generator (spec.md / plan.md / tasks.md) */}

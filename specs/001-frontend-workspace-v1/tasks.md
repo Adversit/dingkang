@@ -28,5 +28,5 @@
 - [x] T017 Rebuild `知流` (`modules/zhiliu-radar/app/home.tsx` & `globals.css`) into a 3-tab minimalist Bento workbench (`情报流`, `每日简报`, `信源管理`)
 - [x] T018 Rebuild `知证` (`modules/zhizheng-research/app/workbench.tsx` & `globals.css`) into a 3-step research workbench (`文献库与检索`, `精读与证据笔记`, `跨论文综述与 AI 问答`)
 - [x] T019 Rebuild `Agent 架构实验室` (`public/apps/agent-architecture-journey/index.html`) into a 5-stage interactive architecture lab with live JSON execution trace sandbox
-- [x] T020 Merge AI PM + EvoPM + AI Dev Collaboration into `SpecKit 研发工作台` (`modules/evopm-workbench/app/page.tsx` & `styles.css`) with 1-click `spec.md` / `plan.md` / `tasks.md` export
-- [x] T021 Rebuild `AI 小说工坊` (`public/apps/novel-studio/canvas.js` & `canvas.css`) into a distraction-free 3-column novel writing & worldbuilding workbench
+- [x] T020 Merge AI PM + EvoPM + AI Dev Collaboration into `SpecKit 研发工作台` (`modules/evopm-workbench/app/page.tsx` & `styles.css`) with embedded 5-lane SVG Architecture & Collaboration Canvas (`Stage 04 架构与协作画布`) and 1-click `spec.md` / `plan.md` / `tasks.md` export
+- [x] T021 Rebuild `AI 小说工坊` (`public/apps/novel-studio/canvas.js` & `canvas.css`) into a distraction-free 3-column novel writing & worldbuilding workbench with switchable `沉浸正文` and `6 节点执行流程画布` views
